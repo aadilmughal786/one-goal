@@ -1,0 +1,50 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # Allows manual triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    name: ESLint & Prettier
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: ESLint Check
+        run: npx eslint . --ext .js,.jsx,.ts,.tsx
+
+      - name: Prettier Check
+        run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}"
+
+      # Optional: Add ESLint Annotations to Pull Requests
+      - name: Annotate Code Linting Results
+        if: github.event_name == 'pull_request'
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          eslint_flags: '--ext .js,.jsx,.ts,.tsx .'

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Run lint-staged directly without the deprecated header
+npx lint-staged

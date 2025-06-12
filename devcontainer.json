@@ -1,0 +1,54 @@
+{
+  // Name of the dev container
+  "name": "One Goal App Development Container",
+
+  // Dockerfile or image to use
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:latest",
+
+  // Features to install
+  "features": {},
+
+  // VS Code extensions to install
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "formulahendry.auto-rename-tag",
+        "formulahendry.auto-close-tag",
+        "dsznajder.es7-react-js-snippets",
+        "xabikos.javascriptsnippets",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vsliveshare.vsliveshare",
+        "wix.vscode-import-cost",
+        "naumovs.color-highlight",
+        "pkief.material-icon-theme",
+        "ritwickdey.liveserver",
+        "shardulm94.trailing-spaces",
+        "visualstudioexptteam.vscodeintellicode",
+        "yzhang.markdown-all-in-one",
+        "ecmel.vscode-html-css",
+        "msjsdiag.debugger-for-chrome",
+        "mhutchie.git-graph",
+        "ms-ceintl.vscode-language-pack-es",
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-vscode.cpptools",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode-remote.remote-containers",
+        "ms-vscode-remote.remote-ssh",
+        "ms-vscode-remote.remote-ssh-edit",
+        "ms-vscode-remote.remote-wsl",
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        "github.vscode-pull-request-github",
+        "ms-vscode.test-adapter-converter"
+      ]
+    }
+  },
+
+  // Post-create commands
+  "postCreateCommand": "npm install eslint prettier"
+}
