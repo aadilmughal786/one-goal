@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 
 // Import types
-import { AppState, AppMode } from '@/types'; // UrgencyLevel is still removed from previous request
+import { AppState, AppMode, ListItem, TodoItem } from '@/types'; // UrgencyLevel is still removed from previous request
 
 // Import Firebase service functions (using the instance)
 import { firebaseService } from '@/services/firebaseService';
@@ -24,6 +24,31 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import { MdRocketLaunch } from 'react-icons/md';
 import { FiTarget, FiClock, FiUpload, FiEdit, FiPlusCircle } from 'react-icons/fi'; // Added FiPlusCircle for new goal button
 
+// Define types for raw data loaded from storage, before normalization
+// These types allow for various date formats that might be loaded
+type DateLike =
+  | Date
+  | Timestamp
+  | string
+  | number
+  | { seconds: number; nanoseconds?: number }
+  | null
+  | undefined;
+
+interface RawGoalData {
+  name: string;
+  description?: string;
+  startDate: DateLike;
+  endDate: DateLike;
+}
+
+interface RawAppState {
+  goal?: RawGoalData | null;
+  notToDoList?: ListItem[];
+  contextItems?: ListItem[];
+  toDoList?: TodoItem[];
+}
+
 // Initial state for the persistent data (conforms to AppState type)
 const initialPersistentAppState: AppState = {
   goal: null,
@@ -32,8 +57,8 @@ const initialPersistentAppState: AppState = {
   toDoList: [],
 };
 
-// Helper function to safely convert date to Date object
-const safeToDate = (dateValue: any): Date | null => {
+// Helper function to safely convert date to Date object from various formats
+const safeToDate = (dateValue: DateLike): Date | null => {
   if (!dateValue) return null;
 
   // If it's already a Date object
@@ -41,9 +66,19 @@ const safeToDate = (dateValue: any): Date | null => {
     return dateValue;
   }
 
-  // If it's a Firestore Timestamp
-  if (dateValue && typeof dateValue.toDate === 'function') {
+  // If it's a Firestore Timestamp (from firebase-firestore import)
+  if (dateValue instanceof Timestamp) {
     return dateValue.toDate();
+  }
+
+  // If it's a plain object that looks like a Firestore Timestamp (e.g., from local storage JSON)
+  if (
+    typeof dateValue === 'object' &&
+    dateValue !== null &&
+    'seconds' in dateValue &&
+    typeof dateValue.seconds === 'number'
+  ) {
+    return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
   }
 
   // If it's a string or number, try to parse it
@@ -52,16 +87,11 @@ const safeToDate = (dateValue: any): Date | null => {
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
   }
 
-  // If it has seconds and nanoseconds (Timestamp-like object)
-  if (dateValue && typeof dateValue.seconds === 'number') {
-    return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
-  }
-
   return null;
 };
 
 // Helper function to normalize AppState after loading from any source
-const normalizeAppState = (loadedState: any): AppState => {
+const normalizeAppState = (loadedState: RawAppState): AppState => {
   if (!loadedState) return initialPersistentAppState;
 
   const normalized: AppState = {
@@ -173,12 +203,14 @@ export default function DashboardPage() {
             localStorageService.clearLocalState(); // Clear any corrupted local data
             return;
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
+          // Changed type to unknown
           // Error loading from local storage (e.g., parsing error from localStorageService)
-          showMessage(
-            `Error loading guest data: ${error.message || 'Unknown error'}. Starting fresh.`,
-            'error'
-          );
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Error loading guest data: ${errorMessage}. Starting fresh.`, 'error');
           setAppState(initialPersistentAppState);
           localStorageService.clearLocalState();
           return;
@@ -198,11 +230,13 @@ export default function DashboardPage() {
               const normalizedData = normalizeAppState(loadedFirebaseData);
               setAppState(normalizedData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -230,11 +264,13 @@ export default function DashboardPage() {
               const normalizedData = normalizeAppState(loadedFirebaseData);
               setAppState(normalizedData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -259,11 +295,13 @@ export default function DashboardPage() {
       const dataToSave: AppState = appState;
 
       if (appMode === 'google' && currentUser) {
-        firebaseService.saveUserData(currentUser.uid, dataToSave).catch(error => {
-          showMessage(
-            `Failed to save data to Firebase: ${error.message || 'Unknown error'}`,
-            'error'
-          );
+        firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
         });
       } else if (appMode === 'guest') {
         localStorageService.saveLocalState(dataToSave);
@@ -281,33 +319,6 @@ export default function DashboardPage() {
     showMessage,
     appState,
   ]);
-
-  // --- Authentication Handlers ---
-  const handleSignOut = useCallback(async () => {
-    openConfirmationModal(
-      'Sign Out',
-      'Are you sure you want to sign out? Your current session will end.',
-      async () => {
-        try {
-          if (appMode === 'google') {
-            await firebaseService.signOutUser();
-            showMessage('Signed out successfully!', 'success');
-          } else if (appMode === 'guest') {
-            showMessage('Guest session ended. Your data is saved locally.', 'success');
-          }
-          localStorageService.clearAppModeFromLocalStorage();
-          setAppMode('none');
-          router.replace('/');
-        } catch (error: any) {
-          showMessage(`Sign-out error: ${error.message || 'Unknown error'}`, 'error');
-        }
-      }
-    );
-  }, [showMessage, openConfirmationModal, router, appMode]);
-
-  const handleSignInWithGoogleFromGuest = useCallback(() => {
-    router.push('/login');
-  }, [router]);
 
   // --- Modal Functions ---
   const openGoalModal = useCallback(() => {
@@ -394,7 +405,8 @@ export default function DashboardPage() {
   );
 
   // --- Countdown Calculation & Display ---
-  const [_, setTick] = useState(0); // State to force re-render for countdown, actual time calc happens in render
+  // _forceUpdate is used to force a re-render to update the countdown values.
+  const [, setTick] = useState(0);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Safe date conversions for display
@@ -649,7 +661,7 @@ export default function DashboardPage() {
                       </p>
                       {timeLeft > 0 && appState.goal && goalEndDate && (
                         <p className="text-base italic text-white/70">
-                          Your goal is to achieve: "{appState.goal.name}" by{' '}
+                          Your goal is to achieve: &quot;{appState.goal.name}&quot; by{' '}
                           {goalEndDate.toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'short',

@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/login/page.tsx
 'use client';
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
-import { FiUser, FiDownload } from 'react-icons/fi';
+import { FiUser } from 'react-icons/fi';
 import { firebaseService } from '@/services/firebaseService'; // Import the firebaseService instance
 import { localStorageService } from '@/services/localStorageService'; // Import the localStorageService instance
 import ToastMessage from '@/components/ToastMessage';
@@ -70,32 +71,6 @@ export default function LoginPage() {
       actionDelayMs: 0,
     });
   }, []);
-
-  const handleExportData = useCallback(async () => {
-    try {
-      const guestData = localStorageService.loadLocalState();
-      if (guestData) {
-        const dataStr = JSON.stringify(guestData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `one-goal-guest-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        showMessage('Guest data exported successfully!', 'success');
-      } else {
-        showMessage('No guest data to export.', 'info');
-      }
-    } catch (exportError: unknown) {
-      const message =
-        exportError instanceof LocalStorageError
-          ? exportError.message
-          : `Failed to export guest data: ${(exportError as Error).message || 'Unknown error'}`;
-      showMessage(message, 'error');
-    }
-    // Do NOT close modal here. User still needs to choose next action (guest or google)
-  }, [showMessage]);
 
   const handleSignInWithGoogleAndClearGuestData = useCallback(async () => {
     try {

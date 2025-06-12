@@ -44,7 +44,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     let timer: NodeJS.Timeout;
     if (isOpen && actionDelayMs > 0) {
       setActionsEnabled(false); // Disable actions initially
-      setCountdown(prev => Math.max(0, actionDelayMs / 1000)); // Reset countdown, ensure non-negative
+      setCountdown(Math.max(0, actionDelayMs / 1000)); // Reset countdown, ensure non-negative
       timer = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {

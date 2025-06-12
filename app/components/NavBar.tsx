@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/NavBar.tsx
 
 'use client';
@@ -12,17 +13,7 @@ import { useRouter } from 'next/navigation';
 
 import Image from 'next/image';
 
-import {
-  FiTarget,
-  FiDownload,
-  FiUpload,
-  FiLogOut,
-  FiHome,
-  FiList,
-  FiClock,
-  FiCheckSquare,
-  FiInfo,
-} from 'react-icons/fi';
+import { FiDownload, FiUpload, FiLogOut, FiHome, FiList, FiCheckSquare } from 'react-icons/fi';
 
 import { FcGoogle } from 'react-icons/fc';
 
@@ -32,7 +23,7 @@ import { firebaseService } from '@/services/firebaseService';
 
 import { localStorageService } from '@/services/localStorageService';
 
-import { AppMode, AppState, Goal } from '@/types';
+import { AppMode, AppState } from '@/types';
 
 import { FirebaseServiceError } from '@/utils/errors';
 

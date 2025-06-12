@@ -68,11 +68,13 @@ export default function ListsPage() {
             showMessage('Local storage data not found. Starting fresh guest session.', 'info');
             localStorageService.clearLocalState();
           }
-        } catch (error: any) {
-          showMessage(
-            `Error loading guest data: ${error.message || 'Unknown error'}. Starting fresh.`,
-            'error'
-          );
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Error loading guest data: ${errorMessage}. Starting fresh.`, 'error');
           setAppState(initialPersistentAppState);
           localStorageService.clearLocalState();
         } finally {
@@ -88,11 +90,13 @@ export default function ListsPage() {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
               setAppState(loadedFirebaseData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -115,11 +119,13 @@ export default function ListsPage() {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
               setAppState(loadedFirebaseData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -144,11 +150,13 @@ export default function ListsPage() {
       const dataToSave: AppState = appState;
 
       if (appMode === 'google' && currentUser) {
-        firebaseService.saveUserData(currentUser.uid, dataToSave).catch(error => {
-          showMessage(
-            `Failed to save data to Firebase: ${error.message || 'Unknown error'}`,
-            'error'
-          );
+        firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
         });
       } else if (appMode === 'guest') {
         localStorageService.saveLocalState(dataToSave);
@@ -190,11 +198,13 @@ export default function ListsPage() {
             `${listType === 'notToDoList' ? 'Item added to Not To Do' : 'Context item added'}!`,
             'success'
           );
-        } catch (error: any) {
-          showMessage(
-            `Failed to add item to ${listType}: ${error.message || 'Unknown error'}`,
-            'error'
-          );
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to add item to ${listType}: ${errorMessage}`, 'error');
         }
       } else if (appMode === 'guest') {
         setAppState(prev => ({
@@ -223,11 +233,13 @@ export default function ListsPage() {
             `${listType === 'notToDoList' ? 'Item removed from Not To Do' : 'Context item removed'}!`,
             'info'
           );
-        } catch (error: any) {
-          showMessage(
-            `Failed to remove item from ${listType}: ${error.message || 'Unknown error'}`,
-            'error'
-          );
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to remove item from ${listType}: ${errorMessage}`, 'error');
         }
       } else if (appMode === 'guest') {
         setAppState(prev => ({

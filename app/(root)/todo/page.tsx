@@ -66,11 +66,13 @@ export default function TodoPage() {
             showMessage('Local storage data not found. Starting fresh guest session.', 'info');
             localStorageService.clearLocalState();
           }
-        } catch (error: any) {
-          showMessage(
-            `Error loading guest data: ${error.message || 'Unknown error'}. Starting fresh.`,
-            'error'
-          );
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Error loading guest data: ${errorMessage}. Starting fresh.`, 'error');
           setAppState(initialPersistentAppState);
           localStorageService.clearLocalState();
         } finally {
@@ -86,11 +88,13 @@ export default function TodoPage() {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
               setAppState(loadedFirebaseData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -113,11 +117,13 @@ export default function TodoPage() {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
               setAppState(loadedFirebaseData);
               showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: any) {
-              showMessage(
-                `Failed to load Firebase data: ${firebaseLoadError.message || 'Unknown error'}`,
-                'error'
-              );
+            } catch (firebaseLoadError: unknown) {
+              // Changed type to unknown
+              let errorMessage = 'Unknown error';
+              if (firebaseLoadError instanceof Error) {
+                errorMessage = firebaseLoadError.message;
+              }
+              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
               setAppState(initialPersistentAppState);
             }
           } else {
@@ -142,11 +148,13 @@ export default function TodoPage() {
       const dataToSave: AppState = appState; // appState already conforms to AppState type
 
       if (appMode === 'google' && currentUser) {
-        firebaseService.saveUserData(currentUser.uid, dataToSave).catch(error => {
-          showMessage(
-            `Failed to save data to Firebase: ${error.message || 'Unknown error'}`,
-            'error'
-          );
+        firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
         });
       } else if (appMode === 'guest') {
         localStorageService.saveLocalState(dataToSave);
@@ -182,8 +190,13 @@ export default function TodoPage() {
             toDoList: [...prev.toDoList, newItem],
           }));
           showMessage('To-Do item added!', 'success');
-        } catch (error: any) {
-          showMessage(`Failed to add To-Do item: ${error.message || 'Unknown error'}`, 'error');
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to add To-Do item: ${errorMessage}`, 'error');
         }
       } else if (appMode === 'guest') {
         setAppState(prev => ({
@@ -206,8 +219,13 @@ export default function TodoPage() {
             toDoList: prev.toDoList.filter(item => item.id !== id),
           }));
           showMessage('To-Do item removed!', 'info');
-        } catch (error: any) {
-          showMessage(`Failed to remove To-Do item: ${error.message || 'Unknown error'}`, 'error');
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to remove To-Do item: ${errorMessage}`, 'error');
         }
       } else if (appMode === 'guest') {
         setAppState(prev => ({
@@ -232,8 +250,13 @@ export default function TodoPage() {
             ),
           }));
           showMessage('To-Do item updated!', 'success');
-        } catch (error: any) {
-          showMessage(`Failed to update To-Do item: ${error.message || 'Unknown error'}`, 'error');
+        } catch (error: unknown) {
+          // Changed type to unknown
+          let errorMessage = 'Unknown error';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          showMessage(`Failed to update To-Do item: ${errorMessage}`, 'error');
         }
       } else if (appMode === 'guest') {
         setAppState(prev => ({

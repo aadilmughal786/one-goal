@@ -41,7 +41,7 @@ const NotToDoList: React.FC<NotToDoListProps> = ({ list, addToList, removeFromLi
         {/* Increased space-y */}
         {list.length === 0 ? (
           <li className="p-4 text-center rounded-md text-white/70 bg-white/5">
-            No "What Not To Do" items yet.
+            No &quot;What Not To Do&quot; items yet.
           </li>
         ) : (
           list.map((item: ListItem) => (

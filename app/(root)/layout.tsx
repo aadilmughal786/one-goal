@@ -2,7 +2,6 @@
 'use client'; // Added 'use client' directive as useEffect is a client-side hook
 
 import React from 'react'; // Import useEffect and React
-import Footer from '../components/Footer';
 import NavBar from '@/components/NavBar';
 
 export default function RootLayout({
