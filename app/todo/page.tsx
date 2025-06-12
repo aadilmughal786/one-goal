@@ -408,8 +408,6 @@ export default function TodoPage() {
           </div>
         </section>
       </div>
-
-      <Footer />
     </main>
   );
 }

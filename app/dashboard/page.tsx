@@ -20,7 +20,6 @@ import NavBar from '@/components/NavBar';
 import GoalModal from '@/components/GoalModal';
 import ToastMessage from '@/components/ToastMessage';
 import Footer from '@/components/Footer';
-import DeveloperModal from '@/components/DeveloperModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Icon imports
@@ -777,12 +776,6 @@ export default function DashboardPage() {
         initialGoalData={goalModalEditMode ? transformedGoalForModal : null}
         isEditMode={goalModalEditMode}
       />
-
-      {/* Developer Information Modal Component */}
-      <DeveloperModal isOpen={isDeveloperModalOpen} onClose={closeDeveloperModal} />
-
-      {/* Footer Component */}
-      <Footer />
     </main>
   );
 }

@@ -77,7 +77,7 @@ const ToastMessage: React.FC<ToastMessageProps> = ({ message, type = 'info', dur
       // without interrupting the user's current task.
       role="status"
       aria-live="polite"
-      className={`fixed top-6 left-1/2 -translate-x-1/2 p-4 rounded-xl shadow-xl z-[5000] text-white
+      className={`fixed bottom-6 left-10  p-4 rounded-xl shadow-xl z-[5000] text-white
       bg-white/[0.02] backdrop-blur-sm border ${config.borderColor}
       transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       max-w-md w-full mx-4 hover:bg-white/[0.04] hover:border-white/20`}

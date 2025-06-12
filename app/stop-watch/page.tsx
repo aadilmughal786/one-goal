@@ -240,8 +240,6 @@ export default function StopwatchPage() {
           <Stopwatch showMessage={showMessage} />
         </section>
       </div>
-
-      <Footer />
     </main>
   );
 }
