@@ -44,17 +44,14 @@ const DayBlock: React.FC<DayBlockProps> = ({
       onClick={() => onDayClick(date, progressData)}
       disabled={!canInteract}
       className={`
-        relative p-4 rounded-xl text-center flex flex-col justify-between items-center transition-all duration-200
+        relative p-1 rounded-xl text-center flex flex-col justify-between items-center transition-all duration-200
         ${bgColor} ${textColor}
-        ${isToday ? 'border-2 border-blue-500' : 'border border-white/10'}
+        ${isToday ? 'border-2 border-dashed' : 'border border-white/10'}
         ${canInteract ? 'cursor-pointer hover:scale-105 hover:border-white/20' : 'opacity-50 cursor-not-allowed'}
-        min-h-[100px] sm:min-h-[120px] // Ensure consistent size
+          // Ensure consistent size
       `}
     >
-      <div className="absolute top-2 right-2 text-xs font-semibold">
-        {date.toLocaleString('en-US', { month: 'short' }).toUpperCase()}
-      </div>
-      <span className="text-4xl font-bold">{dayOfMonth}</span>
+      <span className="text-xl font-bold">{dayOfMonth}</span>
       <span className="text-sm font-medium">{isToday ? 'TODAY' : dayOfWeek}</span>
     </button>
   );
