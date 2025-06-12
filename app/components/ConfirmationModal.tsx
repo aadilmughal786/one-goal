@@ -115,9 +115,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           {/* Action Buttons */}
           {/* Cancel Button - always enabled */}
           <button
-            className={`px-4 cursor-pointer w-full py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white
-              ${cancelButton.className || 'bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20'}
-            `}
+            className={
+              'px-4 cursor-pointer w-full py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20'
+            }
             onClick={cancelButton.onClick}
           >
             {cancelButton.icon} {cancelButton.text}

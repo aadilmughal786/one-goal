@@ -82,7 +82,7 @@ const ToastMessage: React.FC<ToastMessageProps> = ({ message, type = 'info', dur
       transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       max-w-md w-full mx-4 hover:bg-white/[0.04] hover:border-white/20`}
     >
-      <div className="flex gap-3 items-start">
+      <div className="flex gap-3 items-center">
         {/* Toast Icon */}
         <div className={`flex-shrink-0 p-2 rounded-lg ${config.iconBg}`}>{config.icon}</div>
 
@@ -92,7 +92,7 @@ const ToastMessage: React.FC<ToastMessageProps> = ({ message, type = 'info', dur
         {/* Close Button for user dismissal */}
         <button
           onClick={handleClose}
-          className="flex-shrink-0 p-1 rounded-lg transition-colors duration-200 bg-white/5 hover:bg-white/10 group"
+          className="flex-shrink-0 p-1 rounded-lg transition-colors duration-200 cursor-pointer bg-white/5 hover:bg-white/10 group"
           aria-label="Close notification" // Accessible label for the close button
         >
           <FiX className="w-4 h-4 text-white/60 group-hover:text-white/90" />

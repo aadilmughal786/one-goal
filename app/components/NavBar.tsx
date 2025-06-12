@@ -484,7 +484,7 @@ const NavBar: React.FC = () => {
               {appMode === 'guest' ? (
                 <>
                   <button
-                    className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
+                    className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 cursor-pointer text-white/90 hover:bg-white/10"
                     onClick={() => handleMenuItemClick(handleSignInWithGoogle)}
                   >
                     <FcGoogle size={20} /> Sign In with Google

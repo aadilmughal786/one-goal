@@ -548,28 +548,21 @@ export default function DashboardPage() {
               {/* Goal Display and Countdown */}
               <section id="countdownSection">
                 <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
-                  {/* Updated: Added Update Goal Button at the top of the card */}
-                  <div className="flex justify-end mb-4">
-                    <button
-                      onClick={handleEditGoal}
-                      className="inline-flex gap-2 items-center px-4 py-2 font-semibold text-sm text-white bg-white/[0.05] rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
-                    >
-                      <FiEdit className="w-4 h-4" /> Update Goal
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col justify-between items-start pb-4 mb-6 border-b border-white/10 md:flex-row md:items-center">
-                    <div>
+                  <div className="pb-4 mb-6 border-b border-white/10">
+                    <div className="flex flex-wrap gap-3 justify-between items-center w-full">
                       <h2 id="goalTitle" className="mb-2 text-3xl font-bold text-white">
                         {appState.goal.name}
                       </h2>
-                      {appState.goal.description && (
-                        <p className="italic leading-relaxed text-white/70 text-md">
-                          {appState.goal.description}
-                        </p>
-                      )}
+
+                      <button
+                        onClick={handleEditGoal}
+                        className="inline-flex cursor-pointer gap-2 items-center px-4 py-2 font-semibold text-sm text-white bg-white/[0.05] rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      >
+                        <FiEdit className="w-4 h-4" /> Update Goal
+                      </button>
                     </div>
-                    <div className="flex gap-2 items-center mt-4 text-sm text-white/50 md:mt-0">
+
+                    <div className="flex gap-2 items-center mt-4 text-sm text-white/50">
                       <span>Started:</span>
                       <span id="startDate" className="font-medium text-white/80">
                         {goalStartDate?.toLocaleDateString('en-US', {
@@ -579,6 +572,12 @@ export default function DashboardPage() {
                         })}
                       </span>
                     </div>
+
+                    {appState.goal.description && (
+                      <p className="mt-2 italic leading-relaxed text-white/70 text-md">
+                        {appState.goal.description}
+                      </p>
+                    )}
                   </div>
 
                   {/* Countdown Display */}
@@ -683,7 +682,7 @@ export default function DashboardPage() {
           <section className="py-8 text-center">
             <button
               onClick={handleNewGoal}
-              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white bg-red-600 rounded-full transition-all duration-200 group hover:bg-red-700 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white bg-red-600 rounded-full transition-all duration-200 cursor-pointer group hover:bg-red-700 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <FiPlusCircle size={20} />
               Set New Goal

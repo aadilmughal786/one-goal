@@ -2,70 +2,77 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiClock, FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi'; // Import additional icons
+import { FiClock, FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi';
+import { GrPowerReset } from 'react-icons/gr';
 
 interface StopwatchProps {
-  // showMessage is passed for toasts, making it technically not "standalone" from a UI feedback perspective,
-  // but it doesn't rely on global app state for its timing logic.
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
-// Internal state for the stopwatch, kept within the component.
 interface InternalStopwatchState {
   running: boolean;
-  time: number; // total elapsed time in ms
-  lastStart: number | null; // timestamp when stopwatch was last started/resumed
+  startTime: number | null; // when the current session started
+  elapsedTime: number; // accumulated time from previous sessions
 }
 
 const initialStopwatchState: InternalStopwatchState = {
   running: false,
-  time: 0,
-  lastStart: null,
+  startTime: null,
+  elapsedTime: 0,
 };
 
 const Stopwatch: React.FC<StopwatchProps> = ({ showMessage }) => {
   const [stopwatchState, setStopwatchState] =
     useState<InternalStopwatchState>(initialStopwatchState);
-  const stopwatchIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [displayTime, setDisplayTime] = useState(0);
+  const animationFrameRef = useRef<number | null>(null);
 
-  // Clear interval on component unmount
-  useEffect(() => {
-    return () => {
-      if (stopwatchIntervalRef.current) {
-        clearInterval(stopwatchIntervalRef.current);
+  // Update display time using requestAnimationFrame for smooth 60fps updates
+  const updateDisplayTime = useCallback(() => {
+    setStopwatchState(current => {
+      if (current.running && current.startTime !== null) {
+        const currentSessionTime = Date.now() - current.startTime;
+        const totalTime = current.elapsedTime + currentSessionTime;
+        setDisplayTime(totalTime);
       }
-    };
-  }, []);
+      return current;
+    });
 
-  // Effect to manage the interval when the stopwatch is running
-  useEffect(() => {
     if (stopwatchState.running) {
-      if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current); // Clear any existing interval
-
-      stopwatchIntervalRef.current = setInterval(() => {
-        setStopwatchState(current => ({
-          ...current,
-          // Calculate current time by adding elapsed time since last start to accumulated time
-          time: (current.lastStart !== null ? Date.now() - current.lastStart : 0) + current.time,
-        }));
-      }, 100); // Update every 100ms for smoother display
-    } else {
-      if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
+      animationFrameRef.current = requestAnimationFrame(updateDisplayTime);
     }
-    // Dependency on stopwatchState.running ensures effect re-runs when status changes
-    // lastStart and time are handled within the interval update, so not direct dependencies here.
   }, [stopwatchState.running]);
 
-  // Format the stopwatch time for display
+  // Manage animation frame
+  useEffect(() => {
+    if (stopwatchState.running) {
+      animationFrameRef.current = requestAnimationFrame(updateDisplayTime);
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [stopwatchState.running, updateDisplayTime]);
+
+  // Format time with milliseconds for ultra-smooth display
   const formatStopwatchTime = useCallback((ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000);
+    const totalMs = Math.floor(ms);
+    const totalSeconds = Math.floor(totalMs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
+    const milliseconds = Math.floor((totalMs % 1000) / 10); // Show centiseconds
 
     const pad = (num: number) => num.toString().padStart(2, '0');
 
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
   }, []);
 
   // Start or resume the stopwatch
@@ -76,33 +83,36 @@ const Stopwatch: React.FC<StopwatchProps> = ({ showMessage }) => {
         return {
           ...prev,
           running: true,
-          lastStart: Date.now() - prev.time, // Adjust lastStart to resume correctly
+          startTime: Date.now(),
         };
       }
-      return prev; // Stopwatch is already running
+      return prev;
     });
   }, [showMessage]);
 
   // Pause the stopwatch
   const pauseStopwatch = useCallback(() => {
     setStopwatchState(prev => {
-      if (prev.running) {
+      if (prev.running && prev.startTime !== null) {
+        const sessionTime = Date.now() - prev.startTime;
+        const newElapsedTime = prev.elapsedTime + sessionTime;
+        setDisplayTime(newElapsedTime);
         showMessage('Stopwatch paused.', 'info');
         return {
           ...prev,
           running: false,
-          time: prev.time + (prev.lastStart !== null ? Date.now() - prev.lastStart : 0), // Accumulate time
-          lastStart: null,
+          startTime: null,
+          elapsedTime: newElapsedTime,
         };
       }
-      return prev; // Stopwatch is not running
+      return prev;
     });
   }, [showMessage]);
 
-  // Reset the stopwatch to its initial state
+  // Reset the stopwatch
   const resetStopwatch = useCallback(() => {
-    if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
-    setStopwatchState(initialStopwatchState); // Reset to initial stopwatch state
+    setStopwatchState(initialStopwatchState);
+    setDisplayTime(0);
     showMessage('Stopwatch reset.', 'info');
   }, [showMessage]);
 
@@ -118,33 +128,36 @@ const Stopwatch: React.FC<StopwatchProps> = ({ showMessage }) => {
       <div className="mb-8 text-center">
         <span
           id="stopwatchTime"
-          className="font-mono text-5xl font-extrabold text-white sm:text-6xl"
+          className="font-mono text-5xl font-extrabold tracking-tight text-white sm:text-6xl"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
         >
-          {formatStopwatchTime(stopwatchState.time)}
+          {formatStopwatchTime(displayTime)}
         </span>
       </div>
       <div className="flex flex-col gap-4 justify-center w-full max-w-sm sm:flex-row">
         <button
           onClick={stopwatchState.running ? pauseStopwatch : startStopwatch}
-          className="inline-flex flex-1 gap-2 justify-center items-center px-6 py-3 font-semibold text-white bg-blue-600 rounded-lg transition-all duration-300 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={stopwatchState.running && stopwatchState.time === 0} // Prevent pausing immediately if not running
+          className="inline-flex flex-1 gap-2 justify-center items-center px-6 py-3 font-semibold text-white bg-blue-600 rounded-lg transition-all duration-200 cursor-pointer hover:bg-blue-700 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {stopwatchState.running ? (
             <>
-              <FiPause className="w-5 h-5" /> Pause
+              <FiPause className="w-5 h-5" />
+              Pause
             </>
           ) : (
             <>
-              <FiPlay className="w-5 h-5" /> {stopwatchState.time > 0 ? 'Resume' : 'Start'}
+              <FiPlay className="w-5 h-5" />
+              Start
             </>
           )}
         </button>
         <button
           onClick={resetStopwatch}
-          disabled={stopwatchState.time === 0 && !stopwatchState.running}
-          className="inline-flex flex-1 gap-2 justify-center items-center px-6 py-3 font-semibold text-white bg-red-600 rounded-lg transition-all duration-300 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={displayTime === 0 && !stopwatchState.running}
+          className="inline-flex flex-1 gap-2 justify-center items-center px-6 py-3 font-semibold text-white bg-red-600 rounded-lg transition-all duration-200 cursor-pointer hover:bg-red-700 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
-          <FiRefreshCw className="w-5 h-5" /> Reset
+          <GrPowerReset className="w-5 h-5" />
+          Reset
         </button>
       </div>
     </div>

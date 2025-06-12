@@ -206,7 +206,7 @@ export default function LoginPage() {
           {/* Google Sign In Button - matching landing page CTA style */}
           <button
             onClick={handleGoogleSignInAttempt}
-            className="inline-flex gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+            className="inline-flex gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
           >
             <FcGoogle size={24} />
             Sign In with Google
@@ -214,7 +214,7 @@ export default function LoginPage() {
           {/* Guest Button - using glassmorphism style */}
           <button
             onClick={handleContinueAsGuest}
-            className="inline-flex gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-white bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-full transition-all duration-300 hover:bg-white/[0.04] hover:border-white/20 hover:scale-105"
+            className="inline-flex cursor-pointer gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-white bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-full transition-all duration-300 hover:bg-white/[0.04] hover:border-white/20 hover:scale-105"
           >
             <FiUser size={24} />
             Continue as Guest

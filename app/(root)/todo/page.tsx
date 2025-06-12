@@ -16,6 +16,9 @@ import { localStorageService } from '@/services/localStorageService';
 
 // Component imports
 import ToastMessage from '@/components/ToastMessage';
+import { GiEmptyChessboard } from 'react-icons/gi';
+import { FiCheckSquare } from 'react-icons/fi';
+import { RiDeleteBin5Fill } from 'react-icons/ri';
 
 // Initial state for the persistent data, specifically for the to-do list
 const initialPersistentAppState: AppState = {
@@ -300,7 +303,7 @@ export default function TodoPage() {
           <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
             <h2 className="mb-6 text-3xl font-bold text-center text-white">Your To-Do List</h2>
 
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col gap-2 mb-4 sm:flex-row">
               <input
                 id="todoInput"
                 type="text"
@@ -314,7 +317,7 @@ export default function TodoPage() {
                 }}
               />
               <button
-                className="px-6 py-3 text-white bg-blue-600 rounded-md transition-all duration-200 hover:bg-blue-700"
+                className="px-6 py-3 text-white rounded-md transition-all duration-200 cursor-pointer bg-white/5 border-white/10 hover:bg-white/10"
                 onClick={() => {
                   const input = document.getElementById('todoInput') as HTMLInputElement;
                   if (input) {
@@ -329,9 +332,10 @@ export default function TodoPage() {
 
             <ul className="space-y-3">
               {appState.toDoList.length === 0 ? (
-                <li className="p-4 text-center rounded-md text-white/70 bg-white/5">
+                <div className="flex flex-col gap-3 items-center p-4 text-center py-30 text-white/30">
+                  <FiCheckSquare size={50} />
                   No to-do items yet. Start by adding one!
-                </li>
+                </div>
               ) : (
                 appState.toDoList.map(item => (
                   <li
@@ -343,7 +347,7 @@ export default function TodoPage() {
                         type="checkbox"
                         checked={item.completed}
                         onChange={e => toggleTodoItemCompletion(item.id, e.target.checked)}
-                        className="w-5 h-5 text-blue-600 rounded cursor-pointer form-checkbox border-white/30 bg-black/20 focus:ring-blue-500"
+                        className="w-5 h-5 bg-transparent rounded-full border border-white cursor-pointer form-checkbox checked:bg-transparent checked:border-black checked:accent-white"
                       />
                       <span
                         className={`ml-3 text-lg ${item.completed ? 'line-through text-white/50' : 'text-white'}`}
@@ -353,9 +357,9 @@ export default function TodoPage() {
                     </div>
                     <button
                       onClick={() => removeTodoItem(item.id)}
-                      className="p-2 text-red-400 rounded-full transition-colors duration-200 hover:bg-red-500/10"
+                      className="p-2 text-white rounded-full transition-colors duration-200 cursor-pointer hover:bg-red-400"
                     >
-                      Remove
+                      <RiDeleteBin5Fill />
                     </button>
                   </li>
                 ))
