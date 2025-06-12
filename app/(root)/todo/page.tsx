@@ -16,7 +16,6 @@ import { localStorageService } from '@/services/localStorageService';
 
 // Component imports
 import ToastMessage from '@/components/ToastMessage';
-import { GiEmptyChessboard } from 'react-icons/gi';
 import { FiCheckSquare } from 'react-icons/fi';
 import { RiDeleteBin5Fill } from 'react-icons/ri';
 

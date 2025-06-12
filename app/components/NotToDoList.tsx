@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useCallback, useState } from 'react'; // Added useState for input management
-import { FiXCircle, FiPlus, FiTrash2 } from 'react-icons/fi'; // Changed FiRotateCcw to FiTrash2
+import { FiPlus, FiTrash2 } from 'react-icons/fi'; // Changed FiRotateCcw to FiTrash2
 import { ListItem } from '@/types'; // Import ListItem type
 import { RiAlarmWarningLine } from 'react-icons/ri';
 

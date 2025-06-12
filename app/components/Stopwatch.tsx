@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiClock, FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi';
+import { FiClock, FiPlay, FiPause } from 'react-icons/fi';
 import { GrPowerReset } from 'react-icons/gr';
 
 interface StopwatchProps {
