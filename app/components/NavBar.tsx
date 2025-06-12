@@ -3,13 +3,25 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { FiTarget, FiDownload, FiUpload, FiPlusCircle, FiEdit, FiLogOut } from 'react-icons/fi';
+import Link from 'next/link'; // Import Link from next/link
+import {
+  FiTarget,
+  FiDownload,
+  FiUpload,
+  FiPlusCircle,
+  FiEdit,
+  FiLogOut,
+  FiHome,
+  FiList,
+  FiClock,
+  FiCheckSquare,
+} from 'react-icons/fi'; // Added more icons for new routes
 import { FcGoogle } from 'react-icons/fc'; // Import Google icon
 import { AppMode } from '@/types'; // Import AppMode type
 
 interface NavBarProps {
   currentUser: User | null;
-  appMode: AppMode; // Changed from isGuestMode to appMode
+  appMode: AppMode;
   onSignOut: () => void;
   onNewGoal: () => void;
   onExport: () => void;
@@ -17,12 +29,12 @@ interface NavBarProps {
   onOpenDeveloperModal: () => void;
   onOpenGoalModal: () => void;
   onEditGoal: () => void;
-  onSignInWithGoogleFromGuest: () => void; // For guest to Google sign-in
+  onSignInWithGoogleFromGuest: () => void;
 }
 
 const NavBar: React.FC<NavBarProps> = ({
   currentUser,
-  appMode, // Destructure new prop
+  appMode,
   onSignOut,
   onNewGoal,
   onExport,
@@ -81,14 +93,34 @@ const NavBar: React.FC<NavBarProps> = ({
   // Determine if profile dropdown button should be clickable/visible
   const showProfileDropdownButton = appMode !== 'none'; // Show if in guest or google mode
 
+  const navLinkClasses =
+    'flex items-center gap-2 px-3 py-2 text-white/80 font-medium rounded-md transition-colors duration-200 hover:bg-white/10';
+  // const activeNavLinkClasses = "bg-white/10 text-white"; // Example for active class, if implemented
+
   return (
-    <nav className="flex sticky top-0 z-20 justify-between items-center p-4 bg-white rounded-b-xl border-b border-gray-100 shadow-lg">
+    <nav className="flex sticky top-0 z-20 justify-between items-center p-4 rounded-b-xl border-b shadow-lg backdrop-blur-md bg-black/50 border-white/10">
       {/* Logo and App Title (Left Side) */}
       <div className="flex gap-3 items-center">
         <div className="flex justify-center items-center w-10 h-10 bg-gray-900 rounded-full shadow-md">
           <FiTarget className="w-5 h-5 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-800">Goal Tracker</h1>
+        <h1 className="text-2xl font-bold text-white">Goal Tracker</h1>
+      </div>
+
+      {/* Navigation Links (Middle) */}
+      <div className="hidden gap-4 md:flex">
+        <Link href="/dashboard" passHref className={navLinkClasses}>
+          <FiHome className="w-5 h-5" /> Dashboard
+        </Link>
+        <Link href="/todo" passHref className={navLinkClasses}>
+          <FiCheckSquare className="w-5 h-5" /> To-Do
+        </Link>
+        <Link href="/stop-watch" passHref className={navLinkClasses}>
+          <FiClock className="w-5 h-5" /> Stopwatch
+        </Link>
+        <Link href="/list" passHref className={navLinkClasses}>
+          <FiList className="w-5 h-5" /> Lists
+        </Link>
       </div>
 
       {/* User Profile and Dropdown (Right Side) */}
@@ -96,7 +128,7 @@ const NavBar: React.FC<NavBarProps> = ({
         {showProfileDropdownButton ? (
           <button
             onClick={toggleProfileDropdown}
-            className="flex gap-2 items-center px-3 py-2 bg-gray-50 rounded-full border border-gray-200 shadow-sm transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex gap-2 items-center px-3 py-2 bg-white/[0.05] rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
             aria-haspopup="true"
             aria-expanded={isProfileDropdownOpen}
           >
@@ -113,11 +145,11 @@ const NavBar: React.FC<NavBarProps> = ({
               />
             ) : (
               // Fallback for avatar if userAvatarUrl is empty (e.g., during initial load)
-              <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold text-gray-600 bg-gray-300 rounded-full">
+              <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold rounded-full text-white/70 bg-white/20">
                 ?
               </div>
             )}
-            <span className="hidden text-sm font-medium text-gray-700 md:block">
+            <span className="hidden text-sm font-medium text-white/90 md:block">
               {displayUserName}
             </span>
           </button>
@@ -128,46 +160,46 @@ const NavBar: React.FC<NavBarProps> = ({
 
         {/* Profile Dropdown Menu */}
         {isProfileDropdownOpen && showProfileDropdownButton && (
-          <div className="absolute right-0 z-30 py-2 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-xl animate-fade-in-down">
+          <div className="absolute right-0 z-30 py-2 mt-2 w-48 rounded-lg border shadow-xl bg-black/80 border-white/10 animate-fade-in-down">
             {appMode === 'guest' && ( // Only show "Sign In with Google" in guest mode
               <>
                 <button
-                  className="flex gap-3 items-center px-4 py-2 w-full text-left text-gray-700 transition-colors duration-200 hover:bg-gray-100"
+                  className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
                   onClick={() => handleMenuItemClick(onSignInWithGoogleFromGuest)}
                 >
                   <FcGoogle size={20} /> Sign In with Google
                 </button>
-                <hr className="my-1 border-gray-100" />
+                <hr className="my-1 border-white/10" />
               </>
             )}
             <button
-              className="flex gap-3 items-center px-4 py-2 w-full text-left text-gray-700 transition-colors duration-200 hover:bg-gray-100"
+              className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
               onClick={() => handleMenuItemClick(onImport)}
             >
               <FiUpload className="w-5 h-5" /> Import Data
             </button>
             <button
-              className="flex gap-3 items-center px-4 py-2 w-full text-left text-gray-700 transition-colors duration-200 hover:bg-gray-100"
+              className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
               onClick={() => handleMenuItemClick(onExport)}
             >
               <FiDownload className="w-5 h-5" /> Export Data
             </button>
-            <hr className="my-1 border-gray-100" />
+            <hr className="my-1 border-white/10" />
             <button
-              className="flex gap-3 items-center px-4 py-2 w-full text-left text-gray-700 transition-colors duration-200 hover:bg-gray-100"
+              className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
               onClick={() => handleMenuItemClick(onNewGoal)}
             >
               <FiPlusCircle className="w-5 h-5" /> New Goal
             </button>
             <button
-              className="flex gap-3 items-center px-4 py-2 w-full text-left text-gray-700 transition-colors duration-200 hover:bg-gray-100"
+              className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 text-white/90 hover:bg-white/10"
               onClick={() => handleMenuItemClick(onEditGoal)}
             >
               <FiEdit className="w-5 h-5" /> Update Goal
             </button>
-            <hr className="my-1 border-gray-100" />
+            <hr className="my-1 border-white/10" />
             <button
-              className="flex gap-3 items-center px-4 py-2 w-full text-left text-red-600 transition-colors duration-200 hover:bg-red-50"
+              className="flex gap-3 items-center px-4 py-2 w-full text-left text-red-400 transition-colors duration-200 hover:bg-red-500/10" // Adjusted for dark theme
               onClick={() => handleMenuItemClick(onSignOut)}
             >
               <FiLogOut className="w-5 h-5" /> Logout

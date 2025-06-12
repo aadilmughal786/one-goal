@@ -4,13 +4,22 @@
 import React, { useState, useEffect } from 'react';
 import { FiTarget, FiCalendar, FiX, FiInfo } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
-import { GoalData } from '@/types'; // Import GoalData type
+
+// Define a local interface for the goal data structure as used by this modal component.
+// Dates are strings (ISO format) because dashboard/page.tsx transforms Timestamp to string
+// before passing it to this modal for display/editing.
+interface ModalGoalData {
+  name: string;
+  description?: string;
+  startDate: string; // ISO string for dates
+  endDate: string; // ISO string for dates
+}
 
 interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSetGoal: (goalName: string, endDate: string, description?: string) => void;
-  initialGoalData?: GoalData | null; // Data to pre-fill in edit mode
+  initialGoalData?: ModalGoalData | null; // Now using ModalGoalData
   isEditMode?: boolean; // True if opened for editing
 }
 
@@ -35,15 +44,10 @@ const GoalModal: React.FC<GoalModalProps> = ({
         setGoalDescription(initialGoalData.description || '');
 
         // Handle endDate: Ensure it's in "YYYY-MM-DDTHH:MM" format
+        // initialGoalData.endDate should be an ISO string passed from dashboard/page.tsx
         let formattedEndDate = '';
-        if (initialGoalData.endDate instanceof Date) {
-          formattedEndDate = initialGoalData.endDate.toISOString().slice(0, 16);
-        } else if (typeof initialGoalData.endDate === 'string') {
-          // If it's already an ISO string, ensure it's trimmed to the correct format
+        if (typeof initialGoalData.endDate === 'string') {
           formattedEndDate = initialGoalData.endDate.slice(0, 16);
-        } else if ((initialGoalData.endDate as any).toDate) {
-          // Check if it's a Firestore Timestamp
-          formattedEndDate = (initialGoalData.endDate as any).toDate().toISOString().slice(0, 16);
         }
         setEndDate(formattedEndDate);
       } else {
@@ -107,42 +111,49 @@ const GoalModal: React.FC<GoalModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div id="goalModal" className="modal show" onClick={handleOutsideClick}>
-      <div className="modal-content">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-3 items-center">
-              <FiTarget className="w-6 h-6 text-gray-800" />
-              <h2 className="text-2xl font-bold text-gray-800">
-                {isEditMode ? 'Update Goal' : 'Create New Goal'}
-              </h2>
-            </div>
-            <button
-              className="p-1 text-gray-500 rounded-full hover:text-gray-700 hover:bg-gray-100"
-              onClick={onClose}
-            >
-              <FiX className="w-6 h-6" />
-            </button>
+    <div
+      id="goalModal"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+    >
+      <div
+        className={`bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 scale-95 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+      >
+        {/* Modal Header */}
+        <div className="flex justify-between items-center p-6 border-b border-white/10">
+          <div className="flex gap-3 items-center">
+            <FiTarget className="w-5 h-5 text-white" />
+            <h2 className="text-xl font-semibold text-white">
+              {isEditMode ? 'Update Goal' : 'Create New Goal'}
+            </h2>
           </div>
+          <button
+            className="p-1 rounded-full text-white/50 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+            onClick={onClose}
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+        </div>
 
+        {/* Modal Body */}
+        <div className="p-6">
           {errorMessage && (
-            <div className="flex items-center p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-400">
+            <div className="flex items-center p-3 mb-4 text-sm text-red-400 rounded-md border border-red-400 bg-red-500/10">
               <FiInfo className="mr-2 w-4 h-4" />
               {errorMessage}
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="goalName" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="goalName" className="block mb-2 text-sm font-medium text-white/70">
                 <FiTarget className="inline mr-1 w-4 h-4" />
-                Goal Name <span className="text-red-500">*</span>
+                Goal Name <span className="text-red-400">*</span>
               </label>
               <input
                 id="goalName"
                 type="text"
-                placeholder="e.g., Complete Marathon Training"
-                className="p-3 w-full text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Complete Project X"
+                className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent"
                 value={goalName}
                 onChange={e => setGoalName(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -153,16 +164,16 @@ const GoalModal: React.FC<GoalModalProps> = ({
             <div>
               <label
                 htmlFor="goalDescription"
-                className="block mb-2 text-sm font-medium text-gray-700"
+                className="block mb-2 text-sm font-medium text-white/70"
               >
                 <FiInfo className="inline mr-1 w-4 h-4" />
                 Goal Description (Optional)
               </label>
               <textarea
                 id="goalDescription"
-                placeholder="Briefly describe your goal and why it matters..."
+                placeholder="Describe your goal..."
                 rows={3}
-                className="p-3 w-full text-lg rounded-lg border border-gray-300 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="p-3 w-full text-base text-white rounded-md border resize-y border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent"
                 value={goalDescription}
                 onChange={e => setGoalDescription(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -170,29 +181,32 @@ const GoalModal: React.FC<GoalModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="endDate" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="endDate" className="block mb-2 text-sm font-medium text-white/70">
                 <FiCalendar className="inline mr-1 w-4 h-4" />
-                Target Date & Time <span className="text-red-500">*</span>
+                Target Date & Time <span className="text-red-400">*</span>
               </label>
               <input
                 id="endDate"
                 type="datetime-local"
-                className="p-3 w-full text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
                 onKeyPress={handleKeyPress}
                 required
               />
             </div>
-
-            <button
-              className="flex gap-2 justify-center items-center py-3 w-full text-lg btn-primary"
-              onClick={handleSubmit}
-            >
-              <MdRocketLaunch className="w-5 h-5" />
-              {isEditMode ? 'Update Goal' : 'Launch Goal'}
-            </button>
           </div>
+        </div>
+
+        {/* Modal Footer / Action Button */}
+        <div className="p-6 border-t border-white/10">
+          <button
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+            onClick={handleSubmit}
+          >
+            <MdRocketLaunch className="w-5 h-5" />
+            {isEditMode ? 'Update Goal' : 'Launch Goal'}
+          </button>
         </div>
       </div>
     </div>

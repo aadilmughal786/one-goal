@@ -1,67 +1,88 @@
-// src/components/PastAchievementsList.tsx
+// src/components/ContextList.tsx
 'use client';
 
-import React, { useCallback } from 'react';
-import { FiAward, FiRotateCcw, FiPlus } from 'react-icons/fi';
+import React, { useCallback, useState } from 'react'; // Added useState for input management
+import { FiBookOpen, FiPlus, FiTrash2 } from 'react-icons/fi'; // Changed FiAward to FiBookOpen, FiRotateCcw to FiTrash2
 import { ListItem } from '@/types'; // Import ListItem type
 
-interface PastAchievementsListProps {
+interface ContextListProps {
+  // Renamed from PastAchievementsListProps
   list: ListItem[];
   addToList: (text: string) => void;
   removeFromList: (id: number) => void;
 }
 
-const PastAchievementsList: React.FC<PastAchievementsListProps> = ({
+const ContextList: React.FC<ContextListProps> = ({
+  // Renamed from PastAchievementsList
   list,
   addToList,
   removeFromList,
 }) => {
-  const handleAddPast = (
-    e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>
-  ) => {
-    const input = document.getElementById('pastInput') as HTMLInputElement;
-    if (input && (e.type === 'click' || (e as React.KeyboardEvent).key === 'Enter')) {
-      addToList(input.value.trim());
-      input.value = '';
+  const [inputValue, setInputValue] = useState('');
+
+  const handleAddContext = useCallback(() => {
+    if (inputValue.trim()) {
+      addToList(inputValue.trim());
+      setInputValue(''); // Clear input after adding
     }
-  };
+  }, [inputValue, addToList]);
+
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        handleAddContext();
+      }
+    },
+    [handleAddContext]
+  );
 
   return (
-    <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-lg card-hover">
+    <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
       <div className="flex gap-2 items-center mb-4">
-        <FiAward className="w-6 h-6 text-yellow-500" />
-        <h3 className="text-xl font-bold text-gray-800">Past Achievements</h3>
+        <FiBookOpen className="w-6 h-6 text-blue-400" /> {/* Changed icon and adjusted color */}
+        <h3 className="text-xl font-bold text-white">Contextual Notes & Learnings</h3>{' '}
+        {/* Updated title */}
       </div>
-      <ul id="pastList" className="mb-4 space-y-2">
-        {list.map((item: ListItem) => (
-          <li
-            key={item.id}
-            className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100"
-          >
-            <span className="text-gray-800">{item.text}</span>
-            <button
-              onClick={() => removeFromList(item.id)}
-              className="p-1 text-red-500 rounded transition-all duration-300 hover:text-red-700 hover:bg-red-100"
-              title="Remove achievement"
-            >
-              <FiRotateCcw className="w-4 h-4 transform rotate-90" />
-            </button>
+      <ul id="contextList" className="mb-4 space-y-3">
+        {' '}
+        {/* Increased space-y, changed id */}
+        {list.length === 0 ? (
+          <li className="p-4 text-center rounded-md text-white/70 bg-white/5">
+            No contextual notes yet.
           </li>
-        ))}
+        ) : (
+          list.map((item: ListItem) => (
+            <li
+              key={item.id}
+              className="flex justify-between items-center p-3 rounded-md border transition-all duration-200 bg-blue-500/10 border-blue-400/20 hover:bg-blue-500/20"
+            >
+              <span className="text-white/90">{item.text}</span>
+              <button
+                onClick={() => removeFromList(item.id)}
+                className="p-1 text-red-400 rounded-full transition-all duration-200 hover:bg-red-500/20"
+                title="Remove note"
+              >
+                <FiTrash2 className="w-4 h-4" /> {/* Updated icon */}
+              </button>
+            </li>
+          ))
+        )}
       </ul>
       <div className="flex gap-2">
         <input
-          id="pastInput"
+          id="contextInput" // Changed id
           type="text"
-          placeholder="Add achievement..."
-          className="flex-1 p-3 rounded-lg border border-gray-300 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-          onKeyPress={handleAddPast}
+          placeholder="Add a note or learning..."
+          className="flex-1 p-3 text-white rounded-lg border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
         />
         <button
-          id="addPastBtn"
-          className="px-4 py-3 text-white bg-black rounded-lg transition-all duration-300 hover:bg-gray-800"
-          title="Add Achievement"
-          onClick={handleAddPast}
+          id="addContextBtn" // Changed id
+          className="px-4 py-3 text-white bg-blue-600 rounded-lg transition-all duration-300 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          title="Add Note"
+          onClick={handleAddContext}
         >
           <FiPlus className="w-5 h-5" />
         </button>
@@ -70,4 +91,4 @@ const PastAchievementsList: React.FC<PastAchievementsListProps> = ({
   );
 };
 
-export default PastAchievementsList;
+export default ContextList;

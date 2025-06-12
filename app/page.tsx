@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MdRocketLaunch } from 'react-icons/md';
 import {
@@ -11,11 +11,21 @@ import {
   FiMail,
   FiClock,
   FiArrowRight,
+  FiHome, // Added Home icon for dashboard button
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { FaGithub, FaLinkedin } from 'react-icons/fa6';
+import { localStorageService } from '@/services/localStorageService'; // Import localStorageService
+import { AppMode } from '@/types'; // Import AppMode type
 
 export default function LandingPage() {
+  const [appMode, setAppMode] = useState<AppMode>('none'); // Initialize with 'none'
+
+  useEffect(() => {
+    // Client-side code to get appMode from local storage
+    setAppMode(localStorageService.getAppModeFromLocalStorage());
+  }, []);
+
   return (
     <div className="relative z-10 px-6 mx-auto max-w-6xl sm:px-8 lg:px-12">
       {/* Hero Section */}
@@ -37,14 +47,25 @@ export default function LandingPage() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col gap-4 justify-center items-center sm:flex-row">
-          <Link
-            href="/login"
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
-          >
-            <FiTarget size={20} />
-            Get Started
-            <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </Link>
+          {appMode !== 'none' ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+            >
+              <FiHome size={20} />
+              Go to Dashboard
+              <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+            >
+              <FiTarget size={20} />
+              Get Started
+              <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          )}
         </div>
       </section>
 
