@@ -1,4 +1,4 @@
-// src/types/index.ts
+// app/types/index.ts
 
 import { Timestamp } from 'firebase/firestore';
 
@@ -8,6 +8,13 @@ export interface Goal {
   description?: string;
   startDate: Timestamp; // Now exclusively Timestamp
   endDate: Timestamp; // Now exclusively Timestamp
+}
+
+/** Represents a single day's progress and work satisfaction for a goal. */
+export interface DailyProgress {
+  date: Timestamp; // The specific day this progress is recorded for
+  satisfactionLevel: number; // e.g., 1-5, or adjust as needed for specific options
+  notes?: string; // Optional notes for the day's progress
 }
 
 /** Generic list item. */
@@ -24,6 +31,7 @@ export interface TodoItem extends ListItem {
 /** Overall application state. */
 export interface AppState {
   goal: Goal | null;
+  dailyProgress: DailyProgress[]; // New field to store daily progress entries
   notToDoList: ListItem[];
   contextItems: ListItem[];
   toDoList: TodoItem[];
@@ -39,5 +47,4 @@ export interface DeveloperInfo {
   description: string;
 }
 
-/** Application operating mode. */
-export type AppMode = 'guest' | 'google' | 'none';
+// Removed: export type AppMode = 'guest' | 'google' | 'none';

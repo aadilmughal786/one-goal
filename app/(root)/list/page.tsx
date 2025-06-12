@@ -1,4 +1,4 @@
-// app/list/page.tsx
+// app/(root)/list/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -6,25 +6,23 @@ import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 // Import types
-import { AppState, ListItem, AppMode } from '@/types';
+import { AppState, ListItem } from '@/types';
 
 // Import Firebase service functions
 import { firebaseService } from '@/services/firebaseService';
 
-// Import Local Storage service functions
-import { localStorageService } from '@/services/localStorageService';
-
 // Component imports
 import ToastMessage from '@/components/ToastMessage';
-import NotToDoList from '@/components/NotToDoList'; // Now imported and used
-import ContextList from '@/components/ContextList'; // Now imported and used
+import NotToDoList from '@/components/NotToDoList';
+import ContextList from '@/components/ContextList';
 
-// Initial state for the persistent data (this page will specifically use notToDoList and contextItems)
+// Initial state for the persistent data
 const initialPersistentAppState: AppState = {
-  goal: null, // Placeholder, as goal is managed on dashboard
+  goal: null,
   notToDoList: [],
   contextItems: [],
-  toDoList: [], // Placeholder
+  toDoList: [],
+  dailyProgress: [],
 };
 
 export default function ListsPage() {
@@ -33,9 +31,7 @@ export default function ListsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
-  const [appMode, setAppMode] = useState<AppMode>(localStorageService.getAppModeFromLocalStorage());
 
-  // App state for all persistent data, but this page primarily interacts with notToDoList and contextItems
   const [appState, setAppState] = useState<AppState>(initialPersistentAppState);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -49,126 +45,67 @@ export default function ListsPage() {
     }, 6000);
   }, []);
 
-  // --- Initial App Mode and Data Loading Logic ---
+  // --- Initial Data Loading Logic (Firebase only) ---
   useEffect(() => {
     const loadInitialData = async () => {
       setDataLoading(true);
       setAuthLoading(true);
 
-      const currentAppMode = appMode;
-
-      if (currentAppMode === 'guest') {
-        try {
-          const loadedGuestData = localStorageService.loadLocalState();
-          if (loadedGuestData) {
-            setAppState(loadedGuestData);
-            showMessage('Guest data loaded from local storage.', 'info');
-          } else {
+      const unsubscribeAuth = firebaseService.onAuthChange(async user => {
+        setAuthLoading(false);
+        if (user) {
+          setCurrentUser(user);
+          try {
+            const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
+            const normalizedData: AppState = {
+              goal: loadedFirebaseData.goal,
+              notToDoList: loadedFirebaseData.notToDoList || [],
+              contextItems: loadedFirebaseData.contextItems || [],
+              toDoList: loadedFirebaseData.toDoList || [],
+              dailyProgress: loadedFirebaseData.dailyProgress || [],
+            };
+            setAppState(normalizedData);
+            // Removed: showMessage('Firebase data loaded.', 'success');
+          } catch (firebaseLoadError: unknown) {
+            let errorMessage = 'Unknown error';
+            if (firebaseLoadError instanceof Error) {
+              errorMessage = firebaseLoadError.message;
+            }
+            showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
             setAppState(initialPersistentAppState);
-            showMessage('Local storage data not found. Starting fresh guest session.', 'info');
-            localStorageService.clearLocalState();
           }
-        } catch (error: unknown) {
-          // Changed type to unknown
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Error loading guest data: ${errorMessage}. Starting fresh.`, 'error');
-          setAppState(initialPersistentAppState);
-          localStorageService.clearLocalState();
-        } finally {
-          setDataLoading(false);
-          setAuthLoading(false);
+        } else {
+          setCurrentUser(null);
+          router.replace('/login');
         }
-      } else if (currentAppMode === 'google') {
-        const unsubscribeAuth = firebaseService.onAuthChange(async user => {
-          setAuthLoading(false);
-          if (user) {
-            setCurrentUser(user);
-            try {
-              const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              setAppState(loadedFirebaseData);
-              showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: unknown) {
-              // Changed type to unknown
-              let errorMessage = 'Unknown error';
-              if (firebaseLoadError instanceof Error) {
-                errorMessage = firebaseLoadError.message;
-              }
-              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
-              setAppState(initialPersistentAppState);
-            }
-          } else {
-            setCurrentUser(null);
-            setAppMode('none');
-            localStorageService.clearAppModeFromLocalStorage();
-            router.replace('/login');
-          }
-          setDataLoading(false);
-        });
-        return () => unsubscribeAuth();
-      } else {
-        const unsubscribeAuth = firebaseService.onAuthChange(async user => {
-          setAuthLoading(false);
-          if (user) {
-            setCurrentUser(user);
-            setAppMode('google');
-            localStorageService.setAppModeInLocalStorage('google');
-            try {
-              const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              setAppState(loadedFirebaseData);
-              showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: unknown) {
-              // Changed type to unknown
-              let errorMessage = 'Unknown error';
-              if (firebaseLoadError instanceof Error) {
-                errorMessage = firebaseLoadError.message;
-              }
-              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
-              setAppState(initialPersistentAppState);
-            }
-          } else {
-            setCurrentUser(null);
-            setAppMode('none');
-            localStorageService.clearAppModeFromLocalStorage();
-            router.replace('/login');
-          }
-          setDataLoading(false);
-        });
-        return () => unsubscribeAuth();
-      }
+        setDataLoading(false);
+      });
+      return () => unsubscribeAuth();
     };
 
     loadInitialData();
-  }, [router, showMessage, appMode]);
+  }, [router, showMessage]);
 
-  // --- Data Persistence Logic (saving AppState based on changes to notToDoList and contextItems) ---
+  // --- Data Persistence Logic ---
   useEffect(() => {
-    // Only save if initial loading is complete AND appMode is established (not 'none')
-    if (!authLoading && !dataLoading && appMode !== 'none') {
+    if (!authLoading && !dataLoading && currentUser) {
       const dataToSave: AppState = appState;
 
-      if (appMode === 'google' && currentUser) {
-        firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
-          // Changed type to unknown
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
-        });
-      } else if (appMode === 'guest') {
-        localStorageService.saveLocalState(dataToSave);
-      }
+      firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
+        let errorMessage = 'Unknown error';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
+      });
     }
   }, [
     appState.notToDoList,
     appState.contextItems,
     appState.goal,
     appState.toDoList,
+    appState.dailyProgress,
     currentUser,
-    appMode,
     authLoading,
     dataLoading,
     showMessage,
@@ -187,87 +124,110 @@ export default function ListsPage() {
       }
       const newItem: ListItem = { text, id: Date.now() };
 
-      if (appMode === 'google' && currentUser) {
+      if (currentUser) {
         try {
           await firebaseService.addListItem(currentUser.uid, listType, newItem);
           setAppState(prev => ({
             ...prev,
             [listType]: [...prev[listType], newItem],
           }));
-          showMessage(
-            `${listType === 'notToDoList' ? 'Item added to Not To Do' : 'Context item added'}!`,
-            'success'
-          );
+          // Removed: showMessage(`${listType === 'notToDoList' ? 'Item added to Not To Do' : 'Context item added'}!`, 'success');
         } catch (error: unknown) {
-          // Changed type to unknown
           let errorMessage = 'Unknown error';
           if (error instanceof Error) {
             errorMessage = error.message;
           }
           showMessage(`Failed to add item to ${listType}: ${errorMessage}`, 'error');
         }
-      } else if (appMode === 'guest') {
-        setAppState(prev => ({
-          ...prev,
-          [listType]: [...prev[listType], newItem],
-        }));
-        showMessage(
-          `${listType === 'notToDoList' ? 'Item added to Not To Do' : 'Context item added'}!`,
-          'success'
-        );
+      } else {
+        showMessage(`You must be logged in to add an item to ${listType}.`, 'error');
       }
     },
-    [showMessage, appMode, currentUser]
+    [showMessage, currentUser]
   );
 
   const removeFromList = useCallback(
     async (listType: 'notToDoList' | 'contextItems', id: number) => {
-      if (appMode === 'google' && currentUser) {
+      if (currentUser) {
         try {
           await firebaseService.deleteListItem(currentUser.uid, listType, id);
           setAppState(prev => ({
             ...prev,
             [listType]: prev[listType].filter(item => item.id !== id),
           }));
-          showMessage(
-            `${listType === 'notToDoList' ? 'Item removed from Not To Do' : 'Context item removed'}!`,
-            'info'
-          );
+          // Removed: showMessage(`${listType === 'notToDoList' ? 'Item removed from Not To Do' : 'Context item removed'}!`, 'info');
         } catch (error: unknown) {
-          // Changed type to unknown
           let errorMessage = 'Unknown error';
           if (error instanceof Error) {
             errorMessage = error.message;
           }
           showMessage(`Failed to remove item from ${listType}: ${errorMessage}`, 'error');
         }
-      } else if (appMode === 'guest') {
-        setAppState(prev => ({
-          ...prev,
-          [listType]: prev[listType].filter(item => item.id !== id),
-        }));
-        showMessage(
-          `${listType === 'notToDoList' ? 'Item removed from Not To Do' : 'Context item removed'}!`,
-          'info'
-        );
+      } else {
+        showMessage(`You must be logged in to remove an item from ${listType}.`, 'error');
       }
     },
-    [showMessage, appMode, currentUser]
+    [showMessage, currentUser]
+  );
+
+  // Skeleton Loader for Lists Page
+  const ListsSkeletonLoader = () => (
+    <div className="flex flex-col gap-6 animate-pulse">
+      <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+        <div className="mb-6 w-1/2 h-8 rounded-md bg-white/10"></div>
+        <div className="flex flex-col gap-2 mb-4 sm:flex-row">
+          <div className="flex-1 h-12 rounded-lg bg-white/10"></div>
+          <div className="w-20 h-12 rounded-lg bg-white/10"></div>
+        </div>
+        <ul className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <li
+              key={i}
+              className="flex justify-between items-center p-3 h-14 rounded-md bg-white/5"
+            >
+              <div className="w-3/4 h-4 rounded-md bg-white/10"></div>
+              <div className="w-5 h-5 rounded-full bg-white/10"></div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+        <div className="mb-6 w-1/2 h-8 rounded-md bg-white/10"></div>
+        <div className="flex flex-col gap-2 mb-4 sm:flex-row">
+          <div className="flex-1 h-12 rounded-lg bg-white/10"></div>
+          <div className="w-20 h-12 rounded-lg bg-white/10"></div>
+        </div>
+        <ul className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <li
+              key={i}
+              className="flex justify-between items-center p-3 h-14 rounded-md bg-white/5"
+            >
+              <div className="w-3/4 h-4 rounded-md bg-white/10"></div>
+              <div className="w-5 h-5 rounded-full bg-white/10"></div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 
   // --- UI Rendering ---
   if (authLoading || dataLoading) {
     return (
-      <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
-        <p className="text-xl text-white/70">
-          {authLoading ? 'Authenticating...' : 'Loading your data...'}
-        </p>
+      <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+        <div className="container flex-grow p-4 mx-auto max-w-4xl">
+          <section className="py-8">
+            <ListsSkeletonLoader />
+          </section>
+        </div>
         <ToastMessage message={toastMessage} type={toastType} duration={5000} />
       </main>
     );
   }
 
-  if (appMode === 'none') {
+  if (!currentUser) {
     return (
       <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
         <p className="text-xl text-white/70">Redirecting to login...</p>
@@ -283,15 +243,11 @@ export default function ListsPage() {
         <section className="py-8">
           <h2 className="mb-8 text-3xl font-bold text-center text-white">Your Focused Lists</h2>
           <div className="flex flex-col gap-6">
-            {' '}
-            {/* Changed from grid to flex col for single column */}
-            {/* Not To Do List Component */}
             <NotToDoList
               list={appState.notToDoList}
               addToList={(text: string) => addToList('notToDoList', text)}
               removeFromList={(id: number) => removeFromList('notToDoList', id)}
             />
-            {/* Context List Component */}
             <ContextList
               list={appState.contextItems}
               addToList={(text: string) => addToList('contextItems', text)}

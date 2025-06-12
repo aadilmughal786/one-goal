@@ -3,8 +3,7 @@
 
 import './globals.css';
 import { Poppins } from 'next/font/google';
-import React, { useEffect } from 'react'; // Import useEffect and React
-import { localStorageService } from '@/services/localStorageService'; // Import the localStorageService instance
+import React from 'react'; // Import useEffect and React
 import Footer from './components/Footer';
 
 const poppins = Poppins({
@@ -17,12 +16,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Initialize app mode when the root layout component mounts
-  useEffect(() => {
-    // Call the initializeAppMode method on the localStorageService instance
-    localStorageService.initializeAppMode();
-  }, []); // Empty dependency array means this runs once on mount
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

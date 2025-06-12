@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx
+// app/(root)/dashboard/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -7,25 +7,24 @@ import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 
 // Import types
-import { AppState, AppMode, ListItem, TodoItem } from '@/types'; // UrgencyLevel is still removed from previous request
+import { AppState, ListItem, TodoItem, DailyProgress } from '@/types';
 
 // Import Firebase service functions (using the instance)
 import { firebaseService } from '@/services/firebaseService';
-
-// Import Local Storage service functions (using the instance)
-import { localStorageService } from '@/services/localStorageService';
 
 // Component imports
 import GoalModal from '@/components/GoalModal';
 import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import DailyProgressModal from '@/components/DailyProgressModal'; // New: DailyProgressModal
+import DailyProgressGrid from '@/components/DailyProgressGrid'; // New: DailyProgressGrid
+import SatisfactionGraph from '@/components/SatisfactionGraph'; // New: SatisfactionGraph
 
 // Icon imports
 import { MdRocketLaunch } from 'react-icons/md';
-import { FiTarget, FiClock, FiUpload, FiEdit, FiPlusCircle } from 'react-icons/fi'; // Added FiPlusCircle for new goal button
+import { FiTarget, FiClock, FiEdit, FiPlusCircle } from 'react-icons/fi';
 
 // Define types for raw data loaded from storage, before normalization
-// These types allow for various date formats that might be loaded
 type DateLike =
   | Date
   | Timestamp
@@ -42,11 +41,18 @@ interface RawGoalData {
   endDate: DateLike;
 }
 
+interface RawDailyProgress {
+  date: DateLike;
+  satisfactionLevel: number;
+  notes?: string;
+}
+
 interface RawAppState {
   goal?: RawGoalData | null;
   notToDoList?: ListItem[];
   contextItems?: ListItem[];
   toDoList?: TodoItem[];
+  dailyProgress?: RawDailyProgress[]; // Use RawDailyProgress for initial load
 }
 
 // Initial state for the persistent data (conforms to AppState type)
@@ -55,23 +61,21 @@ const initialPersistentAppState: AppState = {
   notToDoList: [],
   contextItems: [],
   toDoList: [],
+  dailyProgress: [],
 };
 
 // Helper function to safely convert date to Date object from various formats
 const safeToDate = (dateValue: DateLike): Date | null => {
   if (!dateValue) return null;
 
-  // If it's already a Date object
   if (dateValue instanceof Date) {
     return dateValue;
   }
 
-  // If it's a Firestore Timestamp (from firebase-firestore import)
   if (dateValue instanceof Timestamp) {
     return dateValue.toDate();
   }
 
-  // If it's a plain object that looks like a Firestore Timestamp (e.g., from local storage JSON)
   if (
     typeof dateValue === 'object' &&
     dateValue !== null &&
@@ -81,7 +85,6 @@ const safeToDate = (dateValue: DateLike): Date | null => {
     return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
   }
 
-  // If it's a string or number, try to parse it
   if (typeof dateValue === 'string' || typeof dateValue === 'number') {
     const parsedDate = new Date(dateValue);
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
@@ -99,9 +102,9 @@ const normalizeAppState = (loadedState: RawAppState): AppState => {
     notToDoList: loadedState.notToDoList || [],
     contextItems: loadedState.contextItems || [],
     toDoList: loadedState.toDoList || [],
+    dailyProgress: [],
   };
 
-  // Normalize goal dates
   if (loadedState.goal) {
     const startDate = safeToDate(loadedState.goal.startDate);
     const endDate = safeToDate(loadedState.goal.endDate);
@@ -116,6 +119,19 @@ const normalizeAppState = (loadedState: RawAppState): AppState => {
     }
   }
 
+  if (Array.isArray(loadedState.dailyProgress)) {
+    normalized.dailyProgress = loadedState.dailyProgress.map(entry => {
+      const date = safeToDate(entry.date);
+      // Ensure notes is a string, and satisfaction level is a number
+      return {
+        date: date ? Timestamp.fromDate(date) : Timestamp.now(),
+        satisfactionLevel:
+          typeof entry.satisfactionLevel === 'number' ? entry.satisfactionLevel : 3, // Default to 3 if not number
+        notes: entry.notes || '',
+      };
+    });
+  }
+
   return normalized;
 };
 
@@ -123,27 +139,28 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true); // Tracks if Firebase auth check is complete
-  const [dataLoading, setDataLoading] = useState(true); // Tracks if data (from any source) is being loaded
+  const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  // Initialize appMode directly from local storage
-  const [appMode, setAppMode] = useState<AppMode>(localStorageService.getAppModeFromLocalStorage());
-
-  // Main application state for persistent data
   const [appState, setAppState] = useState<AppState>(initialPersistentAppState);
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [goalModalEditMode, setGoalModalEditMode] = useState(false);
 
-  // Updated toast message state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  // --- Confirmation Modal State and Callbacks ---
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationTitle, setConfirmationTitle] = useState('');
-  const [confirmationAction, setConfirmationAction] = useState<(() => void) | null>(null); // For generic 2-button confirmations
+  const [confirmationAction, setConfirmationAction] = useState<(() => void) | null>(null);
+
+  // New state for DailyProgressModal
+  const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
+  const [selectedDayForProgress, setSelectedDayForProgress] = useState<Date | null>(null);
+  const [initialDailyProgressData, setInitialDailyProgressData] = useState<DailyProgress | null>(
+    null
+  );
 
   const openConfirmationModal = useCallback(
     (title: string, message: string, action: () => void) => {
@@ -166,161 +183,77 @@ export default function DashboardPage() {
     }
     closeConfirmationModal();
   }, [confirmationAction, closeConfirmationModal]);
-  // --- End Confirmation Modal State and Callbacks ---
 
-  // --- UI Message Handler ---
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
-    // Auto-clear message after toast duration (5 seconds + buffer)
     setTimeout(() => {
       setToastMessage(null);
     }, 6000);
   }, []);
 
-  // --- Initial App Mode and Data Loading Logic ---
+  // --- Initial Data Loading Logic (Firebase only) ---
   useEffect(() => {
     const loadInitialData = async () => {
       setDataLoading(true);
       setAuthLoading(true);
 
-      const currentAppMode = appMode;
+      const unsubscribeAuth = firebaseService.onAuthChange(async user => {
+        setAuthLoading(false);
 
-      if (currentAppMode === 'guest') {
-        try {
-          const loadedGuestData = localStorageService.loadLocalState();
-          if (loadedGuestData) {
-            const normalizedData = normalizeAppState(loadedGuestData);
+        if (user) {
+          setCurrentUser(user);
+          try {
+            const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
+            const normalizedData = normalizeAppState(loadedFirebaseData);
             setAppState(normalizedData);
-            showMessage('Guest data loaded from local storage.', 'info');
-          } else {
-            // AppMode was 'guest' but no data found (e.g., cleared manually outside app flow)
+          } catch (firebaseLoadError: unknown) {
+            let errorMessage = 'Unknown error';
+            if (firebaseLoadError instanceof Error) {
+              errorMessage = firebaseLoadError.message;
+            }
+            showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
             setAppState(initialPersistentAppState);
-            showMessage(
-              'Local storage data not found or corrupted. Starting fresh guest session.',
-              'info'
-            );
-            localStorageService.clearLocalState(); // Clear any corrupted local data
-            return;
           }
-        } catch (error: unknown) {
-          // Changed type to unknown
-          // Error loading from local storage (e.g., parsing error from localStorageService)
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Error loading guest data: ${errorMessage}. Starting fresh.`, 'error');
-          setAppState(initialPersistentAppState);
-          localStorageService.clearLocalState();
-          return;
-        } finally {
-          setDataLoading(false);
-          setAuthLoading(false); // Auth not directly needed for guest path
+        } else {
+          setCurrentUser(null);
+          router.replace('/login');
         }
-      } else if (currentAppMode === 'google') {
-        // Proceed with Firebase auth check
-        const unsubscribeAuth = firebaseService.onAuthChange(async user => {
-          setAuthLoading(false); // Firebase auth check complete
-
-          if (user) {
-            setCurrentUser(user);
-            try {
-              const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              const normalizedData = normalizeAppState(loadedFirebaseData);
-              setAppState(normalizedData);
-              showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: unknown) {
-              // Changed type to unknown
-              let errorMessage = 'Unknown error';
-              if (firebaseLoadError instanceof Error) {
-                errorMessage = firebaseLoadError.message;
-              }
-              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
-              setAppState(initialPersistentAppState);
-            }
-          } else {
-            // AppMode was 'google' but no active Firebase user, session expired or logged out
-            setCurrentUser(null);
-            setAppMode('none'); // Fallback to none mode
-            localStorageService.clearAppModeFromLocalStorage(); // Clear stale 'google' mode
-            router.replace('/login'); // Redirect
-          }
-          setDataLoading(false); // Data loading complete for Firebase path
-        });
-        return () => unsubscribeAuth(); // Cleanup Firebase listener
-      } else {
-        // currentAppMode === 'none' (or initially not set)
-        // Fallback to Firebase auth check (or redirect if no user)
-        const unsubscribeAuth = firebaseService.onAuthChange(async user => {
-          setAuthLoading(false); // Firebase auth check complete
-
-          if (user) {
-            setCurrentUser(user);
-            setAppMode('google'); // Set mode based on active user
-            localStorageService.setAppModeInLocalStorage('google'); // Persist mode
-            try {
-              const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              const normalizedData = normalizeAppState(loadedFirebaseData);
-              setAppState(normalizedData);
-              showMessage('Firebase data loaded.', 'success');
-            } catch (firebaseLoadError: unknown) {
-              // Changed type to unknown
-              let errorMessage = 'Unknown error';
-              if (firebaseLoadError instanceof Error) {
-                errorMessage = firebaseLoadError.message;
-              }
-              showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
-              setAppState(initialPersistentAppState);
-            }
-          } else {
-            setCurrentUser(null);
-            setAppMode('none');
-            localStorageService.clearAppModeFromLocalStorage();
-            router.replace('/login');
-          }
-          setDataLoading(false);
-        });
-        return () => unsubscribeAuth();
-      }
+        setDataLoading(false);
+      });
+      return () => unsubscribeAuth();
     };
 
     loadInitialData();
-  }, [router, showMessage, appMode]);
+  }, [router, showMessage]);
 
-  // --- Data Persistence Logic (Firebase vs Local Storage) ---
+  // --- Data Persistence Logic (Firebase only) ---
   useEffect(() => {
-    // Only save if initial loading is complete AND appMode is established (not 'none')
-    if (!authLoading && !dataLoading && appMode !== 'none') {
+    if (!authLoading && !dataLoading && currentUser) {
       const dataToSave: AppState = appState;
 
-      if (appMode === 'google' && currentUser) {
-        firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
-          // Changed type to unknown
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
-        });
-      } else if (appMode === 'guest') {
-        localStorageService.saveLocalState(dataToSave);
-      }
+      firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
+        let errorMessage = 'Unknown error';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
+      });
     }
   }, [
     appState.goal,
     appState.notToDoList,
     appState.contextItems,
     appState.toDoList,
+    appState.dailyProgress,
     currentUser,
-    appMode,
     authLoading,
     dataLoading,
     showMessage,
     appState,
   ]);
 
-  // --- Modal Functions ---
+  // --- Goal Modal Functions ---
   const openGoalModal = useCallback(() => {
     setGoalModalEditMode(false);
     setIsGoalModalOpen(true);
@@ -341,15 +274,15 @@ export default function DashboardPage() {
       appState.goal ||
       appState.notToDoList.length > 0 ||
       appState.contextItems.length > 0 ||
-      appState.toDoList.length > 0
+      appState.toDoList.length > 0 ||
+      appState.dailyProgress.length > 0
     ) {
       openConfirmationModal(
         'Create New Goal',
         'Creating a new goal will remove all your existing data. Are you sure you want to proceed?',
         () => {
-          setAppState(initialPersistentAppState); // Reset app state to initial
+          setAppState(initialPersistentAppState);
           openGoalModal();
-          showMessage('Starting a new goal. Your previous data has been cleared.', 'info');
         }
       );
     } else {
@@ -360,9 +293,9 @@ export default function DashboardPage() {
     appState.notToDoList,
     appState.contextItems,
     appState.toDoList,
+    appState.dailyProgress,
     openConfirmationModal,
     openGoalModal,
-    showMessage,
   ]);
 
   // --- Goal Management Functions ---
@@ -378,7 +311,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Convert string dates to Timestamp for storage in appState (which aligns with Goal type)
       const startDateTimestamp =
         appState.goal?.startDate instanceof Timestamp
           ? appState.goal.startDate
@@ -404,22 +336,78 @@ export default function DashboardPage() {
     [closeGoalModal, showMessage, goalModalEditMode, appState.goal]
   );
 
+  // --- Daily Progress Modal Functions ---
+  const handleOpenDailyProgressModal = useCallback(
+    (date: Date, initialProgress?: DailyProgress | null) => {
+      setSelectedDayForProgress(date);
+      setInitialDailyProgressData(initialProgress || null);
+      setIsDailyProgressModalOpen(true);
+    },
+    []
+  );
+
+  const handleCloseDailyProgressModal = useCallback(() => {
+    setIsDailyProgressModalOpen(false);
+    setSelectedDayForProgress(null);
+    setInitialDailyProgressData(null);
+  }, []);
+
+  const handleSaveDailyProgress = useCallback(
+    async (date: Date, satisfactionLevel: number, notes?: string) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to save daily progress.', 'error');
+        return;
+      }
+
+      const newProgress: DailyProgress = {
+        date: Timestamp.fromDate(date),
+        satisfactionLevel: satisfactionLevel,
+        notes: notes || '',
+      };
+
+      try {
+        await firebaseService.addOrUpdateDailyProgress(currentUser.uid, newProgress);
+        // Update local appState with the new/updated progress
+        setAppState(prev => {
+          const existingDailyProgress = prev.dailyProgress || [];
+          const newProgressDateKey = newProgress.date.toDate().toISOString().slice(0, 10);
+
+          let updatedDailyProgress: DailyProgress[];
+          const existingIndex = existingDailyProgress.findIndex(
+            item => item.date.toDate().toISOString().slice(0, 10) === newProgressDateKey
+          );
+
+          if (existingIndex > -1) {
+            updatedDailyProgress = [...existingDailyProgress];
+            updatedDailyProgress[existingIndex] = newProgress;
+          } else {
+            updatedDailyProgress = [...existingDailyProgress, newProgress];
+          }
+          return { ...prev, dailyProgress: updatedDailyProgress };
+        });
+
+        showMessage(`Progress for ${date.toLocaleDateString()} saved successfully!`, 'success');
+        handleCloseDailyProgressModal();
+      } catch (error: unknown) {
+        showMessage(`Failed to save daily progress: ${(error as Error).message}`, 'error');
+      }
+    },
+    [currentUser, showMessage, handleCloseDailyProgressModal]
+  );
+
   // --- Countdown Calculation & Display ---
-  // _forceUpdate is used to force a re-render to update the countdown values.
   const [, setTick] = useState(0);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Safe date conversions for display
   const goalEndDate = appState.goal ? safeToDate(appState.goal.endDate) : null;
   const goalStartDate = appState.goal ? safeToDate(appState.goal.startDate) : null;
 
-  // Effect to manage the countdown interval
   useEffect(() => {
     if (appState.goal && goalEndDate) {
       if (goalEndDate.getTime() > Date.now()) {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = setInterval(() => {
-          setTick(prev => prev + 1); // Trigger re-render every second
+          setTick(prev => prev + 1);
         }, 1000);
       } else {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -427,15 +415,13 @@ export default function DashboardPage() {
     } else {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     }
-    // Only re-run if appState.goal or goalEndDate changes, not on every tick. The tick state handles re-render.
   }, [appState.goal, goalEndDate]);
 
-  // Calculations for display
   const now = new Date();
 
   const timeLeft = goalEndDate ? goalEndDate.getTime() - now.getTime() : 0;
   const totalTime =
-    goalEndDate && goalStartDate ? goalEndDate.getTime() - goalStartDate.getTime() : 1; // Avoid division by zero
+    goalEndDate && goalStartDate ? goalEndDate.getTime() - goalStartDate.getTime() : 1;
   const progressPercent = Math.min(
     goalStartDate ? ((now.getTime() - goalStartDate.getTime()) / totalTime) * 100 : 0,
     100
@@ -446,7 +432,6 @@ export default function DashboardPage() {
   const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-  // Simplified motivational message
   const motivationalMessage =
     appState.goal && timeLeft > 0
       ? `Time remaining for your goal:`
@@ -454,7 +439,6 @@ export default function DashboardPage() {
         ? 'Goal period ended. Time to set a new one or celebrate this accomplishment!'
         : 'Set a new goal to start your focused journey!';
 
-  // Transform goal data for GoalModal (which expects string dates)
   const transformedGoalForModal =
     appState.goal && goalStartDate && goalEndDate
       ? {
@@ -465,23 +449,68 @@ export default function DashboardPage() {
         }
       : null;
 
+  // --- Skeleton Loader Component ---
+  const SkeletonLoader = () => (
+    <div className="animate-pulse">
+      <div className="p-10 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+        <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-white/10"></div>
+        <div className="mx-auto mb-4 w-3/4 h-8 rounded-md bg-white/10"></div>
+        <div className="mx-auto mb-8 w-1/2 h-6 rounded-md bg-white/10"></div>
+        <div className="flex flex-col gap-4 justify-center sm:flex-row">
+          <div className="w-48 h-12 rounded-full bg-white/10"></div>
+        </div>
+      </div>
+
+      <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+        <div className="mb-6 w-1/2 h-8 rounded-md bg-white/10"></div>
+        <div className="mb-4 w-1/4 h-4 rounded-md bg-white/10"></div>
+        <div className="mb-8 w-full h-6 rounded-md bg-white/10"></div>
+        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="p-4 h-28 text-center rounded-lg shadow-sm bg-white/5">
+              <div className="mx-auto mb-2 w-3/4 h-10 rounded-md bg-white/10"></div>
+              <div className="mx-auto w-1/2 h-4 rounded-md bg-white/10"></div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-8 justify-center items-center p-4 mb-6 rounded-lg bg-white/5 md:flex-row">
+          <div className="w-40 h-40 rounded-full bg-white/10"></div>
+          <div className="flex-1 w-full">
+            <div className="mb-2 w-3/4 h-6 rounded-md bg-white/10"></div>
+            <div className="w-full h-4 rounded-md bg-white/10"></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="py-8">
+        <div className="mx-auto mb-6 w-1/3 h-8 rounded-md bg-white/10"></div>
+        <div className="grid gap-4 grid-cols-auto-fit-100">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="p-4 rounded-xl text-center bg-white/[0.05] h-32">
+              <div className="mb-2 ml-auto w-1/4 h-4 rounded-md bg-white/10"></div>
+              <div className="mx-auto mb-2 w-1/2 h-10 rounded-md bg-white/10"></div>
+              <div className="mx-auto w-1/2 h-4 rounded-md bg-white/10"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   // --- UI Rendering ---
-  // Display loading indicator if authentication check or data loading is in progress
   if (authLoading || dataLoading) {
     return (
-      <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
-        <p className="text-xl text-white/70">
-          {authLoading ? 'Authenticating...' : 'Loading your data...'}
-        </p>
-        {/* Show toasts even during loading */}
+      <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+        <div className="container flex-grow p-4 mx-auto max-w-4xl">
+          <SkeletonLoader />
+        </div>
         <ToastMessage message={toastMessage} type={toastType} duration={5000} />
       </main>
     );
   }
 
-  // Dashboard content is always shown if appMode is 'google' or 'guest'
-  // If appMode is 'none' and not loading, it implies a redirect to login has occurred or is pending.
-  if (appMode === 'none') {
+  if (!currentUser) {
+    router.replace('/login');
     return (
       <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
         <p className="text-xl text-white/70">Redirecting to login...</p>
@@ -491,9 +520,7 @@ export default function DashboardPage() {
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      {/* Toast Message Component */}
       <ToastMessage message={toastMessage} type={toastType} duration={5000} />
-      {/* Confirmation Modal Component */}
       <ConfirmationModal
         isOpen={isConfirmationModalOpen}
         onClose={closeConfirmationModal}
@@ -510,6 +537,17 @@ export default function DashboardPage() {
           className: 'btn-primary bg-red-500 hover:bg-red-600 focus:ring-red-400',
         }}
       />
+      {selectedDayForProgress && (
+        <DailyProgressModal
+          isOpen={isDailyProgressModalOpen}
+          onClose={handleCloseDailyProgressModal}
+          date={selectedDayForProgress}
+          initialProgress={initialDailyProgressData}
+          onSave={handleSaveDailyProgress}
+          showMessage={showMessage}
+        />
+      )}
+
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <main className="py-8">
           {!appState.goal ? (
@@ -525,21 +563,12 @@ export default function DashboardPage() {
                 Define your primary objective and begin tracking your progress toward success.
               </p>
               <div className="flex flex-col gap-4 justify-center sm:flex-row">
-                {' '}
-                {/* Added a flex container for buttons */}
                 <button
                   className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
                   onClick={openGoalModal}
                 >
                   <FiTarget size={20} />
                   Set Your First Goal
-                </button>
-                <button
-                  className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-full transition-all duration-300 hover:bg-white/[0.04] hover:border-white/20 hover:scale-105"
-                  onClick={() => document.getElementById('importFile')?.click()}
-                >
-                  <FiUpload size={20} />
-                  Import Data
                 </button>
               </div>
             </section>
@@ -640,7 +669,7 @@ export default function DashboardPage() {
                           strokeDashoffset={439.8 - (progressPercent / 100) * 439.8}
                           strokeLinecap="round"
                           style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                          className={'stroke-blue-500'} // Fixed color
+                          className={'stroke-blue-500'}
                         />
                       </svg>
                       <div className="flex absolute inset-0 justify-center items-center">
@@ -675,6 +704,23 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </section>
+
+              {/* Goal Tracking Grid Section */}
+              <section id="goalTrackingGrid" className="py-8">
+                <h2 className="mb-6 text-3xl font-bold text-center text-white">
+                  Your Daily Progress
+                </h2>
+                <DailyProgressGrid
+                  goal={appState.goal}
+                  dailyProgress={appState.dailyProgress}
+                  onDayClick={handleOpenDailyProgressModal}
+                />
+              </section>
+
+              {/* Satisfaction Graph Section */}
+              <section id="satisfactionGraph" className="py-8">
+                <SatisfactionGraph dailyProgress={appState.dailyProgress} />
+              </section>
             </>
           )}
 
@@ -692,7 +738,7 @@ export default function DashboardPage() {
       </div>
       {/* Goal Creation Modal Component */}
       <GoalModal
-        key={appState.goal?.startDate?.toMillis() || 'new-goal-dashboard'} // Key to force remount
+        key={appState.goal?.startDate?.toMillis() || 'new-goal-dashboard'}
         isOpen={isGoalModalOpen}
         onClose={closeGoalModal}
         onSetGoal={setGoal}

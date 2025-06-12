@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -11,20 +12,40 @@ import {
   FiMail,
   FiClock,
   FiArrowRight,
-  FiHome, // Added Home icon for dashboard button
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { FaGithub, FaLinkedin } from 'react-icons/fa6';
-import { localStorageService } from '@/services/localStorageService'; // Import localStorageService
-import { AppMode } from '@/types'; // Import AppMode type
+import { firebaseService } from '@/services/firebaseService'; // Import firebaseService
+import { User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
-  const [appMode, setAppMode] = useState<AppMode>('none'); // Initialize with 'none'
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    // Client-side code to get appMode from local storage
-    setAppMode(localStorageService.getAppModeFromLocalStorage());
-  }, []);
+    // Listen for Firebase auth state changes
+    const unsubscribe = firebaseService.onAuthChange(user => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+      // If user is logged in, redirect to dashboard
+      if (user) {
+        router.replace('/dashboard');
+      }
+    });
+
+    return () => unsubscribe(); // Clean up the listener
+  }, [router]);
+
+  // If still authenticating, show a loading message (or nothing)
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
+        <p className="text-xl text-white/70">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative z-10 px-6 mx-auto max-w-6xl sm:px-8 lg:px-12">
@@ -45,27 +66,16 @@ export default function LandingPage() {
           your most important objectives.
         </p>
 
-        {/* CTA Buttons */}
+        {/* CTA Button - always leads to login */}
         <div className="flex flex-col gap-4 justify-center items-center sm:flex-row">
-          {appMode !== 'none' ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
-            >
-              <FiHome size={20} />
-              Go to Dashboard
-              <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
-            >
-              <FiTarget size={20} />
-              Get Started
-              <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </Link>
-          )}
+          <Link
+            href="/login"
+            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+          >
+            <FiTarget size={20} />
+            Get Started
+            <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
       </section>
 
@@ -143,8 +153,7 @@ export default function LandingPage() {
             </div>
             <h3 className="mb-2 text-xl font-semibold text-white">Secure & Flexible</h3>
             <p className="leading-relaxed text-white/60">
-              Save progress securely with Google Sign-in or explore as guest. Export/import data
-              easily.
+              Save progress securely with Google Sign-in. Export/import data easily.
             </p>
           </div>
 

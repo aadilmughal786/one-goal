@@ -1,13 +1,20 @@
-// app/stop-watch/page.tsx
+// app/(root)/stop-watch/page.tsx
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 // Component imports
 import ToastMessage from '@/components/ToastMessage';
 import Stopwatch from '@/components/Stopwatch'; // Import the standalone Stopwatch component
+import { firebaseService } from '@/services/firebaseService'; // Import firebaseService
 
 export default function StopwatchPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
@@ -18,6 +25,34 @@ export default function StopwatchPage() {
       setToastMessage(null);
     }, 6000);
   }, []);
+
+  // Effect to manage auth state and redirect if not authenticated
+  useEffect(() => {
+    const unsubscribeAuth = firebaseService.onAuthChange(user => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+      if (!user) {
+        router.replace('/login');
+      }
+    });
+    return () => unsubscribeAuth();
+  }, [router]);
+
+  if (authLoading) {
+    return (
+      <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
+        <p className="text-xl text-white/70">Authenticating...</p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
+        <p className="text-xl text-white/70">Redirecting to login...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">

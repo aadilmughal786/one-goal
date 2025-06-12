@@ -1,4 +1,4 @@
-// src/components/ToastMessage.tsx
+// app/components/ToastMessage.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';

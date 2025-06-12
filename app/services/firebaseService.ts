@@ -1,4 +1,4 @@
-// src/services/firebaseService.ts
+// app/services/firebaseService.ts
 
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import {
@@ -9,7 +9,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
-  Unsubscribe,
+  // Removed: Unsubscribe,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -19,9 +19,10 @@ import {
   setDoc,
   updateDoc,
   arrayUnion,
+  // arrayRemove, // Added for potential future use with DailyProgress
 } from 'firebase/firestore';
-import { AppState, Goal, ListItem, TodoItem } from '@/types'; // Import types
-import { FirebaseServiceError } from '@/utils/errors'; // Import custom error
+import { AppState, Goal, ListItem, TodoItem, DailyProgress } from '@/types'; // Import DailyProgress
+import { FirebaseServiceError } from '@/utils/errors';
 
 /**
  * FirebaseService class for managing all Firebase-related operations,
@@ -33,7 +34,6 @@ class FirebaseService {
   private db: Firestore;
 
   constructor() {
-    // Firebase configuration using environment variables
     const firebaseConfig = {
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -53,7 +53,8 @@ class FirebaseService {
    * @param callback A function to call with the current User object or null.
    * @returns An unsubscribe function.
    */
-  onAuthChange(callback: (user: User | null) => void): Unsubscribe {
+  onAuthChange(callback: (user: User | null) => void): () => void {
+    // Changed return type to simple void function
     return onAuthStateChanged(this.auth, callback);
   }
 
@@ -94,23 +95,25 @@ class FirebaseService {
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
         const firestoreData = docSnap.data() as AppState;
+        // Ensure all fields are initialized, especially new ones like dailyProgress
         const loadedData: AppState = {
           goal: firestoreData.goal || null,
           notToDoList: firestoreData.notToDoList || [],
           contextItems: firestoreData.contextItems || [],
           toDoList: firestoreData.toDoList || [],
+          dailyProgress: firestoreData.dailyProgress || [], // Initialize dailyProgress
         };
         return loadedData;
       } else {
-        // Create initial document structure in Firestore if no data exists
         const initialData: AppState = {
           goal: null,
           notToDoList: [],
           contextItems: [],
           toDoList: [],
+          dailyProgress: [], // Initialize dailyProgress for new users
         };
         await setDoc(userDocRef, initialData);
-        return initialData; // Return an initial AppState
+        return initialData;
       }
     } catch (error: unknown) {
       throw new FirebaseServiceError(`Failed to load user data for ID: ${userId}.`, error);
@@ -199,7 +202,6 @@ class FirebaseService {
         );
       }
     } catch (error: unknown) {
-      // If error is already a FirebaseServiceError, rethrow it. Otherwise, wrap it.
       if (error instanceof FirebaseServiceError) throw error;
       throw new FirebaseServiceError(
         `Failed to delete item from ${listType} for user ID: ${userId}.`,
@@ -219,7 +221,7 @@ class FirebaseService {
    */
   async updateListItemText(
     userId: string,
-    listType: 'notToDoList' | 'contextItems' | 'toDoList', // 'toDoList' added
+    listType: 'notToDoList' | 'contextItems' | 'toDoList',
     itemId: number,
     updatedText: string
   ): Promise<void> {
@@ -279,6 +281,57 @@ class FirebaseService {
       if (error instanceof FirebaseServiceError) throw error;
       throw new FirebaseServiceError(
         `Failed to toggle todo item completion for user ID: ${userId}.`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Adds or updates a DailyProgress entry for a specific user and date.
+   * @param userId The UID of the current user.
+   * @param newProgress The DailyProgress object to add or update.
+   */
+  async addOrUpdateDailyProgress(userId: string, newProgress: DailyProgress): Promise<void> {
+    const userDocRef = doc(this.db, 'users', userId);
+    try {
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists()) {
+        const currentData = docSnap.data() as AppState;
+        const existingDailyProgress = currentData.dailyProgress || [];
+
+        // Normalize newProgress.date to a comparable format (e.g., YYYY-MM-DD string)
+        const newProgressDateKey = newProgress.date.toDate().toISOString().slice(0, 10);
+
+        let updatedDailyProgress: DailyProgress[];
+        const existingIndex = existingDailyProgress.findIndex(
+          item => item.date.toDate().toISOString().slice(0, 10) === newProgressDateKey
+        );
+
+        if (existingIndex > -1) {
+          // Update existing entry
+          updatedDailyProgress = [...existingDailyProgress];
+          updatedDailyProgress[existingIndex] = newProgress;
+        } else {
+          // Add new entry
+          updatedDailyProgress = [...existingDailyProgress, newProgress];
+        }
+
+        await updateDoc(userDocRef, { dailyProgress: updatedDailyProgress });
+      } else {
+        // If user document doesn't exist, create it with this progress
+        const initialData: AppState = {
+          goal: null,
+          notToDoList: [],
+          contextItems: [],
+          toDoList: [],
+          dailyProgress: [newProgress],
+        };
+        await setDoc(userDocRef, initialData);
+      }
+    } catch (error: unknown) {
+      if (error instanceof FirebaseServiceError) throw error;
+      throw new FirebaseServiceError(
+        `Failed to add or update daily progress for user ID: ${userId}.`,
         error
       );
     }

@@ -109,6 +109,13 @@ const GoalModal: React.FC<GoalModalProps> = ({
     }
   };
 
+  const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+      setErrorMessage(null);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -189,7 +196,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
               <input
                 id="endDate"
                 type="datetime-local"
-                className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent"
+                className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent accent-white"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -202,7 +209,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
         {/* Modal Footer / Action Button */}
         <div className="p-6 border-t border-white/10">
           <button
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
             onClick={handleSubmit}
           >
             <MdRocketLaunch className="w-5 h-5" />
