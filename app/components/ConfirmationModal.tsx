@@ -87,18 +87,18 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     >
       {/* Modal Content Box */}
       <div
-        className="relative p-6 sm:p-8 w-full max-w-sm text-center bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-xl shadow-lg
+        className="relative w-full max-w-sm text-center bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg
                    transform transition-all duration-300 scale-100 opacity-100 hover:bg-white/[0.06] hover:border-white/20"
         onClick={e => e.stopPropagation()} // Prevent clicks inside content from closing modal
       >
         {/* Modal Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center p-4 mb-4 border-b border-white/10">
           <h3 id="modal-title" className="flex gap-2 items-center text-xl font-bold text-white">
             <FiAlertTriangle className="w-6 h-6 text-yellow-400" /> {title}
           </h3>
           {/* Close Button */}
           <button
-            className="p-1 rounded-full transition-colors duration-200 text-white/60 hover:text-white/90 hover:bg-white/10"
+            className="p-1 rounded-full transition-colors duration-200 cursor-pointer text-white/60 hover:text-white/90 hover:bg-white/10"
             onClick={onClose}
             aria-label="Close modal"
           >
@@ -106,23 +106,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </button>
         </div>
 
-        {/* Message Body */}
-        <p id="modal-message" className="mb-6 leading-relaxed text-white/80">
-          {message}
-        </p>
-
-        {/* Countdown Timer */}
-        {actionDelayMs > 0 && (
-          <p className="mb-4 text-sm font-semibold text-white/70">
-            Actions available in {countdown}s
+        <div className="p-4">
+          {/* Message Body */}
+          <p id="modal-message" className="mb-6 leading-relaxed text-left text-white/80">
+            {message}
           </p>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 justify-end sm:flex-row">
+          {/* Action Buttons */}
           {/* Cancel Button - always enabled */}
           <button
-            className={`px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white
+            className={`px-4 cursor-pointer w-full py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white
               ${cancelButton.className || 'bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20'}
             `}
             onClick={cancelButton.onClick}
@@ -132,7 +125,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
           {/* Confirm Button - timed disable */}
           <button
-            className={`px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2
+            className={`px-4 cursor-pointer w-full mt-3 py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2
               ${confirmButton.className || 'bg-white text-black hover:bg-white/90 hover:scale-105'} // Default primary style
               ${!actionsEnabled ? 'opacity-50 cursor-not-allowed' : ''} // Disable styling
             `}
@@ -144,6 +137,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             disabled={!actionsEnabled} // Disable button during countdown
           >
             {confirmButton.icon} {confirmButton.text}
+            {/* Countdown Timer */}
+            {actionDelayMs > 0 && <p className="text-sm font-semibold">( {countdown}s )</p>}
           </button>
         </div>
       </div>

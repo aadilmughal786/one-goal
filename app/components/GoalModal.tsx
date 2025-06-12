@@ -109,13 +109,6 @@ const GoalModal: React.FC<GoalModalProps> = ({
     }
   };
 
-  const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-      setErrorMessage(null);
-    }
-  };
-
   if (!isOpen) return null;
 
   return (

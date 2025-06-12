@@ -186,14 +186,12 @@ const NavBar: React.FC = () => {
 
         showMessage('Signed out successfully!', 'success');
       } else if (appMode === 'guest') {
-        localStorageService.clearAppModeFromLocalStorage();
-
         showMessage('Guest session ended. Local data remains.', 'info');
       }
 
       setAppMode('none');
 
-      router.replace('/');
+      router.replace('/login');
     } catch (error: any) {
       showMessage(`Sign-out error: ${error.message || 'Unknown error'}`, 'error');
     } finally {
@@ -203,13 +201,7 @@ const NavBar: React.FC = () => {
 
   const handleSignInWithGoogle = useCallback(async () => {
     try {
-      await firebaseService.signInWithGoogle();
-
-      localStorageService.setAppModeInLocalStorage('google');
-
-      showMessage('Signed in successfully!', 'success');
-
-      router.push('/dashboard');
+      router.push('/login');
     } catch (error: any) {
       let errorMessage = 'Sign-in failed. Please try again.';
 
@@ -491,7 +483,7 @@ const NavBar: React.FC = () => {
           {/* Profile Dropdown Menu */}
 
           {isProfileDropdownOpen && showProfileDropdownButton && (
-            <div className="absolute right-0 z-30 py-2 mt-2 rounded-lg border shadow-xl backdrop-blur-md min-w-56 animate-fade-in-down bg-black/50 border-white/10">
+            <div className="absolute right-0 z-30 py-2 mt-2 rounded-lg border shadow-xl backdrop-blur-2xl min-w-56 animate-fade-in-down bg-[#181818] border-white/10">
               <button className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors duration-200 cursor-pointer text-white/90 hover:bg-white/10">
                 <FaRegCircleUser className="w-5 h-5" /> {displayUserName}
               </button>
