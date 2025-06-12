@@ -27,6 +27,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <title>One Goal - Focus Your Superpower</title>
+        <link rel="icon" href="/one-goal/favicon.png" type="image/x-icon" />
       </head>
       <body className={poppins.className}>
         <div className="min-h-screen text-white bg-black">
