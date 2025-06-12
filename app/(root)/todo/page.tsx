@@ -4,10 +4,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Timestamp } from 'firebase/firestore';
 
 // Import types
-import { AppState, ListItem, TodoItem, AppMode } from '@/types';
+import { AppState, TodoItem, AppMode } from '@/types';
 
 // Import Firebase service functions
 import { firebaseService } from '@/services/firebaseService';
@@ -16,19 +15,7 @@ import { firebaseService } from '@/services/firebaseService';
 import { localStorageService } from '@/services/localStorageService';
 
 // Component imports
-import NavBar from '@/components/NavBar';
 import ToastMessage from '@/components/ToastMessage';
-import ConfirmationModal from '@/components/ConfirmationModal';
-import Footer from '@/components/Footer';
-
-// Placeholder for the TodoList component (will be created in the next step)
-// For now, the list rendering logic will be directly in this page.
-interface TodoListProps {
-  list: TodoItem[];
-  addTodoItem: (text: string) => void;
-  removeTodoItem: (id: number) => void;
-  toggleTodoItemCompletion: (id: number, completed: boolean) => void;
-}
 
 // Initial state for the persistent data, specifically for the to-do list
 const initialPersistentAppState: AppState = {
@@ -52,11 +39,6 @@ export default function TodoPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [confirmationMessage, setConfirmationMessage] = useState('');
-  const [confirmationTitle, setConfirmationTitle] = useState('');
-  const [confirmationAction, setConfirmationAction] = useState<(() => void) | null>(null);
-
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
@@ -64,28 +46,6 @@ export default function TodoPage() {
       setToastMessage(null);
     }, 6000);
   }, []);
-
-  const openConfirmationModal = useCallback(
-    (title: string, message: string, action: () => void) => {
-      setConfirmationTitle(title);
-      setConfirmationMessage(message);
-      setConfirmationAction(() => action);
-      setIsConfirmationModalOpen(true);
-    },
-    []
-  );
-
-  const closeConfirmationModal = useCallback(() => {
-    setIsConfirmationModalOpen(false);
-    setConfirmationAction(null);
-  }, []);
-
-  const handleConfirmation = useCallback(() => {
-    if (confirmationAction) {
-      confirmationAction();
-    }
-    closeConfirmationModal();
-  }, [confirmationAction, closeConfirmationModal]);
 
   // --- Initial App Mode and Data Loading Logic ---
   useEffect(() => {
@@ -193,8 +153,8 @@ export default function TodoPage() {
       }
     }
   }, [
-    appState.toDoList, // This useEffect specifically triggers on toDoList changes
-    appState.goal, // Include other parts of appState that might change indirectly or need to be saved
+    appState.toDoList,
+    appState.goal,
     appState.notToDoList,
     appState.contextItems,
     currentUser,
@@ -202,6 +162,7 @@ export default function TodoPage() {
     authLoading,
     dataLoading,
     showMessage,
+    appState,
   ]);
 
   // --- To-Do List Management Functions ---
@@ -309,35 +270,7 @@ export default function TodoPage() {
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <NavBar
-        currentUser={currentUser}
-        appMode={appMode}
-        onSignOut={() => {}} // Placeholder for now, handle signOut on dashboard
-        onNewGoal={() => {}} // Placeholder
-        onExport={() => {}} // Placeholder
-        onImport={() => {}} // Placeholder
-        onOpenDeveloperModal={() => {}} // Placeholder
-        onOpenGoalModal={() => {}} // Placeholder
-        onEditGoal={() => {}} // Placeholder
-        onSignInWithGoogleFromGuest={() => {}} // Placeholder
-      />
       <ToastMessage message={toastMessage} type={toastType} duration={5000} />
-      <ConfirmationModal
-        isOpen={isConfirmationModalOpen}
-        onClose={closeConfirmationModal}
-        message={confirmationMessage}
-        title={confirmationTitle}
-        cancelButton={{
-          text: 'Cancel',
-          onClick: closeConfirmationModal,
-          className: 'btn-secondary',
-        }}
-        confirmButton={{
-          text: 'Confirm',
-          onClick: handleConfirmation,
-          className: 'btn-primary bg-red-500 hover:bg-red-600 focus:ring-red-400',
-        }}
-      />
 
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <section className="py-8">

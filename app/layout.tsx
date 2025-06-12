@@ -30,10 +30,6 @@ export default function RootLayout({
       </head>
       <body className={poppins.className}>
         <div className="min-h-screen text-white bg-black">
-          {/* Subtle background */}
-          <div className="fixed inset-0 opacity-30 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-white/40"></div>
-          </div>
           {children}
 
           <Footer />

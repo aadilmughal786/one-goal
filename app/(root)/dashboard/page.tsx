@@ -1,13 +1,13 @@
 // app/dashboard/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Keep useRef for interval cleanup if needed, but not for countdown itself now
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 
 // Import types
-import { AppState, ListItem, UrgencyLevel, Goal, TodoItem, AppMode } from '@/types';
+import { AppState, AppMode } from '@/types'; // UrgencyLevel is still removed from previous request
 
 // Import Firebase service functions (using the instance)
 import { firebaseService } from '@/services/firebaseService';
@@ -16,15 +16,13 @@ import { firebaseService } from '@/services/firebaseService';
 import { localStorageService } from '@/services/localStorageService';
 
 // Component imports
-import NavBar from '@/components/NavBar';
 import GoalModal from '@/components/GoalModal';
 import ToastMessage from '@/components/ToastMessage';
-import Footer from '@/components/Footer';
 import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Icon imports
 import { MdRocketLaunch } from 'react-icons/md';
-import { FiTarget, FiAward, FiClock, FiUpload } from 'react-icons/fi'; // Re-added FiAward, FiClock for countdown display, added FiUpload
+import { FiTarget, FiClock, FiUpload, FiEdit, FiPlusCircle } from 'react-icons/fi'; // Added FiPlusCircle for new goal button
 
 // Initial state for the persistent data (conforms to AppState type)
 const initialPersistentAppState: AppState = {
@@ -34,9 +32,65 @@ const initialPersistentAppState: AppState = {
   toDoList: [],
 };
 
+// Helper function to safely convert date to Date object
+const safeToDate = (dateValue: any): Date | null => {
+  if (!dateValue) return null;
+
+  // If it's already a Date object
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+
+  // If it's a Firestore Timestamp
+  if (dateValue && typeof dateValue.toDate === 'function') {
+    return dateValue.toDate();
+  }
+
+  // If it's a string or number, try to parse it
+  if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+    const parsedDate = new Date(dateValue);
+    return isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }
+
+  // If it has seconds and nanoseconds (Timestamp-like object)
+  if (dateValue && typeof dateValue.seconds === 'number') {
+    return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
+  }
+
+  return null;
+};
+
+// Helper function to normalize AppState after loading from any source
+const normalizeAppState = (loadedState: any): AppState => {
+  if (!loadedState) return initialPersistentAppState;
+
+  const normalized: AppState = {
+    goal: null,
+    notToDoList: loadedState.notToDoList || [],
+    contextItems: loadedState.contextItems || [],
+    toDoList: loadedState.toDoList || [],
+  };
+
+  // Normalize goal dates
+  if (loadedState.goal) {
+    const startDate = safeToDate(loadedState.goal.startDate);
+    const endDate = safeToDate(loadedState.goal.endDate);
+
+    if (startDate && endDate) {
+      normalized.goal = {
+        name: loadedState.goal.name || '',
+        description: loadedState.goal.description || '',
+        startDate: Timestamp.fromDate(startDate),
+        endDate: Timestamp.fromDate(endDate),
+      };
+    }
+  }
+
+  return normalized;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true); // Tracks if Firebase auth check is complete
@@ -50,7 +104,6 @@ export default function DashboardPage() {
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [goalModalEditMode, setGoalModalEditMode] = useState(false);
-  const [isDeveloperModalOpen, setIsDeveloperModalOpen] = useState(false);
 
   // Updated toast message state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -107,7 +160,8 @@ export default function DashboardPage() {
         try {
           const loadedGuestData = localStorageService.loadLocalState();
           if (loadedGuestData) {
-            setAppState(loadedGuestData);
+            const normalizedData = normalizeAppState(loadedGuestData);
+            setAppState(normalizedData);
             showMessage('Guest data loaded from local storage.', 'info');
           } else {
             // AppMode was 'guest' but no data found (e.g., cleared manually outside app flow)
@@ -141,7 +195,8 @@ export default function DashboardPage() {
             setCurrentUser(user);
             try {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              setAppState(loadedFirebaseData);
+              const normalizedData = normalizeAppState(loadedFirebaseData);
+              setAppState(normalizedData);
               showMessage('Firebase data loaded.', 'success');
             } catch (firebaseLoadError: any) {
               showMessage(
@@ -172,7 +227,8 @@ export default function DashboardPage() {
             localStorageService.setAppModeInLocalStorage('google'); // Persist mode
             try {
               const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-              setAppState(loadedFirebaseData);
+              const normalizedData = normalizeAppState(loadedFirebaseData);
+              setAppState(normalizedData);
               showMessage('Firebase data loaded.', 'success');
             } catch (firebaseLoadError: any) {
               showMessage(
@@ -223,6 +279,7 @@ export default function DashboardPage() {
     authLoading,
     dataLoading,
     showMessage,
+    appState,
   ]);
 
   // --- Authentication Handlers ---
@@ -258,8 +315,6 @@ export default function DashboardPage() {
     setIsGoalModalOpen(true);
   }, []);
   const closeGoalModal = useCallback(() => setIsGoalModalOpen(false), []);
-  const openDeveloperModal = useCallback(() => setIsDeveloperModalOpen(true), []);
-  const closeDeveloperModal = useCallback(() => setIsDeveloperModalOpen(false), []);
 
   const handleEditGoal = useCallback(() => {
     if (appState.goal) {
@@ -338,152 +393,18 @@ export default function DashboardPage() {
     [closeGoalModal, showMessage, goalModalEditMode, appState.goal]
   );
 
-  const resetGoal = useCallback(() => {
-    openConfirmationModal(
-      'Reset Goal',
-      'Are you sure you want to reset your goal? This will delete all progress and cannot be undone.',
-      () => {
-        setAppState(initialPersistentAppState);
-        showMessage('Goal reset!', 'info');
-      }
-    );
-  }, [showMessage, openConfirmationModal]);
-
-  // --- Export/Import Data ---
-  const exportData = useCallback(() => {
-    const dataToExport: AppState = appState;
-
-    if (
-      !dataToExport.goal &&
-      dataToExport.notToDoList.length === 0 &&
-      dataToExport.contextItems.length === 0 &&
-      dataToExport.toDoList.length === 0
-    ) {
-      showMessage('No persistent data to export!', 'info');
-      return;
-    }
-
-    try {
-      // Convert Timestamp objects to ISO strings for export to JSON
-      const serializableData = {
-        ...dataToExport,
-        goal: dataToExport.goal
-          ? {
-              ...dataToExport.goal,
-              startDate: dataToExport.goal.startDate.toDate().toISOString(),
-              endDate: dataToExport.goal.endDate.toDate().toISOString(),
-            }
-          : null,
-      };
-
-      const dataStr = JSON.stringify(serializableData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `one-goal-backup-${appMode === 'google' ? 'firebase' : 'guest'}-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showMessage('Data exported successfully!', 'success');
-    } catch (error: any) {
-      showMessage(`Failed to export data: ${error.message || 'Unknown error'}`, 'error');
-    }
-  }, [appState, appMode, showMessage]);
-
-  const importData = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) {
-        event.target.value = '';
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        try {
-          const importedRawData = JSON.parse(e.target?.result as string);
-          if (
-            typeof importedRawData !== 'object' ||
-            importedRawData === null ||
-            !(
-              'goal' in importedRawData ||
-              'notToDoList' in importedRawData ||
-              'contextItems' in importedRawData ||
-              'toDoList' in importedRawData
-            )
-          ) {
-            showMessage(
-              "Invalid backup file format. Please ensure it's a 'One Goal' backup.",
-              'error'
-            );
-            return;
-          }
-
-          openConfirmationModal(
-            'Import Data',
-            'This will replace all your current data. Are you sure you want to proceed?',
-            () => {
-              // Convert ISO strings back to Timestamp objects for the imported goal
-              const importedGoalWithTimestamps = importedRawData.goal
-                ? {
-                    ...importedRawData.goal,
-                    startDate: Timestamp.fromDate(new Date(importedRawData.goal.startDate)),
-                    endDate: Timestamp.fromDate(new Date(importedRawData.goal.endDate)),
-                  }
-                : null;
-
-              const newStateOnImport: AppState = {
-                goal: importedGoalWithTimestamps,
-                notToDoList: importedRawData.notToDoList || [],
-                contextItems: importedRawData.contextItems || [],
-                toDoList: importedRawData.toDoList || [],
-              };
-              setAppState(newStateOnImport);
-              showMessage('Data imported successfully!', 'success');
-            }
-          );
-        } catch (error: any) {
-          showMessage(
-            `Invalid file format or data: ${error.message || 'Unknown error'}. Please select a valid JSON backup file.`,
-            'error'
-          );
-        } finally {
-          event.target.value = '';
-        }
-      };
-      reader.readAsText(file);
-    },
-    [showMessage, openConfirmationModal]
-  );
-
-  // --- Countdown Calculation & Display (Now directly in Dashboard) ---
+  // --- Countdown Calculation & Display ---
   const [_, setTick] = useState(0); // State to force re-render for countdown, actual time calc happens in render
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoized functions for urgency and motivational message
-  const getUrgencyLevel = useCallback((timeLeft: number, totalTime: number): UrgencyLevel => {
-    const ratio = timeLeft / totalTime;
-    if (ratio > 0.5) return 'low';
-    if (ratio > 0.2) return 'medium';
-    return 'high';
-  }, []);
-
-  const getMotivationalMessage = useCallback((urgency: UrgencyLevel, timeLeft: number): string => {
-    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    if (urgency === 'high') {
-      return days > 1 ? "Final sprint! You've got this!" : 'The final hour approaches!';
-    } else if (urgency === 'medium') {
-      return 'Stay focused and keep pushing forward!';
-    } else {
-      return 'Great pace! Keep up the momentum!';
-    }
-  }, []);
+  // Safe date conversions for display
+  const goalEndDate = appState.goal ? safeToDate(appState.goal.endDate) : null;
+  const goalStartDate = appState.goal ? safeToDate(appState.goal.startDate) : null;
 
   // Effect to manage the countdown interval
   useEffect(() => {
-    if (appState.goal) {
-      const endDate = appState.goal.endDate.toDate(); // Convert Timestamp to Date
-      if (endDate.getTime() > Date.now()) {
+    if (appState.goal && goalEndDate) {
+      if (goalEndDate.getTime() > Date.now()) {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = setInterval(() => {
           setTick(prev => prev + 1); // Trigger re-render every second
@@ -494,12 +415,10 @@ export default function DashboardPage() {
     } else {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     }
-    // Only re-run if appState.goal changes, not on every tick. The tick state handles re-render.
-  }, [appState.goal]);
+    // Only re-run if appState.goal or goalEndDate changes, not on every tick. The tick state handles re-render.
+  }, [appState.goal, goalEndDate]);
 
   // Calculations for display
-  const goalEndDate = appState.goal ? appState.goal.endDate.toDate() : null;
-  const goalStartDate = appState.goal ? appState.goal.startDate.toDate() : null;
   const now = new Date();
 
   const timeLeft = goalEndDate ? goalEndDate.getTime() - now.getTime() : 0;
@@ -515,14 +434,24 @@ export default function DashboardPage() {
   const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-  const urgency: UrgencyLevel =
-    appState.goal && timeLeft > 0 ? getUrgencyLevel(timeLeft, totalTime) : 'low';
+  // Simplified motivational message
   const motivationalMessage =
     appState.goal && timeLeft > 0
-      ? getMotivationalMessage(urgency, timeLeft)
+      ? `Time remaining for your goal:`
       : appState.goal && timeLeft <= 0
-        ? 'Goal achieved! Time to set a new one or celebrate this accomplishment.'
-        : 'Set a new goal to start your focused journey!'; // Fallback for no goal
+        ? 'Goal period ended. Time to set a new one or celebrate this accomplishment!'
+        : 'Set a new goal to start your focused journey!';
+
+  // Transform goal data for GoalModal (which expects string dates)
+  const transformedGoalForModal =
+    appState.goal && goalStartDate && goalEndDate
+      ? {
+          name: appState.goal.name,
+          description: appState.goal.description,
+          startDate: goalStartDate.toISOString(),
+          endDate: goalEndDate.toISOString(),
+        }
+      : null;
 
   // --- UI Rendering ---
   // Display loading indicator if authentication check or data loading is in progress
@@ -548,41 +477,10 @@ export default function DashboardPage() {
     );
   }
 
-  // Transform goal data for GoalModal (which expects string dates)
-  const transformedGoalForModal = appState.goal
-    ? {
-        ...appState.goal,
-        startDate: appState.goal.startDate.toDate().toISOString(),
-        endDate: appState.goal.endDate.toDate().toISOString(),
-      }
-    : null;
-
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      {/* NavBar Component */}
-      <NavBar
-        currentUser={currentUser}
-        appMode={appMode}
-        onSignOut={handleSignOut}
-        onNewGoal={handleNewGoal}
-        onExport={exportData}
-        onImport={() => document.getElementById('importFile')?.click()}
-        onOpenDeveloperModal={openDeveloperModal}
-        onOpenGoalModal={openGoalModal}
-        onEditGoal={handleEditGoal}
-        onSignInWithGoogleFromGuest={handleSignInWithGoogleFromGuest}
-      />
-      <input
-        type="file"
-        id="importFile"
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={importData}
-      />
-
       {/* Toast Message Component */}
       <ToastMessage message={toastMessage} type={toastType} duration={5000} />
-
       {/* Confirmation Modal Component */}
       <ConfirmationModal
         isOpen={isConfirmationModalOpen}
@@ -600,7 +498,6 @@ export default function DashboardPage() {
           className: 'btn-primary bg-red-500 hover:bg-red-600 focus:ring-red-400',
         }}
       />
-
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <main className="py-8">
           {!appState.goal ? (
@@ -639,6 +536,16 @@ export default function DashboardPage() {
               {/* Goal Display and Countdown */}
               <section id="countdownSection">
                 <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
+                  {/* Updated: Added Update Goal Button at the top of the card */}
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={handleEditGoal}
+                      className="inline-flex gap-2 items-center px-4 py-2 font-semibold text-sm text-white bg-white/[0.05] rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    >
+                      <FiEdit className="w-4 h-4" /> Update Goal
+                    </button>
+                  </div>
+
                   <div className="flex flex-col justify-between items-start pb-4 mb-6 border-b border-white/10 md:flex-row md:items-center">
                     <div>
                       <h2 id="goalTitle" className="mb-2 text-3xl font-bold text-white">
@@ -666,7 +573,7 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 gap-6 pt-4 mb-8 md:grid-cols-4">
                     <div className="p-4 text-center rounded-lg shadow-sm bg-white/5">
                       <span
-                        className={`block mx-auto mb-1 text-5xl font-extrabold countdown-number ${timeLeft <= 0 ? 'text-white/40' : urgency === 'high' ? 'text-red-400' : urgency === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}
+                        className={`block mx-auto mb-1 text-5xl font-extrabold text-blue-400 countdown-number`}
                       >
                         {Math.max(0, days)}
                       </span>
@@ -674,7 +581,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="p-4 text-center rounded-lg shadow-sm bg-white/5">
                       <span
-                        className={`block mx-auto mb-1 text-5xl font-extrabold countdown-number ${timeLeft <= 0 ? 'text-white/40' : urgency === 'high' ? 'text-red-400' : urgency === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}
+                        className={`block mx-auto mb-1 text-5xl font-extrabold text-blue-400 countdown-number`}
                       >
                         {Math.max(0, hours)}
                       </span>
@@ -682,7 +589,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="p-4 text-center rounded-lg shadow-sm bg-white/5">
                       <span
-                        className={`block mx-auto mb-1 text-5xl font-extrabold countdown-number ${timeLeft <= 0 ? 'text-white/40' : urgency === 'high' ? 'text-red-400' : urgency === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}
+                        className={`block mx-auto mb-1 text-5xl font-extrabold text-blue-400 countdown-number`}
                       >
                         {Math.max(0, minutes)}
                       </span>
@@ -690,7 +597,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="p-4 text-center rounded-lg shadow-sm bg-white/5">
                       <span
-                        className={`block mx-auto mb-1 text-5xl font-extrabold countdown-number ${timeLeft <= 0 ? 'text-white/40' : urgency === 'high' ? 'text-red-400' : urgency === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}
+                        className={`block mx-auto mb-1 text-5xl font-extrabold text-blue-400 countdown-number`}
                       >
                         {Math.max(0, seconds)}
                       </span>
@@ -698,7 +605,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Progress Ring & Urgency */}
+                  {/* Progress Ring & Motivational Message */}
                   <div className="flex flex-col gap-8 justify-center items-center p-4 mb-6 rounded-lg bg-white/5 md:flex-row">
                     <div className="relative w-40 h-40">
                       <svg width="160" height="160" className="transform -rotate-90">
@@ -722,15 +629,7 @@ export default function DashboardPage() {
                           strokeDashoffset={439.8 - (progressPercent / 100) * 439.8}
                           strokeLinecap="round"
                           style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                          className={
-                            timeLeft <= 0
-                              ? 'stroke-green-500'
-                              : urgency === 'high'
-                                ? 'stroke-red-500'
-                                : urgency === 'medium'
-                                  ? 'stroke-yellow-500'
-                                  : 'stroke-blue-500'
-                          }
+                          className={'stroke-blue-500'} // Fixed color
                         />
                       </svg>
                       <div className="flex absolute inset-0 justify-center items-center">
@@ -742,34 +641,47 @@ export default function DashboardPage() {
 
                     <div className="text-center md:text-left">
                       <p
-                        id="urgencyIndicator"
-                        className={`flex items-center justify-center md:justify-start gap-2 mb-2 text-xl font-medium ${timeLeft <= 0 ? 'text-green-500' : urgency === 'high' ? 'text-red-400' : urgency === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}
+                        id="motivationalMessage"
+                        className="flex gap-2 justify-center items-center mb-2 text-xl font-medium md:justify-start text-white/70"
                       >
-                        {timeLeft <= 0 ? (
-                          <FiAward className="w-6 h-6 text-green-500" />
-                        ) : urgency === 'high' ? (
-                          <FiAward className="w-6 h-6 text-red-400" />
-                        ) : urgency === 'medium' ? (
-                          <FiClock className="w-6 h-6 text-yellow-400" />
-                        ) : (
-                          <FiTarget className="w-6 h-6 text-green-400" />
-                        )}
+                        <FiClock className="w-6 h-6 text-blue-400" />
                         {motivationalMessage}
                       </p>
-                      <p id="motivationalMessage" className="text-base italic text-white/70">
-                        {motivationalMessage}
-                      </p>
+                      {timeLeft > 0 && appState.goal && goalEndDate && (
+                        <p className="text-base italic text-white/70">
+                          Your goal is to achieve: "{appState.goal.name}" by{' '}
+                          {goalEndDate.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric',
+                          })}
+                          .
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </section>
             </>
           )}
+
+          {/* New Goal Button at the end */}
+          <section className="py-8 text-center">
+            <button
+              onClick={handleNewGoal}
+              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white bg-red-600 rounded-full transition-all duration-200 group hover:bg-red-700 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <FiPlusCircle size={20} />
+              Set New Goal
+            </button>
+          </section>
         </main>
       </div>
-
       {/* Goal Creation Modal Component */}
       <GoalModal
+        key={appState.goal?.startDate?.toMillis() || 'new-goal-dashboard'} // Key to force remount
         isOpen={isGoalModalOpen}
         onClose={closeGoalModal}
         onSetGoal={setGoal}

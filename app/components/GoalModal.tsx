@@ -1,7 +1,7 @@
 // components/GoalModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import { FiTarget, FiCalendar, FiX, FiInfo } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
 
@@ -35,33 +35,38 @@ const GoalModal: React.FC<GoalModalProps> = ({
   const [endDate, setEndDate] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Effect to populate form fields when in edit mode or reset for new goal
+  // useRef to keep track of the initialGoalData that was last used to populate the form
+  const lastInitialGoalData = useRef<ModalGoalData | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setErrorMessage(null); // Clear errors on open
-      if (isEditMode && initialGoalData) {
-        setGoalName(initialGoalData.name);
-        setGoalDescription(initialGoalData.description || '');
 
-        // Handle endDate: Ensure it's in "YYYY-MM-DDTHH:MM" format
-        // initialGoalData.endDate should be an ISO string passed from dashboard/page.tsx
-        let formattedEndDate = '';
-        if (typeof initialGoalData.endDate === 'string') {
-          formattedEndDate = initialGoalData.endDate.slice(0, 16);
+      // Check if we are in edit mode and have initial data
+      if (isEditMode && initialGoalData) {
+        // Only update form fields if the initialGoalData has truly changed since last population
+        // (comparing content using JSON.stringify for a simple deep comparison)
+        const currentInitialDataString = JSON.stringify(initialGoalData);
+        const lastDataInRefString = JSON.stringify(lastInitialGoalData.current);
+
+        if (currentInitialDataString !== lastDataInRefString) {
+          setGoalName(initialGoalData.name);
+          setGoalDescription(initialGoalData.description || '');
+          setEndDate(initialGoalData.endDate.slice(0, 16)); // Format for datetime-local
+          lastInitialGoalData.current = initialGoalData; // Update ref with the new data
         }
-        setEndDate(formattedEndDate);
       } else {
-        // Reset form fields when opening for new goal
+        // If not in edit mode (new goal), or initialGoalData is null, reset form
         setGoalName('');
         setGoalDescription('');
-        // Set default end date to tomorrow for convenience when creating new
         const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Adjust for timezone
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         const tomorrow = new Date(now);
         tomorrow.setDate(now.getDate() + 1);
-        tomorrow.setHours(now.getHours() + 1); // Suggest 1 hour from now, or tomorrow
-        tomorrow.setMinutes(0); // Round minutes to 0
+        tomorrow.setHours(now.getHours() + 1);
+        tomorrow.setMinutes(0);
         setEndDate(tomorrow.toISOString().slice(0, 16));
+        lastInitialGoalData.current = null; // Clear ref as no initial data is being used
       }
 
       // Set minimum date for the datetime-local input
@@ -72,8 +77,11 @@ const GoalModal: React.FC<GoalModalProps> = ({
       if (endDateInput) {
         endDateInput.min = minDate;
       }
+    } else {
+      // When modal closes, reset ref to ensure next open is fresh
+      lastInitialGoalData.current = null;
     }
-  }, [isOpen, isEditMode, initialGoalData]);
+  }, [isOpen, isEditMode, initialGoalData]); // Dependencies remain the same
 
   const handleSubmit = () => {
     setErrorMessage(null);
