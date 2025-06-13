@@ -18,7 +18,7 @@ import Charts from '@/components/dashboard/Charts';
 import ConfirmationModal from '@/components/ConfirmationModal';
 
 import { MdRocketLaunch } from 'react-icons/md';
-import { FiTarget, FiPlusCircle } from 'react-icons/fi';
+import { FiTarget, FiPlusCircle, FiUpload, FiDownload } from 'react-icons/fi';
 import { isToday, format } from 'date-fns';
 
 const DashboardSkeletonLoader = () => (
@@ -74,10 +74,6 @@ export default function DashboardPage() {
       setToastMessage(null);
     }, 5000);
   }, []);
-
-  const openConfirmationModal = (title: string, message: string, action: () => void) => {
-    setConfirmationState({ isOpen: true, title, message, action, actionDelayMs: 3000 });
-  };
 
   const closeConfirmationModal = () => {
     setConfirmationState({ isOpen: false, title: '', message: '', action: null });
@@ -140,11 +136,14 @@ export default function DashboardPage() {
     };
 
     if (appState?.goal) {
-      openConfirmationModal(
-        'Create New Goal?',
-        'This will erase your current goal and all associated data. This action cannot be undone.',
-        action
-      );
+      setConfirmationState({
+        isOpen: true,
+        title: 'Create New Goal?',
+        message:
+          'This will erase your current goal and all associated data. This action cannot be undone. The confirm button will be enabled in 10 seconds.',
+        action,
+        actionDelayMs: 10000,
+      });
     } else {
       setIsEditMode(false);
       setIsGoalModalOpen(true);
@@ -178,6 +177,87 @@ export default function DashboardPage() {
     setIsDailyProgressModalOpen(false);
     showMessage('Progress saved successfully!', 'success');
   };
+
+  // --- Import / Export Logic ---
+  const handleConfirmImport = async (importedState: AppState) => {
+    if (!currentUser) return;
+    try {
+      await firebaseService.setUserData(currentUser.uid, importedState);
+      showMessage('Data imported successfully. Refreshing...', 'success');
+      closeConfirmationModal();
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (error) {
+      showMessage(`Failed to save imported data: ${(error as Error).message}`, 'error');
+      closeConfirmationModal();
+    }
+  };
+
+  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser) return;
+    event.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const importedRawData = JSON.parse(e.target?.result as string);
+        const importedState = firebaseService.deserializeForImport(importedRawData);
+
+        // Check if user currently has a goal
+        const currentHasGoal = appState?.goal && appState.goal.name && appState.goal.name.trim();
+
+        // If user has no current goal, import directly without confirmation
+        if (!currentHasGoal) {
+          await handleConfirmImport(importedState);
+          return;
+        }
+
+        // If user has a goal, show confirmation
+        const importedHasGoal =
+          importedState.goal && importedState.goal.name && importedState.goal.name.trim();
+
+        let confirmationMessage =
+          'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.';
+
+        if (!importedHasGoal) {
+          confirmationMessage =
+            'The imported data does not contain a valid goal. Importing will replace all your current data with empty data. This action is irreversible. The confirm button will be enabled in 10 seconds.';
+        }
+
+        setConfirmationState({
+          isOpen: true,
+          title: 'Overwrite All Data?',
+          message: confirmationMessage,
+          action: () => handleConfirmImport(importedState),
+          actionDelayMs: 10000,
+        });
+      } catch {
+        showMessage('Import failed: Invalid file format.', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExport = async () => {
+    if (!currentUser || !appState) return;
+    try {
+      const serializableData = firebaseService.serializeForExport(appState);
+      const dataStr = JSON.stringify(serializableData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showMessage('Data exported successfully.', 'success');
+    } catch (error) {
+      showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
+    }
+  };
+  // --- End Import / Export Logic ---
 
   if (isLoading || !appState) {
     return (
@@ -217,6 +297,14 @@ export default function DashboardPage() {
         }}
         actionDelayMs={confirmationState.actionDelayMs}
       />
+      {/* Hidden file input for import */}
+      <input
+        type="file"
+        id="dashboardImportFile"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleImportChange}
+      />
       <section className="py-8">
         {appState.goal ? (
           <div className="space-y-8">
@@ -233,28 +321,56 @@ export default function DashboardPage() {
             <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
             <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
             <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-              Define your primary objective and begin tracking your progress toward success.
+              Define your primary objective or import existing data to begin.
             </p>
-            <button
-              onClick={handleOpenNewGoalModal}
-              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-            >
-              <FiTarget size={20} />
-              Set Your First Goal
-            </button>
+            <div className="flex flex-col gap-4 justify-center sm:flex-row">
+              <button
+                onClick={handleOpenNewGoalModal}
+                className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
+              >
+                <FiTarget size={20} />
+                Set Your First Goal
+              </button>
+              <label
+                htmlFor="dashboardImportFile"
+                className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white rounded-full transition-all duration-200 cursor-pointer bg-white/10 group hover:bg-white/20 hover:scale-105"
+              >
+                <FiUpload size={20} />
+                Import Data
+              </label>
+            </div>
           </div>
         )}
       </section>
 
       {appState.goal && (
-        <section className="py-8 text-center">
-          <button
-            onClick={handleOpenNewGoalModal}
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white bg-red-600 rounded-full transition-all duration-200 cursor-pointer group hover:bg-red-700 hover:scale-105"
-          >
-            <FiPlusCircle size={20} />
-            Set New Goal
-          </button>
+        <section className="py-8">
+          <div className="p-8 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+            <h3 className="mb-4 text-2xl font-bold">Manage Your Goal Data</h3>
+            <div className="flex flex-col gap-4 justify-center sm:flex-row">
+              <button
+                onClick={handleOpenNewGoalModal}
+                className="inline-flex gap-3 items-center px-6 py-3 font-semibold text-white bg-red-600 rounded-full transition-all duration-200 cursor-pointer group hover:bg-red-700 hover:scale-105"
+              >
+                <FiPlusCircle size={20} />
+                Set New Goal
+              </button>
+              <label
+                htmlFor="dashboardImportFile"
+                className="inline-flex gap-3 items-center px-6 py-3 font-semibold text-white rounded-full transition-all duration-200 cursor-pointer bg-white/10 group hover:bg-white/20 hover:scale-105"
+              >
+                <FiUpload size={20} />
+                Import Data
+              </label>
+              <button
+                onClick={handleExport}
+                className="inline-flex gap-3 items-center px-6 py-3 font-semibold text-white rounded-full transition-all duration-200 cursor-pointer bg-white/10 group hover:bg-white/20 hover:scale-105"
+              >
+                <FiDownload size={20} />
+                Export Data
+              </button>
+            </div>
+          </div>
         </section>
       )}
 

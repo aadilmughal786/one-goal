@@ -71,7 +71,7 @@ const NavBar: React.FC = () => {
         <button
           onClick={() => setIsProfileDropdownOpen(prev => !prev)}
           disabled={authLoading}
-          className="bg-white/[0.05] cursor-pointer rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10 disabled:cursor-not-allowed"
+          className="bg-white/[0.05] cursor-pointer rounded-full border border-white/10 shadow-lg transition-colors duration-200 hover:bg-white/10"
         >
           {authLoading ? (
             <div className="w-8 h-8 bg-gray-700 rounded-full animate-pulse"></div>

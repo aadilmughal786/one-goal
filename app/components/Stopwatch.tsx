@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi';
+import { FiPlay, FiPause } from 'react-icons/fi';
+import { GrPowerReset } from 'react-icons/gr';
 
 interface StopwatchState {
   running: boolean;
@@ -93,14 +94,14 @@ const Stopwatch: React.FC = () => {
           onClick={state.running ? pause : start}
           className="flex justify-center items-center w-16 h-16 text-white rounded-full border transition-all duration-300 cursor-pointer sm:w-20 sm:h-20 bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
         >
-          {state.running ? <FiPause size={28} /> : <FiPlay size={28} className="ml-1" />}
+          {state.running ? <FiPause size={24} /> : <FiPlay size={24} className="ml-1" />}
         </button>
         <button
           onClick={reset}
           disabled={state.elapsedTime === 0 && !state.running}
           className="flex justify-center items-center w-16 h-16 text-white rounded-full border transition-all duration-300 cursor-pointer sm:w-20 sm:h-20 bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95 disabled:opacity-50"
         >
-          <FiRefreshCw size={28} />
+          <GrPowerReset size={24} />
         </button>
       </div>
     </div>

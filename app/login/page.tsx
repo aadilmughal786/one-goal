@@ -106,7 +106,7 @@ export default function LoginPage() {
           <button
             onClick={handleSignInWithGoogle}
             disabled={isSigningIn}
-            className="inline-flex gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex gap-3 justify-center items-center px-6 py-4 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl disabled:opacity-60"
           >
             {isSigningIn ? (
               <>
