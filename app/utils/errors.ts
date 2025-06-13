@@ -1,4 +1,4 @@
-// src/utils/errors.ts
+// app/utils/errors.ts
 
 /**
  * Base custom error class for the application.
@@ -9,7 +9,7 @@ export class AppBaseError extends Error {
 
   constructor(message: string, code?: string) {
     super(message);
-    this.name = this.constructor.name; // Sets the name property to the class name (e.g., 'FirebaseServiceError')
+    this.name = this.constructor.name; // Sets the name property to the class name
     this.code = code;
 
     // Capture stack trace, excluding the constructor call, for better debugging.
@@ -28,17 +28,5 @@ export class FirebaseServiceError extends AppBaseError {
     public originalError?: unknown
   ) {
     super(`Firebase Service Error: ${message}`, 'FIREBASE_SERVICE_FAILED');
-  }
-}
-
-/**
- * Specific error class for issues encountered in LocalStorageService.
- */
-export class LocalStorageError extends AppBaseError {
-  constructor(
-    message: string,
-    public originalError?: unknown
-  ) {
-    super(`Local Storage Error: ${message}`, 'LOCAL_STORAGE_FAILED');
   }
 }

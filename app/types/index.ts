@@ -2,49 +2,44 @@
 
 import { Timestamp } from 'firebase/firestore';
 
-/** Goal data structure. */
 export interface Goal {
   name: string;
   description?: string;
-  startDate: Timestamp; // Now exclusively Timestamp
-  endDate: Timestamp; // Now exclusively Timestamp
+  startDate: Timestamp;
+  endDate: Timestamp;
 }
 
-/** Represents a single day's progress and work satisfaction for a goal. */
+export enum SatisfactionLevel {
+  VERY_LOW = 1,
+  LOW = 2,
+  MEDIUM = 3,
+  HIGH = 4,
+  VERY_HIGH = 5,
+}
+
 export interface DailyProgress {
-  date: Timestamp; // The specific day this progress is recorded for
-  satisfactionLevel: number; // e.g., 1-5, or adjust as needed for specific options
-  notes?: string; // Optional notes for the day's progress
+  date: Timestamp;
+  satisfactionLevel: SatisfactionLevel;
+  timeSpentMinutes: number;
+  notes?: string;
 }
 
-/** Generic list item. */
 export interface ListItem {
   text: string;
-  id: number; // Unique ID
+  id: number;
 }
 
-/** To-Do list item. */
-export interface TodoItem extends ListItem {
+export interface TodoItem {
+  id: number;
+  text: string;
   completed: boolean;
+  startDate: Timestamp;
 }
 
-/** Overall application state. */
 export interface AppState {
   goal: Goal | null;
-  dailyProgress: DailyProgress[]; // New field to store daily progress entries
+  dailyProgress: DailyProgress[];
   notToDoList: ListItem[];
-  contextItems: ListItem[];
+  contextList: ListItem[];
   toDoList: TodoItem[];
 }
-
-/** Developer information. */
-export interface DeveloperInfo {
-  name: string;
-  title: string;
-  email: string;
-  linkedin: string;
-  github: string;
-  description: string;
-}
-
-// Removed: export type AppMode = 'guest' | 'google' | 'none';

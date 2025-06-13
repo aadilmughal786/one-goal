@@ -1,11 +1,93 @@
 // app/not-found.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FiHome } from 'react-icons/fi';
+import Image from 'next/image';
+import { FiHome, FiGrid, FiArrowRight } from 'react-icons/fi';
+import { firebaseService } from '@/services/firebaseService';
+import { User } from 'firebase/auth';
 
 export default function NotFoundPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = firebaseService.onAuthChange(user => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const renderActionLink = () => {
+    if (authLoading) {
+      return (
+        <button
+          disabled
+          className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full opacity-60 cursor-not-allowed"
+        >
+          <svg
+            className="w-5 h-5 text-black animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          Loading...
+        </button>
+      );
+    }
+
+    if (currentUser) {
+      return (
+        <Link
+          href="/dashboard"
+          className="inline-flex gap-3 items-center py-2 pr-6 pl-2 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+        >
+          {currentUser.photoURL ? (
+            <Image
+              src={currentUser.photoURL}
+              alt="Your profile picture"
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+          ) : (
+            <span className="flex justify-center items-center w-8 h-8 bg-gray-200 rounded-full">
+              <FiGrid size={20} />
+            </span>
+          )}
+          <span className="mx-2">Go to Dashboard</span>
+          <FiArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        href="/"
+        className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+      >
+        <FiHome size={20} />
+        Go to Home
+      </Link>
+    );
+  };
+
   return (
     <div className="relative z-10 px-6 mx-auto max-w-4xl text-center py-15">
       {/* 404 Text */}
@@ -24,14 +106,8 @@ export default function NotFoundPage() {
       </p>
 
       {/* Action Buttons */}
-      <div className="flex flex-col gap-4 justify-center items-center sm:flex-row sm:gap-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
-        >
-          <FiHome size={20} />
-          Go Home
-        </Link>
+      <div className="flex flex-col gap-4 justify-center items-center h-16 sm:flex-row sm:gap-6">
+        {renderActionLink()}
       </div>
     </div>
   );

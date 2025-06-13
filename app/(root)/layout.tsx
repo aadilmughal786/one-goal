@@ -1,24 +1,19 @@
 // app/(root)/layout.tsx
-'use client'; // Added 'use client' directive as useEffect is a client-side hook
+'use client';
 
-import React from 'react'; // Import useEffect and React
+import React from 'react';
 import NavBar from '@/components/NavBar';
-import Footer from '../components/Footer'; // Corrected import path for Footer
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // This layout wraps all authenticated pages and provides the NavBar.
   return (
-    <div className="min-h-screen text-white bg-black">
-      {/* Subtle background */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-white/40"></div>
-      </div>
+    <>
       <NavBar />
       {children}
-      <Footer /> {/* Added Footer */}
-    </div>
+    </>
   );
 }

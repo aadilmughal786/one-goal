@@ -5,35 +5,42 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
-// Import types
-import { AppState, ListItem } from '@/types';
-
-// Import Firebase service functions
 import { firebaseService } from '@/services/firebaseService';
-
-// Component imports
+import { ListItem } from '@/types';
+import ListComponent from '@/components/List'; // Corrected import path
 import ToastMessage from '@/components/ToastMessage';
-import NotToDoList from '@/components/NotToDoList';
-import ContextList from '@/components/ContextList';
+import { RiAlarmWarningLine } from 'react-icons/ri';
+import { FiBookOpen } from 'react-icons/fi';
 
-// Initial state for the persistent data
-const initialPersistentAppState: AppState = {
-  goal: null,
-  notToDoList: [],
-  contextItems: [],
-  toDoList: [],
-  dailyProgress: [],
-};
+const ListsPageSkeletonLoader = () => (
+  <div className="space-y-8 animate-pulse">
+    {[...Array(2)].map((_, i) => (
+      <div key={i} className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
+        <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
+        <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
+        <div className="mb-6 w-3/4 h-4 rounded-lg bg-white/10"></div>
+        <div className="space-y-3">
+          <div className="w-full h-12 rounded-lg bg-white/5"></div>
+          <div className="w-full h-12 rounded-lg bg-white/5"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function ListsPage() {
   const router = useRouter();
-
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [appState, setAppState] = useState<AppState>(initialPersistentAppState);
+  const [notToDoList, setNotToDoList] = useState<ListItem[]>([]);
+  const [contextList, setContextList] = useState<ListItem[]>([]);
 
+  // State for editing
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+
+  // State for toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
@@ -42,217 +49,159 @@ export default function ListsPage() {
     setToastType(type);
     setTimeout(() => {
       setToastMessage(null);
-    }, 6000);
+    }, 5000);
   }, []);
 
-  // --- Initial Data Loading Logic (Firebase only) ---
   useEffect(() => {
-    const loadInitialData = async () => {
-      setDataLoading(true);
-      setAuthLoading(true);
+    const unsubscribe = firebaseService.onAuthChange(user => {
+      if (user) {
+        setCurrentUser(user);
+        firebaseService.getUserData(user.uid).then(data => {
+          setNotToDoList(data.notToDoList || []);
+          setContextList(data.contextList || []);
+          setIsLoading(false);
+        });
+      } else {
+        router.replace('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
-      const unsubscribeAuth = firebaseService.onAuthChange(async user => {
-        setAuthLoading(false);
-        if (user) {
-          setCurrentUser(user);
-          try {
-            const loadedFirebaseData = await firebaseService.loadUserData(user.uid);
-            const normalizedData: AppState = {
-              goal: loadedFirebaseData.goal,
-              notToDoList: loadedFirebaseData.notToDoList || [],
-              contextItems: loadedFirebaseData.contextItems || [],
-              toDoList: loadedFirebaseData.toDoList || [],
-              dailyProgress: loadedFirebaseData.dailyProgress || [],
-            };
-            setAppState(normalizedData);
-            // Removed: showMessage('Firebase data loaded.', 'success');
-          } catch (firebaseLoadError: unknown) {
-            let errorMessage = 'Unknown error';
-            if (firebaseLoadError instanceof Error) {
-              errorMessage = firebaseLoadError.message;
-            }
-            showMessage(`Failed to load Firebase data: ${errorMessage}`, 'error');
-            setAppState(initialPersistentAppState);
-          }
-        } else {
-          setCurrentUser(null);
-          router.replace('/login');
-        }
-        setDataLoading(false);
-      });
-      return () => unsubscribeAuth();
-    };
-
-    loadInitialData();
-  }, [router, showMessage]);
-
-  // --- Data Persistence Logic ---
-  useEffect(() => {
-    if (!authLoading && !dataLoading && currentUser) {
-      const dataToSave: AppState = appState;
-
-      firebaseService.saveUserData(currentUser.uid, dataToSave).catch((error: unknown) => {
-        let errorMessage = 'Unknown error';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-        showMessage(`Failed to save data to Firebase: ${errorMessage}`, 'error');
-      });
-    }
-  }, [
-    appState.notToDoList,
-    appState.contextItems,
-    appState.goal,
-    appState.toDoList,
-    appState.dailyProgress,
-    currentUser,
-    authLoading,
-    dataLoading,
-    showMessage,
-    appState,
-  ]);
-
-  // --- List Management Functions (for Not To Do and Context Lists) ---
   const addToList = useCallback(
-    async (listType: 'notToDoList' | 'contextItems', text: string) => {
+    async (listType: 'notToDoList' | 'contextList', text: string) => {
       if (!text.trim()) {
-        showMessage(
-          `Please enter an item for ${listType === 'notToDoList' ? 'What Not To Do' : 'Context'}!`,
-          'error'
-        );
+        showMessage('Item cannot be empty.', 'error');
         return;
       }
-      const newItem: ListItem = { text, id: Date.now() };
+      if (!currentUser) return;
+      const newItem: ListItem = { text: text.trim(), id: Date.now() };
 
-      if (currentUser) {
-        try {
-          await firebaseService.addListItem(currentUser.uid, listType, newItem);
-          setAppState(prev => ({
-            ...prev,
-            [listType]: [...prev[listType], newItem],
-          }));
-          // Removed: showMessage(`${listType === 'notToDoList' ? 'Item added to Not To Do' : 'Context item added'}!`, 'success');
-        } catch (error: unknown) {
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Failed to add item to ${listType}: ${errorMessage}`, 'error');
-        }
+      if (listType === 'notToDoList') {
+        setNotToDoList(prev => [...prev, newItem]);
       } else {
-        showMessage(`You must be logged in to add an item to ${listType}.`, 'error');
+        setContextList(prev => [...prev, newItem]);
       }
+      await firebaseService.addItemToList(currentUser.uid, listType, newItem);
     },
-    [showMessage, currentUser]
+    [currentUser, showMessage]
   );
 
   const removeFromList = useCallback(
-    async (listType: 'notToDoList' | 'contextItems', id: number) => {
-      if (currentUser) {
-        try {
-          await firebaseService.deleteListItem(currentUser.uid, listType, id);
-          setAppState(prev => ({
-            ...prev,
-            [listType]: prev[listType].filter(item => item.id !== id),
-          }));
-          // Removed: showMessage(`${listType === 'notToDoList' ? 'Item removed from Not To Do' : 'Context item removed'}!`, 'info');
-        } catch (error: unknown) {
-          let errorMessage = 'Unknown error';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          }
-          showMessage(`Failed to remove item from ${listType}: ${errorMessage}`, 'error');
-        }
+    async (listType: 'notToDoList' | 'contextList', id: number) => {
+      if (!currentUser) return;
+      if (listType === 'notToDoList') {
+        setNotToDoList(prev => prev.filter(item => item.id !== id));
       } else {
-        showMessage(`You must be logged in to remove an item from ${listType}.`, 'error');
+        setContextList(prev => prev.filter(item => item.id !== id));
       }
+      await firebaseService.removeItemFromList(currentUser.uid, listType, id);
     },
-    [showMessage, currentUser]
+    [currentUser]
   );
 
-  // Skeleton Loader for Lists Page
-  const ListsSkeletonLoader = () => (
-    <div className="flex flex-col gap-6 animate-pulse">
-      <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-        <div className="mb-6 w-1/2 h-8 rounded-md bg-white/10"></div>
-        <div className="flex flex-col gap-2 mb-4 sm:flex-row">
-          <div className="flex-1 h-12 rounded-lg bg-white/10"></div>
-          <div className="w-20 h-12 rounded-lg bg-white/10"></div>
-        </div>
-        <ul className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <li
-              key={i}
-              className="flex justify-between items-center p-3 h-14 rounded-md bg-white/5"
-            >
-              <div className="w-3/4 h-4 rounded-md bg-white/10"></div>
-              <div className="w-5 h-5 rounded-full bg-white/10"></div>
-            </li>
-          ))}
-        </ul>
-      </div>
+  const updateItem = useCallback(
+    async (listType: 'notToDoList' | 'contextList', id: number, text: string) => {
+      if (!text.trim()) {
+        showMessage('Item cannot be empty.', 'error');
+        return;
+      }
+      if (!currentUser) return;
 
-      <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-        <div className="mb-6 w-1/2 h-8 rounded-md bg-white/10"></div>
-        <div className="flex flex-col gap-2 mb-4 sm:flex-row">
-          <div className="flex-1 h-12 rounded-lg bg-white/10"></div>
-          <div className="w-20 h-12 rounded-lg bg-white/10"></div>
-        </div>
-        <ul className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <li
-              key={i}
-              className="flex justify-between items-center p-3 h-14 rounded-md bg-white/5"
-            >
-              <div className="w-3/4 h-4 rounded-md bg-white/10"></div>
-              <div className="w-5 h-5 rounded-full bg-white/10"></div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+      if (listType === 'notToDoList') {
+        setNotToDoList(prev =>
+          prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
+        );
+      } else {
+        setContextList(prev =>
+          prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
+        );
+      }
+
+      await firebaseService.updateItemInList(currentUser.uid, listType, id, { text: text.trim() });
+      setEditingItemId(null);
+      setEditText('');
+    },
+    [currentUser, showMessage]
   );
 
-  // --- UI Rendering ---
-  if (authLoading || dataLoading) {
+  if (isLoading) {
     return (
       <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+        <ToastMessage message={toastMessage} type={toastType} />
         <div className="container flex-grow p-4 mx-auto max-w-4xl">
           <section className="py-8">
-            <ListsSkeletonLoader />
+            <div className="mb-8 text-center">
+              <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">Supporting Lists</h2>
+            </div>
+            <ListsPageSkeletonLoader />
           </section>
         </div>
-        <ToastMessage message={toastMessage} type={toastType} duration={5000} />
-      </main>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <main className="flex justify-center items-center min-h-screen text-white bg-black font-poppins">
-        <p className="text-xl text-white/70">Redirecting to login...</p>
       </main>
     );
   }
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <ToastMessage message={toastMessage} type={toastType} duration={5000} />
-
+      <ToastMessage message={toastMessage} type={toastType} />
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <section className="py-8">
-          <h2 className="mb-8 text-3xl font-bold text-center text-white">Your Focused Lists</h2>
-          <div className="flex flex-col gap-6">
-            <NotToDoList
-              list={appState.notToDoList}
-              addToList={(text: string) => addToList('notToDoList', text)}
-              removeFromList={(id: number) => removeFromList('notToDoList', id)}
-            />
-            <ContextList
-              list={appState.contextItems}
-              addToList={(text: string) => addToList('contextItems', text)}
-              removeFromList={(id: number) => removeFromList('contextItems', id)}
-            />
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
+              Your Supporting Lists
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg text-white/70">
+              Your main goal is the target, but these lists provide the crucial guardrails and
+              knowledge to keep you on track.
+            </p>
+          </div>
+
+          <div className="space-y-12">
+            <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+              <div className="flex gap-3 items-center mb-2">
+                <RiAlarmWarningLine size={24} className="text-red-400" />
+                <h3 className="text-2xl font-bold text-white">What Not To Do</h3>
+              </div>
+              <p className="mb-6 text-white/60">
+                Success is defined as much by what you don&apos;t do as by what you do. Use this
+                list to identify and consciously avoid distractions and time-wasting habits.
+              </p>
+              <ListComponent
+                list={notToDoList}
+                addToList={text => addToList('notToDoList', text)}
+                removeFromList={id => removeFromList('notToDoList', id)}
+                updateItem={(id, text) => updateItem('notToDoList', id, text)}
+                placeholder="Add a distraction to avoid..."
+                themeColor="red"
+                editingItemId={editingItemId}
+                setEditingItemId={setEditingItemId}
+                editText={editText}
+                setEditText={setEditText}
+              />
+            </div>
+
+            <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+              <div className="flex gap-3 items-center mb-2">
+                <FiBookOpen size={22} className="text-blue-400" />
+                <h3 className="text-2xl font-bold text-white">Contextual Notes & Learnings</h3>
+              </div>
+              <p className="mb-6 text-white/60">
+                This is your knowledge base. Jot down important insights, key learnings, useful
+                links, or past successes to build momentum and inform your journey.
+              </p>
+              <ListComponent
+                list={contextList}
+                addToList={text => addToList('contextList', text)}
+                removeFromList={id => removeFromList('contextList', id)}
+                updateItem={(id, text) => updateItem('contextList', id, text)}
+                placeholder="Add a note or learning..."
+                themeColor="blue"
+                editingItemId={editingItemId}
+                setEditingItemId={setEditingItemId}
+                editText={editText}
+                setEditText={setEditText}
+              />
+            </div>
           </div>
         </section>
       </div>

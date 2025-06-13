@@ -9,7 +9,6 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
-  // Removed: Unsubscribe,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -19,14 +18,40 @@ import {
   setDoc,
   updateDoc,
   arrayUnion,
-  // arrayRemove, // Added for potential future use with DailyProgress
+  Timestamp,
 } from 'firebase/firestore';
-import { AppState, Goal, ListItem, TodoItem, DailyProgress } from '@/types'; // Import DailyProgress
+import { AppState, Goal, ListItem, TodoItem, DailyProgress, SatisfactionLevel } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 
 /**
- * FirebaseService class for managing all Firebase-related operations,
- * including authentication and Firestore data persistence.
+ * A type representing the raw, serializable state of the application for import/export.
+ * All Timestamp objects are converted to ISO 8601 strings.
+ */
+interface SerializableAppState {
+  goal: {
+    name: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+  } | null;
+  dailyProgress: Array<{
+    date: string;
+    satisfactionLevel: SatisfactionLevel;
+    timeSpentMinutes: number;
+    notes?: string;
+  }>;
+  notToDoList: ListItem[];
+  contextList: ListItem[];
+  toDoList: Array<{
+    id: number;
+    text: string;
+    completed: boolean;
+    startDate: string;
+  }>;
+}
+
+/**
+ * Manages all Firebase interactions, including authentication and Firestore database operations.
  */
 class FirebaseService {
   private app: FirebaseApp;
@@ -48,19 +73,20 @@ class FirebaseService {
     this.db = getFirestore(this.app);
   }
 
+  // --- Authentication ---
+
   /**
-   * Listens for Firebase authentication state changes.
-   * @param callback A function to call with the current User object or null.
-   * @returns An unsubscribe function.
+   * Listens for changes to the user's authentication state.
+   * @param callback A function to call with the User object or null.
+   * @returns An unsubscribe function from Firebase.
    */
   onAuthChange(callback: (user: User | null) => void): () => void {
-    // Changed return type to simple void function
     return onAuthStateChanged(this.auth, callback);
   }
 
   /**
-   * Signs in the user with Google.
-   * @returns A Promise that resolves with the User object or rejects with an error.
+   * Initiates the Google Sign-In process via a popup.
+   * @returns A Promise that resolves with the signed-in User object.
    */
   async signInWithGoogle(): Promise<User | null> {
     try {
@@ -73,7 +99,7 @@ class FirebaseService {
   }
 
   /**
-   * Signs out the current user.
+   * Signs out the currently authenticated user.
    * @returns A Promise that resolves when sign-out is complete.
    */
   async signOutUser(): Promise<void> {
@@ -84,36 +110,28 @@ class FirebaseService {
     }
   }
 
+  // --- Core Data Management (Import/Export/Reset) ---
+
   /**
-   * Loads user data from Firestore. If no data exists, it creates an initial document.
+   * Retrieves the entire user data object from Firestore.
+   * This serves as the source for the "Export Data" feature and initial app state loading.
+   * It also fills in any missed days for daily progress tracking.
    * @param userId The UID of the current user.
-   * @returns A Promise that resolves with the loaded AppState.
+   * @returns A Promise that resolves with the complete AppState.
    */
-  async loadUserData(userId: string): Promise<AppState> {
+  async getUserData(userId: string): Promise<AppState> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
         const firestoreData = docSnap.data() as AppState;
-        // Ensure all fields are initialized, especially new ones like dailyProgress
-        const loadedData: AppState = {
-          goal: firestoreData.goal || null,
-          notToDoList: firestoreData.notToDoList || [],
-          contextItems: firestoreData.contextItems || [],
-          toDoList: firestoreData.toDoList || [],
-          dailyProgress: firestoreData.dailyProgress || [], // Initialize dailyProgress
-        };
-        return loadedData;
+        const filledDailyProgress = this.fillMissingProgress(
+          firestoreData.goal,
+          firestoreData.dailyProgress || []
+        );
+        return { ...firestoreData, dailyProgress: filledDailyProgress };
       } else {
-        const initialData: AppState = {
-          goal: null,
-          notToDoList: [],
-          contextItems: [],
-          toDoList: [],
-          dailyProgress: [], // Initialize dailyProgress for new users
-        };
-        await setDoc(userDocRef, initialData);
-        return initialData;
+        return this.resetUserData(userId);
       }
     } catch (error: unknown) {
       throw new FirebaseServiceError(`Failed to load user data for ID: ${userId}.`, error);
@@ -121,220 +139,256 @@ class FirebaseService {
   }
 
   /**
-   * Saves user data to Firestore. Use for saving the entire state.
+   * Overwrites the user's entire data object in Firestore. Used by the "Import Data" feature.
    * @param userId The UID of the current user.
-   * @param dataToSave The data to save.
-   * @returns A Promise that resolves when data is saved.
+   * @param dataToSet The complete AppState object to save.
    */
-  async saveUserData(userId: string, dataToSave: AppState): Promise<void> {
+  async setUserData(userId: string, dataToSet: AppState): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
-      await setDoc(userDocRef, dataToSave, { merge: true });
+      await setDoc(userDocRef, dataToSet);
     } catch (error: unknown) {
-      throw new FirebaseServiceError(`Failed to save user data for ID: ${userId}.`, error);
+      throw new FirebaseServiceError(`Failed to set user data for ID: ${userId}.`, error);
     }
   }
 
   /**
-   * Updates the user's main goal data in Firestore.
+   * Resets the user's data to the initial empty state. Used when creating a new goal.
    * @param userId The UID of the current user.
-   * @param goal The new goal object, or null to remove the goal.
-   * @returns A Promise that resolves when the goal is updated.
+   * @returns A Promise that resolves with the initial, empty AppState.
+   */
+  async resetUserData(userId: string): Promise<AppState> {
+    const initialData: AppState = {
+      goal: null,
+      notToDoList: [],
+      contextList: [],
+      toDoList: [],
+      dailyProgress: [],
+    };
+    await this.setUserData(userId, initialData);
+    return initialData;
+  }
+
+  // --- Import / Export Helpers ---
+
+  /** * Converts AppState with Firestore Timestamps to a serializable object with ISO date strings.
+   * @param appState The current state of the application.
+   * @returns A plain JavaScript object suitable for JSON serialization.
+   */
+  serializeForExport(appState: AppState): SerializableAppState {
+    return {
+      goal: appState.goal
+        ? {
+            ...appState.goal,
+            startDate: appState.goal.startDate.toDate().toISOString(),
+            endDate: appState.goal.endDate.toDate().toISOString(),
+          }
+        : null,
+      dailyProgress: appState.dailyProgress.map(p => ({
+        ...p,
+        date: p.date.toDate().toISOString(),
+      })),
+      toDoList: appState.toDoList.map(t => ({
+        ...t,
+        startDate: t.startDate.toDate().toISOString(),
+      })),
+      notToDoList: appState.notToDoList,
+      contextList: appState.contextList,
+    };
+  }
+
+  /** * Converts a raw imported object with date strings back to an AppState with Firestore Timestamps.
+   * @param importedData The raw data object, typically from a JSON file.
+   * @returns A valid AppState object with Timestamps.
+   */
+  deserializeForImport(importedData: Partial<SerializableAppState>): AppState {
+    const safeToDate = (dateString: string | undefined): Timestamp => {
+      if (!dateString) return Timestamp.now();
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? Timestamp.now() : Timestamp.fromDate(date);
+    };
+
+    return {
+      goal: importedData.goal
+        ? {
+            ...importedData.goal,
+            startDate: safeToDate(importedData.goal.startDate),
+            endDate: safeToDate(importedData.goal.endDate),
+          }
+        : null,
+      dailyProgress: (importedData.dailyProgress || []).map(p => ({
+        ...p,
+        date: safeToDate(p.date),
+      })),
+      toDoList: (importedData.toDoList || []).map(t => ({
+        ...t,
+        startDate: safeToDate(t.startDate),
+      })),
+      notToDoList: importedData.notToDoList || [],
+      contextList: importedData.contextList || [],
+    };
+  }
+
+  // --- Goal Management ---
+
+  /**
+   * Creates or updates the user's main goal. Pass `null` to remove the goal.
+   * @param userId The UID of the current user.
+   * @param goal The new Goal object, or null.
    */
   async updateGoal(userId: string, goal: Goal | null): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
-      await updateDoc(userDocRef, { goal: goal });
+      await updateDoc(userDocRef, { goal });
     } catch (error: unknown) {
       throw new FirebaseServiceError(`Failed to update goal for user ID: ${userId}.`, error);
     }
   }
 
+  // --- Generic List Management ---
+
   /**
-   * Adds a new item to a specified list (notToDoList, contextItems, or toDoList).
+   * Adds an item to a specified list ('notToDoList', 'contextList', or 'toDoList').
    * @param userId The UID of the current user.
-   * @param listType The name of the list to add the item to.
-   * @param newItem The item to add.
-   * @returns A Promise that resolves when the item is added.
+   * @param listName The key of the list in the AppState.
+   * @param item The ListItem or TodoItem to add.
    */
-  async addListItem(
+  async addItemToList(
     userId: string,
-    listType: 'notToDoList' | 'contextItems' | 'toDoList',
-    newItem: ListItem | TodoItem
+    listName: 'notToDoList' | 'contextList' | 'toDoList',
+    item: ListItem | TodoItem
   ): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
-      await updateDoc(userDocRef, {
-        [listType]: arrayUnion(newItem),
-      });
+      await updateDoc(userDocRef, { [listName]: arrayUnion(item) });
     } catch (error: unknown) {
-      throw new FirebaseServiceError(
-        `Failed to add item to ${listType} for user ID: ${userId}.`,
-        error
-      );
+      throw new FirebaseServiceError(`Failed to add item to ${listName}.`, error);
     }
   }
 
   /**
-   * Deletes an item from a specified list based on its ID.
-   * This operation reads the current list, filters out the item, and writes the modified list back.
+   * Updates an existing item within a specified list.
    * @param userId The UID of the current user.
-   * @param listType The name of the list to delete from.
-   * @param itemId The ID of the item to delete.
-   * @returns A Promise that resolves when the item is deleted.
+   * @param listName The key of the list in the AppState.
+   * @param itemId The ID of the item to update.
+   * @param updates A partial object with the fields to update.
    */
-  async deleteListItem(
+  async updateItemInList(
     userId: string,
-    listType: 'notToDoList' | 'contextItems' | 'toDoList',
+    listName: 'notToDoList' | 'contextList' | 'toDoList',
+    itemId: number,
+    updates: Partial<ListItem | TodoItem>
+  ): Promise<void> {
+    const docRef = doc(this.db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const currentData = docSnap.data() as AppState;
+      const list = (currentData[listName] || []) as Array<ListItem | TodoItem>;
+      const updatedList = list.map(item => (item.id === itemId ? { ...item, ...updates } : item));
+      await updateDoc(docRef, { [listName]: updatedList });
+    }
+  }
+
+  /**
+   * Removes an item from a specified list by its ID.
+   * @param userId The UID of the current user.
+   * @param listName The key of the list in the AppState.
+   * @param itemId The ID of the item to remove.
+   */
+  async removeItemFromList(
+    userId: string,
+    listName: 'notToDoList' | 'contextList' | 'toDoList',
     itemId: number
   ): Promise<void> {
-    const userDocRef = doc(this.db, 'users', userId);
-    try {
-      const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists()) {
-        const currentData = docSnap.data() as AppState;
-        const updatedList = currentData[listType].filter(item => item.id !== itemId);
-        await updateDoc(userDocRef, { [listType]: updatedList });
-      } else {
-        throw new FirebaseServiceError(
-          `User document not found for ID: ${userId} when trying to delete item.`,
-          null
-        );
-      }
-    } catch (error: unknown) {
-      if (error instanceof FirebaseServiceError) throw error;
-      throw new FirebaseServiceError(
-        `Failed to delete item from ${listType} for user ID: ${userId}.`,
-        error
-      );
+    const docRef = doc(this.db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const currentData = docSnap.data() as AppState;
+      const list = (currentData[listName] || []) as Array<ListItem | TodoItem>;
+      const updatedList = list.filter(item => item.id !== itemId);
+      await updateDoc(docRef, { [listName]: updatedList });
     }
   }
 
+  // --- Daily Progress Management ---
+
   /**
-   * Updates the text of an item in 'notToDoList', 'contextItems', or 'toDoList'.
-   * This operation reads the current list, maps to update the specific item, and writes the modified list back.
+   * Creates or updates a progress entry for a specific day.
    * @param userId The UID of the current user.
-   * @param listType The name of the list to update.
-   * @param itemId The ID of the item to update.
-   * @param updatedText The new text for the item.
-   * @returns A Promise that resolves when the item is updated.
+   * @param progressData The DailyProgress object to save.
    */
-  async updateListItemText(
-    userId: string,
-    listType: 'notToDoList' | 'contextItems' | 'toDoList',
-    itemId: number,
-    updatedText: string
-  ): Promise<void> {
+  async saveDailyProgress(userId: string, progressData: DailyProgress): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
         const currentData = docSnap.data() as AppState;
-        const updatedList = currentData[listType].map(item =>
-          item.id === itemId ? { ...item, text: updatedText } : item
-        );
-        await updateDoc(userDocRef, { [listType]: updatedList });
-      } else {
-        throw new FirebaseServiceError(
-          `User document not found for ID: ${userId} when trying to update item text.`,
-          null
-        );
-      }
-    } catch (error: unknown) {
-      if (error instanceof FirebaseServiceError) throw error;
-      throw new FirebaseServiceError(
-        `Failed to update item text in ${listType} for user ID: ${userId}.`,
-        error
-      );
-    }
-  }
-
-  /**
-   * Toggles the completion status of a specific To-Do item.
-   * This operation reads the current list, maps to update the specific item, and writes the modified list back.
-   * @param userId The UID of the current user.
-   * @param itemId The ID of the To-Do item to toggle.
-   * @param completed The new completion status.
-   * @returns A Promise that resolves when the item is updated.
-   */
-  async toggleTodoItemCompletion(
-    userId: string,
-    itemId: number,
-    completed: boolean
-  ): Promise<void> {
-    const userDocRef = doc(this.db, 'users', userId);
-    try {
-      const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists()) {
-        const currentData = docSnap.data() as AppState;
-        const updatedToDoList = currentData.toDoList.map(item =>
-          item.id === itemId ? { ...item, completed: completed } : item
-        );
-        await updateDoc(userDocRef, { toDoList: updatedToDoList });
-      } else {
-        throw new FirebaseServiceError(
-          `User document not found for ID: ${userId} when trying to toggle todo item completion.`,
-          null
-        );
-      }
-    } catch (error: unknown) {
-      if (error instanceof FirebaseServiceError) throw error;
-      throw new FirebaseServiceError(
-        `Failed to toggle todo item completion for user ID: ${userId}.`,
-        error
-      );
-    }
-  }
-
-  /**
-   * Adds or updates a DailyProgress entry for a specific user and date.
-   * @param userId The UID of the current user.
-   * @param newProgress The DailyProgress object to add or update.
-   */
-  async addOrUpdateDailyProgress(userId: string, newProgress: DailyProgress): Promise<void> {
-    const userDocRef = doc(this.db, 'users', userId);
-    try {
-      const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists()) {
-        const currentData = docSnap.data() as AppState;
-        const existingDailyProgress = currentData.dailyProgress || [];
-
-        // Normalize newProgress.date to a comparable format (e.g., YYYY-MM-DD string)
-        const newProgressDateKey = newProgress.date.toDate().toISOString().slice(0, 10);
-
-        let updatedDailyProgress: DailyProgress[];
-        const existingIndex = existingDailyProgress.findIndex(
-          item => item.date.toDate().toISOString().slice(0, 10) === newProgressDateKey
+        const existingProgress = currentData.dailyProgress || [];
+        const dateKey = progressData.date.toDate().toISOString().split('T')[0];
+        const itemIndex = existingProgress.findIndex(
+          p => p.date.toDate().toISOString().split('T')[0] === dateKey
         );
 
-        if (existingIndex > -1) {
-          // Update existing entry
-          updatedDailyProgress = [...existingDailyProgress];
-          updatedDailyProgress[existingIndex] = newProgress;
+        let updatedProgress: DailyProgress[];
+        if (itemIndex > -1) {
+          updatedProgress = [...existingProgress];
+          updatedProgress[itemIndex] = progressData;
         } else {
-          // Add new entry
-          updatedDailyProgress = [...existingDailyProgress, newProgress];
+          updatedProgress = [...existingProgress, progressData];
         }
 
-        await updateDoc(userDocRef, { dailyProgress: updatedDailyProgress });
-      } else {
-        // If user document doesn't exist, create it with this progress
-        const initialData: AppState = {
-          goal: null,
-          notToDoList: [],
-          contextItems: [],
-          toDoList: [],
-          dailyProgress: [newProgress],
-        };
-        await setDoc(userDocRef, initialData);
+        updatedProgress.sort((a, b) => a.date.toMillis() - b.date.toMillis());
+        await updateDoc(userDocRef, { dailyProgress: updatedProgress });
       }
     } catch (error: unknown) {
-      if (error instanceof FirebaseServiceError) throw error;
       throw new FirebaseServiceError(
-        `Failed to add or update daily progress for user ID: ${userId}.`,
+        `Failed to save daily progress for user ID: ${userId}.`,
         error
       );
     }
+  }
+
+  // --- Private Helper Methods ---
+
+  /** Fills in any past days that were not logged with a default 'Very Low' entry. */
+  private fillMissingProgress(
+    goal: Goal | null,
+    existingProgress: DailyProgress[]
+  ): DailyProgress[] {
+    if (!goal) return existingProgress;
+
+    const filledProgress: DailyProgress[] = [];
+    const progressMap = new Map<string, DailyProgress>();
+    existingProgress.forEach(p => {
+      const dateKey = p.date.toDate().toISOString().split('T')[0];
+      progressMap.set(dateKey, p);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentDate = goal.startDate.toDate();
+    currentDate.setHours(0, 0, 0, 0);
+
+    while (currentDate <= today && currentDate <= goal.endDate.toDate()) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      if (progressMap.has(dateKey)) {
+        filledProgress.push(progressMap.get(dateKey)!);
+      } else {
+        filledProgress.push({
+          date: Timestamp.fromDate(currentDate),
+          satisfactionLevel: SatisfactionLevel.VERY_LOW,
+          timeSpentMinutes: 0,
+          notes: 'No entry recorded.',
+        });
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const futureProgress = existingProgress.filter(p => p.date.toDate() > today);
+    return [...filledProgress, ...futureProgress].sort(
+      (a, b) => a.date.toMillis() - b.date.toMillis()
+    );
   }
 }
 
