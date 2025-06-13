@@ -15,6 +15,7 @@ import CountdownCard from '@/components/dashboard/CountdownCard';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import Charts from '@/components/dashboard/Charts';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 import { MdRocketLaunch } from 'react-icons/md';
 import { FiTarget, FiPlusCircle } from 'react-icons/fi';
@@ -58,6 +59,14 @@ export default function DashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
+  const [confirmationState, setConfirmationState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    action: (() => void) | null;
+    actionDelayMs?: number;
+  }>({ isOpen: false, title: '', message: '', action: null });
+
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
@@ -66,12 +75,13 @@ export default function DashboardPage() {
     }, 5000);
   }, []);
 
-  const openConfirmationModal = useCallback(
-    (title: string, message: string, action: () => void) => {
-      action();
-    },
-    []
-  );
+  const openConfirmationModal = (title: string, message: string, action: () => void) => {
+    setConfirmationState({ isOpen: true, title, message, action, actionDelayMs: 3000 });
+  };
+
+  const closeConfirmationModal = () => {
+    setConfirmationState({ isOpen: false, title: '', message: '', action: null });
+  };
 
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(user => {
@@ -125,6 +135,7 @@ export default function DashboardPage() {
         });
         setIsEditMode(false);
         setIsGoalModalOpen(true);
+        closeConfirmationModal();
       });
     };
 
@@ -190,6 +201,22 @@ export default function DashboardPage() {
   return (
     <div className="container p-4 mx-auto max-w-4xl">
       <ToastMessage message={toastMessage} type={toastType} />
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        onClose={closeConfirmationModal}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        confirmButton={{
+          text: 'Confirm & Erase Data',
+          onClick: confirmationState.action || (() => {}),
+          className: 'bg-red-600 text-white hover:bg-red-700',
+        }}
+        cancelButton={{
+          text: 'Cancel',
+          onClick: closeConfirmationModal,
+        }}
+        actionDelayMs={confirmationState.actionDelayMs}
+      />
       <section className="py-8">
         {appState.goal ? (
           <div className="space-y-8">

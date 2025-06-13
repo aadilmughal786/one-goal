@@ -6,7 +6,7 @@ import { User } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FiDownload, FiUpload, FiLogOut, FiEdit, FiPlusCircle } from 'react-icons/fi';
+import { FiDownload, FiUpload, FiLogOut } from 'react-icons/fi';
 import { LuBadgeInfo } from 'react-icons/lu';
 import { firebaseService } from '@/services/firebaseService';
 import ToastMessage from '@/components/ToastMessage';
@@ -99,24 +99,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
     onClose();
   };
 
-  const handleUpdateGoal = () => {
-    router.push('/dashboard?action=updateGoal');
-    onClose();
-  };
-
-  const handleNewGoal = () => {
-    const action = () => {
-      router.push('/dashboard?action=newGoal');
-      closeConfirmationModal();
-    };
-    openConfirmationModal(
-      'Start a New Goal?',
-      'This will erase your current goal and all associated data. Are you sure?',
-      action
-    );
-    onClose();
-  };
-
   return (
     <>
       <ToastMessage message={toastMessage} type={toastType} />
@@ -147,21 +129,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
           </div>
         </div>
         <div className="py-2">
-          <button
-            onClick={handleUpdateGoal}
-            className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors cursor-pointer text-white/90 hover:bg-white/10"
-          >
-            <FiEdit /> Update Current Goal
-          </button>
-          <button
-            onClick={handleNewGoal}
-            className="flex gap-3 items-center px-4 py-2 w-full text-left transition-colors cursor-pointer text-white/90 hover:bg-white/10"
-          >
-            <FiPlusCircle /> Set New Goal
-          </button>
-        </div>
-        <hr className="border-white/10" />
-        <div className="py-2">
           <input
             type="file"
             id="navImportFile"
@@ -187,6 +154,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
           <Link
             href="/"
             className="flex gap-3 items-center px-4 py-2 transition-colors cursor-pointer text-white/90 hover:bg-white/10"
+            onClick={onClose}
           >
             <LuBadgeInfo /> About Page
           </Link>
