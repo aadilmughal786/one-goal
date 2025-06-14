@@ -9,7 +9,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // This layout wraps all authenticated pages and provides the NavBar.
   return (
     <>
       <NavBar />

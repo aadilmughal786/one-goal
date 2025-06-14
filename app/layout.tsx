@@ -55,11 +55,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={poppins.className}>
         <div className="min-h-screen text-white bg-black">
-          <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-white/40"></div>
-          </div>
           <div className="relative z-10">
-            {/* The NavBar is now handled by the (root) layout for authenticated routes */}
+            <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-white/40"></div>
+            </div>
             <main>{children}</main>
             <Footer />
           </div>

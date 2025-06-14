@@ -75,7 +75,7 @@ export default function ListsPage() {
         return;
       }
       if (!currentUser) return;
-      const newItem: ListItem = { text: text.trim(), id: Date.now() };
+      const newItem: ListItem = { text: text.trim(), id: Date.now() + Math.random() };
 
       if (listType === 'notToDoList') {
         setNotToDoList(prev => [...prev, newItem]);
