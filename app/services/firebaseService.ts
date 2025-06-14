@@ -27,14 +27,11 @@ import {
   TodoItem,
   DailyProgress,
   SatisfactionLevel,
-  StopwatchSession, // --- NEW --- Import the new type
+  StopwatchSession,
 } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 
-/**
- * A type representing the raw, serializable state of the application for import/export.
- * All Timestamp objects are converted to ISO 8601 strings.
- */
+// ... (Keep the existing SerializableAppState interface as is)
 interface SerializableAppState {
   goal: {
     name: string;
@@ -56,7 +53,6 @@ interface SerializableAppState {
     completed: boolean;
     startDate: string;
   }>;
-  // --- NEW --- Add stopwatch sessions to the serializable type
   stopwatchSessions?: Array<{
     id: number;
     label: string;
@@ -65,9 +61,6 @@ interface SerializableAppState {
   }>;
 }
 
-/**
- * Manages all Firebase interactions, including authentication and Firestore database operations.
- */
 class FirebaseService {
   private app: FirebaseApp;
   private auth: Auth;
@@ -88,21 +81,11 @@ class FirebaseService {
     this.db = getFirestore(this.app);
   }
 
-  // --- Authentication ---
-
-  /**
-   * Listens for changes to the user's authentication state.
-   * @param callback A function to call with the User object or null.
-   * @returns An unsubscribe function from Firebase.
-   */
+  // ... (Keep all existing methods like onAuthChange, signInWithGoogle, etc., as they are)
   onAuthChange(callback: (user: User | null) => void): () => void {
     return onAuthStateChanged(this.auth, callback);
   }
 
-  /**
-   * Initiates the Google Sign-In process via a popup.
-   * @returns A Promise that resolves with the signed-in User object.
-   */
   async signInWithGoogle(): Promise<User | null> {
     try {
       const provider = new GoogleAuthProvider();
@@ -113,10 +96,6 @@ class FirebaseService {
     }
   }
 
-  /**
-   * Signs out the currently authenticated user.
-   * @returns A Promise that resolves when sign-out is complete.
-   */
   async signOutUser(): Promise<void> {
     try {
       await signOut(this.auth);
@@ -125,15 +104,6 @@ class FirebaseService {
     }
   }
 
-  // --- Core Data Management (Import/Export/Reset) ---
-
-  /**
-   * Retrieves the entire user data object from Firestore.
-   * This serves as the source for the "Export Data" feature and initial app state loading.
-   * It also fills in any missed days for daily progress tracking.
-   * @param userId The UID of the current user.
-   * @returns A Promise that resolves with the complete AppState.
-   */
   async getUserData(userId: string): Promise<AppState> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -153,11 +123,6 @@ class FirebaseService {
     }
   }
 
-  /**
-   * Overwrites the user's entire data object in Firestore. Used by the "Import Data" feature.
-   * @param userId The UID of the current user.
-   * @param dataToSet The complete AppState object to save.
-   */
   async setUserData(userId: string, dataToSet: AppState): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -167,11 +132,6 @@ class FirebaseService {
     }
   }
 
-  /**
-   * Resets the user's data to the initial empty state. Used when creating a new goal.
-   * @param userId The UID of the current user.
-   * @returns A Promise that resolves with the initial, empty AppState.
-   */
   async resetUserData(userId: string): Promise<AppState> {
     const initialData: AppState = {
       goal: null,
@@ -179,18 +139,12 @@ class FirebaseService {
       contextList: [],
       toDoList: [],
       dailyProgress: [],
-      stopwatchSessions: [], // --- NEW --- Ensure it's reset
+      stopwatchSessions: [],
     };
     await this.setUserData(userId, initialData);
     return initialData;
   }
 
-  // --- Import / Export Helpers ---
-
-  /** * Converts AppState with Firestore Timestamps to a serializable object with ISO date strings.
-   * @param appState The current state of the application.
-   * @returns A plain JavaScript object suitable for JSON serialization.
-   */
   serializeForExport(appState: AppState): SerializableAppState {
     return {
       goal: appState.goal
@@ -208,7 +162,6 @@ class FirebaseService {
         ...t,
         startDate: t.startDate.toDate().toISOString(),
       })),
-      // --- NEW --- Serialize stopwatch sessions
       stopwatchSessions: (appState.stopwatchSessions || []).map(s => ({
         ...s,
         date: s.date.toDate().toISOString(),
@@ -218,10 +171,6 @@ class FirebaseService {
     };
   }
 
-  /** * Converts a raw imported object with date strings back to an AppState with Firestore Timestamps.
-   * @param importedData The raw data object, typically from a JSON file.
-   * @returns A valid AppState object with Timestamps.
-   */
   deserializeForImport(importedData: Partial<SerializableAppState>): AppState {
     const safeToDate = (dateString: string | undefined): Timestamp => {
       if (!dateString) return Timestamp.now();
@@ -245,7 +194,6 @@ class FirebaseService {
         ...t,
         startDate: safeToDate(t.startDate),
       })),
-      // --- NEW --- Deserialize stopwatch sessions
       stopwatchSessions: (importedData.stopwatchSessions || []).map(s => ({
         ...s,
         date: safeToDate(s.date),
@@ -255,13 +203,6 @@ class FirebaseService {
     };
   }
 
-  // --- Goal Management ---
-
-  /**
-   * Creates or updates the user's main goal. Pass `null` to remove the goal.
-   * @param userId The UID of the current user.
-   * @param goal The new Goal object, or null.
-   */
   async updateGoal(userId: string, goal: Goal | null): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -271,14 +212,6 @@ class FirebaseService {
     }
   }
 
-  // --- Generic List Management ---
-
-  /**
-   * Adds an item to a specified list ('notToDoList', 'contextList', or 'toDoList').
-   * @param userId The UID of the current user.
-   * @param listName The key of the list in the AppState.
-   * @param item The ListItem or TodoItem to add.
-   */
   async addItemToList(
     userId: string,
     listName: 'notToDoList' | 'contextList' | 'toDoList',
@@ -292,13 +225,6 @@ class FirebaseService {
     }
   }
 
-  /**
-   * Updates an existing item within a specified list.
-   * @param userId The UID of the current user.
-   * @param listName The key of the list in the AppState.
-   * @param itemId The ID of the item to update.
-   * @param updates A partial object with the fields to update.
-   */
   async updateItemInList(
     userId: string,
     listName: 'notToDoList' | 'contextList' | 'toDoList',
@@ -315,12 +241,6 @@ class FirebaseService {
     }
   }
 
-  /**
-   * Removes an item from a specified list by its ID.
-   * @param userId The UID of the current user.
-   * @param listName The key of the list in the AppState.
-   * @param itemId The ID of the item to remove.
-   */
   async removeItemFromList(
     userId: string,
     listName: 'notToDoList' | 'contextList' | 'toDoList',
@@ -336,13 +256,6 @@ class FirebaseService {
     }
   }
 
-  // --- Daily Progress Management ---
-
-  /**
-   * Creates or updates a progress entry for a specific day.
-   * @param userId The UID of the current user.
-   * @param progressData The DailyProgress object to save.
-   */
   async saveDailyProgress(userId: string, progressData: DailyProgress): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -374,30 +287,34 @@ class FirebaseService {
     }
   }
 
-  // --- NEW --- Stopwatch Session Management
-  /**
-   * Adds a new stopwatch session to the user's data.
-   * @param userId The UID of the current user.
-   * @param session The StopwatchSession object to save.
-   */
   async addStopwatchSession(userId: string, session: StopwatchSession): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
-      // Use arrayUnion to add the new session to the existing array.
       await updateDoc(userDocRef, {
         stopwatchSessions: arrayUnion(session),
       });
     } catch (error: unknown) {
-      // If the field doesn't exist, it might throw. A more robust solution
-      // could be to read the doc, update the array in code, and then set it.
-      // For simplicity, arrayUnion is often sufficient if the field is initialized.
       throw new FirebaseServiceError('Failed to add stopwatch session.', error);
+    }
+  }
+
+  // --- NEW ---
+  /**
+   * Overwrites the entire to-do list with a new, reordered list.
+   * @param userId The UID of the current user.
+   * @param newTodoList The full, reordered array of to-do items.
+   */
+  async updateTodoListOrder(userId: string, newTodoList: TodoItem[]): Promise<void> {
+    const userDocRef = doc(this.db, 'users', userId);
+    try {
+      await updateDoc(userDocRef, { toDoList: newTodoList });
+    } catch (error: unknown) {
+      throw new FirebaseServiceError('Failed to update to-do list order.', error);
     }
   }
 
   // --- Private Helper Methods ---
 
-  /** Fills in any past days that were not logged with a default 'Very Low' entry. */
   private fillMissingProgress(
     goal: Goal | null,
     existingProgress: DailyProgress[]

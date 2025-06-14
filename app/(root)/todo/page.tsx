@@ -1,7 +1,7 @@
 // app/(root)/todo/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { firebaseService } from '@/services/firebaseService';
 import { TodoItem } from '@/types';
 
-import { FiCheck, FiTrash2, FiEdit, FiPlus, FiSave } from 'react-icons/fi';
+import { FiCheck, FiTrash2, FiEdit, FiPlus, FiSave, FiMenu } from 'react-icons/fi';
 import ToastMessage from '@/components/ToastMessage';
 
 const TodoSkeletonLoader = () => (
@@ -47,6 +47,10 @@ export default function TodoPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
+  // --- NEW --- State for managing drag-and-drop
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
@@ -60,9 +64,8 @@ export default function TodoPage() {
       if (user) {
         setCurrentUser(user);
         firebaseService.getUserData(user.uid).then(data => {
-          setToDoList(
-            data.toDoList.sort((a, b) => b.startDate.toMillis() - a.startDate.toMillis()) || []
-          );
+          // --- MODIFIED --- Do NOT sort by date anymore, to respect user's custom order.
+          setToDoList(data.toDoList || []);
           setIsLoading(false);
         });
       } else {
@@ -71,6 +74,40 @@ export default function TodoPage() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  // --- NEW --- Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
+    dragItem.current = index;
+    // Optional: Add a class for visual feedback
+    e.currentTarget.classList.add('opacity-50');
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLLIElement>, index: number) => {
+    dragOverItem.current = index;
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLLIElement>) => {
+    e.currentTarget.classList.remove('opacity-50');
+  };
+
+  const handleDrop = async (_: React.DragEvent<HTMLLIElement>) => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+
+    const newToDoList = [...toDoList];
+    const draggedItemContent = newToDoList.splice(dragItem.current, 1)[0];
+    newToDoList.splice(dragOverItem.current, 0, draggedItemContent);
+
+    dragItem.current = null;
+    dragOverItem.current = null;
+
+    // Update state immediately for a responsive UI
+    setToDoList(newToDoList);
+
+    // Persist the new order to Firebase
+    if (currentUser) {
+      await firebaseService.updateTodoListOrder(currentUser.uid, newToDoList);
+    }
+  };
 
   const handleAddTodo = useCallback(async () => {
     if (!newTodoText.trim()) {
@@ -86,10 +123,12 @@ export default function TodoPage() {
       startDate: Timestamp.now(),
     };
 
-    setToDoList(prev => [newItem, ...prev]);
+    // --- MODIFIED --- Add new items to the top of the list
+    const newToDoList = [newItem, ...toDoList];
+    setToDoList(newToDoList);
     setNewTodoText('');
-    await firebaseService.addItemToList(currentUser.uid, 'toDoList', newItem);
-  }, [newTodoText, currentUser, showMessage]);
+    await firebaseService.updateTodoListOrder(currentUser.uid, newToDoList);
+  }, [newTodoText, currentUser, showMessage, toDoList]);
 
   const handleToggleComplete = useCallback(
     async (id: number, completed: boolean) => {
@@ -165,8 +204,8 @@ export default function TodoPage() {
           <div className="mb-8 text-center">
             <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">Actionable Tasks</h2>
             <p className="mx-auto max-w-2xl text-lg text-white/70">
-              Your goal is the destination, but these tasks are the steps that get you there. Break
-              down your objective into a clear, manageable to-do list.
+              Your goal is the destination, but these tasks are the steps that get you there. Drag
+              and drop to prioritize your list.
             </p>
           </div>
 
@@ -197,12 +236,20 @@ export default function TodoPage() {
                   <p>Add a task above to get started!</p>
                 </div>
               ) : (
-                toDoList.map(item => (
+                toDoList.map((item, index) => (
                   <li
                     key={item.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border transition-all duration-300 ${item.completed ? 'bg-green-500/10 border-transparent' : 'bg-white/[0.03] border-white/10'}`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border transition-all duration-300 cursor-grab ${item.completed ? 'bg-green-500/10 border-transparent' : 'bg-white/[0.03] border-white/10'}`}
+                    // --- NEW --- Drag and drop event handlers
+                    draggable
+                    onDragStart={e => handleDragStart(e, index)}
+                    onDragEnter={e => handleDragEnter(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={handleDrop}
+                    onDragOver={e => e.preventDefault()}
                   >
                     <div className="flex flex-grow items-center mb-2 sm:mb-0">
+                      <FiMenu className="mr-3 text-white/40 cursor-grab" />
                       <label className="flex items-center cursor-pointer group">
                         <input
                           type="checkbox"
