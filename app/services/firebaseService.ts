@@ -20,7 +20,15 @@ import {
   arrayUnion,
   Timestamp,
 } from 'firebase/firestore';
-import { AppState, Goal, ListItem, TodoItem, DailyProgress, SatisfactionLevel } from '@/types';
+import {
+  AppState,
+  Goal,
+  ListItem,
+  TodoItem,
+  DailyProgress,
+  SatisfactionLevel,
+  StopwatchSession, // --- NEW --- Import the new type
+} from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 
 /**
@@ -47,6 +55,13 @@ interface SerializableAppState {
     text: string;
     completed: boolean;
     startDate: string;
+  }>;
+  // --- NEW --- Add stopwatch sessions to the serializable type
+  stopwatchSessions?: Array<{
+    id: number;
+    label: string;
+    durationMs: number;
+    date: string;
   }>;
 }
 
@@ -164,6 +179,7 @@ class FirebaseService {
       contextList: [],
       toDoList: [],
       dailyProgress: [],
+      stopwatchSessions: [], // --- NEW --- Ensure it's reset
     };
     await this.setUserData(userId, initialData);
     return initialData;
@@ -191,6 +207,11 @@ class FirebaseService {
       toDoList: appState.toDoList.map(t => ({
         ...t,
         startDate: t.startDate.toDate().toISOString(),
+      })),
+      // --- NEW --- Serialize stopwatch sessions
+      stopwatchSessions: (appState.stopwatchSessions || []).map(s => ({
+        ...s,
+        date: s.date.toDate().toISOString(),
       })),
       notToDoList: appState.notToDoList,
       contextList: appState.contextList,
@@ -223,6 +244,11 @@ class FirebaseService {
       toDoList: (importedData.toDoList || []).map(t => ({
         ...t,
         startDate: safeToDate(t.startDate),
+      })),
+      // --- NEW --- Deserialize stopwatch sessions
+      stopwatchSessions: (importedData.stopwatchSessions || []).map(s => ({
+        ...s,
+        date: safeToDate(s.date),
       })),
       notToDoList: importedData.notToDoList || [],
       contextList: importedData.contextList || [],
@@ -345,6 +371,27 @@ class FirebaseService {
         `Failed to save daily progress for user ID: ${userId}.`,
         error
       );
+    }
+  }
+
+  // --- NEW --- Stopwatch Session Management
+  /**
+   * Adds a new stopwatch session to the user's data.
+   * @param userId The UID of the current user.
+   * @param session The StopwatchSession object to save.
+   */
+  async addStopwatchSession(userId: string, session: StopwatchSession): Promise<void> {
+    const userDocRef = doc(this.db, 'users', userId);
+    try {
+      // Use arrayUnion to add the new session to the existing array.
+      await updateDoc(userDocRef, {
+        stopwatchSessions: arrayUnion(session),
+      });
+    } catch (error: unknown) {
+      // If the field doesn't exist, it might throw. A more robust solution
+      // could be to read the doc, update the array in code, and then set it.
+      // For simplicity, arrayUnion is often sufficient if the field is initialized.
+      throw new FirebaseServiceError('Failed to add stopwatch session.', error);
     }
   }
 
