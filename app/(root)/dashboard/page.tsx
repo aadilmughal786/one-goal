@@ -182,11 +182,14 @@ export default function DashboardPage() {
           'This will erase your current goal and all associated data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
         action: () => {
           if (!currentUser) return;
-          firebaseService.resetUserData(currentUser.uid).then(() => {
-            setAppState(null);
+          // *** FIX START ***
+          // The fix is to use the returned `newAppState` from the `resetUserData` promise
+          // to correctly update the local state before opening the modal.
+          firebaseService.resetUserData(currentUser.uid).then(newAppState => {
+            setAppState(newAppState);
             handleOpenGoalModal(false);
-            setActiveModal('goal');
           });
+          // *** FIX END ***
         },
         actionDelayMs: 10000,
       });
@@ -199,6 +202,12 @@ export default function DashboardPage() {
   const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !currentUser) return;
+    // Add a file size check as a security improvement
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
+      showMessage('File is too large (max 5MB).', 'error');
+      return;
+    }
     event.target.value = '';
 
     const reader = new FileReader();
@@ -337,7 +346,6 @@ export default function DashboardPage() {
                   you.
                 </p>
               </div>
-              {/* --- MODIFIED: Passing the goal prop to Charts --- */}
               <Charts dailyProgress={appState.dailyProgress} goal={appState.goal} />
             </section>
 
