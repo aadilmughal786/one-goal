@@ -93,20 +93,20 @@ export default function NavBar() {
         </div>
 
         <div className="flex gap-3 items-center">
-          <div className="relative w-8 h-8" ref={profileDropdownRef}>
+          <div className="relative w-7 h-7" ref={profileDropdownRef}>
             <button
               onClick={() => setIsProfileDropdownOpen(prev => !prev)}
               disabled={authLoading}
               className="rounded-full transition-opacity duration-200 cursor-pointer"
             >
               {authLoading ? (
-                <div className="w-8 h-8 bg-gray-700 rounded-full animate-pulse"></div>
+                <div className="w-7 h-7 bg-gray-700 rounded-full animate-pulse"></div>
               ) : currentUser?.photoURL ? (
                 <Image
                   src={currentUser.photoURL}
                   alt="User Avatar"
-                  width={32}
-                  height={32}
+                  width={28}
+                  height={28}
                   className="rounded-full"
                 />
               ) : (
@@ -150,7 +150,7 @@ export default function NavBar() {
               <span className="text-xl font-bold">Menu</span>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 cursor-pointer text-white/80 hover:text-white"
+                className="p-2 rounded-full cursor-pointer hover:bg-white/20 text-white/80 hover:text-white"
               >
                 <FiX size={24} />
               </button>
