@@ -216,18 +216,25 @@ export default function DashboardPage() {
         const importedRawData = JSON.parse(e.target?.result as string);
         const importedState = firebaseService.deserializeForImport(importedRawData);
 
-        const confirmImport = () => {
-          handleConfirmImport(importedState);
-        };
+        // Check if a goal already exists
+        if (appState?.goal) {
+          // If a goal exists, show the confirmation modal
+          const confirmImport = () => {
+            handleConfirmImport(importedState);
+          };
 
-        setConfirmationProps({
-          title: 'Overwrite All Data?',
-          message:
-            'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-          action: confirmImport,
-          actionDelayMs: 10000,
-        });
-        setActiveModal('confirmation');
+          setConfirmationProps({
+            title: 'Overwrite All Data?',
+            message:
+              'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
+            action: confirmImport,
+            actionDelayMs: 10000,
+          });
+          setActiveModal('confirmation');
+        } else {
+          // If no goal exists, import the data directly
+          handleConfirmImport(importedState);
+        }
       } catch {
         showMessage('Import failed: Invalid file format.', 'error');
       }

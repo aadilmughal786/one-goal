@@ -108,6 +108,7 @@ export default function ProfilePage() {
           setAppState(userData);
         } catch (error) {
           console.error('Failed to load user data:', error);
+          showMessage('Failed to load user data.', 'error');
         }
       } else {
         router.push('/login');
@@ -116,11 +117,18 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, showMessage]);
 
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !currentUser) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
+      showMessage('File is too large (max 5MB).', 'error');
+      return;
+    }
+
     event.target.value = '';
 
     const reader = new FileReader();
@@ -129,19 +137,30 @@ export default function ProfilePage() {
         const importedData = JSON.parse(e.target?.result as string);
         const deserializedData = firebaseService.deserializeForImport(importedData);
 
-        setConfirmationProps({
-          title: 'Overwrite All Data?',
-          message:
-            'Importing will replace all current data. This action is irreversible and the confirm button will be enabled in 5 seconds.',
-          action: async () => {
-            if (!currentUser) return;
-            await firebaseService.setUserData(currentUser.uid, deserializedData);
-            setAppState(deserializedData);
-            showMessage('Data imported successfully!', 'success');
-          },
-          actionDelayMs: 5000,
-        });
-        setActiveModal('confirmation');
+        const importAction = async () => {
+          if (!currentUser) return;
+          await firebaseService.setUserData(currentUser.uid, deserializedData);
+          setAppState(deserializedData);
+          showMessage('Data imported successfully!', 'success');
+        };
+
+        // *** FIX START ***
+        // Check if there is an existing goal to determine if confirmation is needed.
+        if (appState?.goal) {
+          // If a goal exists, show the confirmation modal with a delay.
+          setConfirmationProps({
+            title: 'Overwrite All Data?',
+            message:
+              'Importing will replace all current data. This action is irreversible and the confirm button will be enabled in 5 seconds.',
+            action: importAction,
+            actionDelayMs: 5000,
+          });
+          setActiveModal('confirmation');
+        } else {
+          // If no goal exists, import the data directly without confirmation.
+          importAction();
+        }
+        // *** FIX END ***
       } catch {
         showMessage('Failed to import data. Please check file format.', 'error');
       }
@@ -339,7 +358,6 @@ export default function ProfilePage() {
                 <div className="text-sm text-white/60">Progress Entries</div>
               </div>
             </div>
-            {/* --- NEW: Added Days Passed stat --- */}
             <div className="flex items-center p-4 rounded-lg bg-white/5">
               <FiChevronsRight size={24} className="mr-4 text-orange-400" />
               <div>
