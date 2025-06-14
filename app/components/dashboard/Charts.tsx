@@ -2,8 +2,15 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { DailyProgress, SatisfactionLevel } from '@/types';
-import { format, getDay } from 'date-fns';
+import { DailyProgress, SatisfactionLevel, Goal } from '@/types';
+import {
+  format,
+  getDay,
+  differenceInDays,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+} from 'date-fns';
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,31 +20,42 @@ import {
   Tooltip,
   Legend,
   Line,
-  BarChart,
   Bar,
   PieChart,
   Pie,
   Cell,
-  ScatterChart,
-  Scatter,
-  ZAxis,
+  Area,
+  ComposedChart,
+  BarChart,
+  RadialBarChart,
+  RadialBar,
   TooltipProps,
 } from 'recharts';
-import { FiTrendingUp, FiCheckCircle, FiActivity, FiStar } from 'react-icons/fi';
+import {
+  FiTrendingUp,
+  FiCheckCircle,
+  FiActivity,
+  FiStar,
+  FiClock,
+  FiTarget,
+  FiCalendar,
+  FiBarChart,
+} from 'react-icons/fi';
 
 interface ChartsProps {
   dailyProgress: DailyProgress[];
+  goal: Goal | null;
 }
 
 const getSatisfactionInfo = (level: SatisfactionLevel) => {
-  const info: Record<SatisfactionLevel, { color: string; label: string }> = {
-    [SatisfactionLevel.VERY_LOW]: { color: '#ef4444', label: 'Very Low' },
-    [SatisfactionLevel.LOW]: { color: '#f97316', label: 'Low' },
-    [SatisfactionLevel.MEDIUM]: { color: '#f59e0b', label: 'Medium' },
-    [SatisfactionLevel.HIGH]: { color: '#84cc16', label: 'High' },
-    [SatisfactionLevel.VERY_HIGH]: { color: '#22c55e', label: 'Very High' },
+  const info: Record<SatisfactionLevel, { color: string; label: string; numeric: number }> = {
+    [SatisfactionLevel.VERY_LOW]: { color: '#ef4444', label: 'Very Low', numeric: 1 },
+    [SatisfactionLevel.LOW]: { color: '#f97316', label: 'Low', numeric: 2 },
+    [SatisfactionLevel.MEDIUM]: { color: '#f59e0b', label: 'Medium', numeric: 3 },
+    [SatisfactionLevel.HIGH]: { color: '#84cc16', label: 'High', numeric: 4 },
+    [SatisfactionLevel.VERY_HIGH]: { color: '#22c55e', label: 'Very High', numeric: 5 },
   };
-  return info[level] || { color: '#9ca3af', label: 'Unknown' };
+  return info[level] || { color: '#9ca3af', label: 'Unknown', numeric: 0 };
 };
 
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
@@ -45,90 +63,283 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
     return (
       <div className="p-3 text-sm rounded-lg border shadow-xl bg-neutral-800 border-white/10">
         <p className="font-bold text-white">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }}>
-            {`${entry.name}: ${entry.value}`}
-          </p>
-        ))}
+        {payload.map((entry, index) => {
+          const value = entry.value;
+          let displayValue: string;
+
+          if (typeof value === 'number') {
+            // Format based on the data key for better readability
+            if (entry.dataKey === 'cumulativeHours' || entry.dataKey === 'avgTime') {
+              displayValue = `${value.toFixed(1)}`;
+            } else if (entry.dataKey === 'completionRate') {
+              displayValue = `${value.toFixed(1)}%`;
+            } else if (entry.dataKey === 'consistency') {
+              displayValue = `${value.toFixed(0)}%`;
+            } else {
+              displayValue = value.toFixed(2);
+            }
+          } else if (typeof value === 'string') {
+            const parsed = parseFloat(value);
+            displayValue = isNaN(parsed) ? value : parsed.toFixed(2);
+          } else {
+            displayValue = 'N/A';
+          }
+
+          return (
+            <p key={index} style={{ color: entry.color }}>
+              {`${entry.name}: ${displayValue}`}
+            </p>
+          );
+        })}
       </div>
     );
   }
   return null;
 };
 
-// Skeleton component for individual chart cards
-const ChartCardSkeleton = () => (
-  <div className="p-4 sm:p-6 bg-white/[0.02] border border-white/10 rounded-3xl shadow-2xl animate-pulse">
-    <div className="mx-auto mb-4 w-1/2 h-7 rounded-lg bg-white/10"></div>
-    <div className="h-[300px] w-full bg-white/5 rounded-lg"></div>
-  </div>
-);
-
-const Charts: React.FC<ChartsProps> = ({ dailyProgress }) => {
+const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
+  // Enhanced chart data with more meaningful metrics
   const chartData = useMemo(() => {
-    return dailyProgress
-      .map(p => ({
-        date: format(p.date.toDate(), 'MMM d'),
-        satisfaction: p.satisfactionLevel,
-        timeSpent: p.timeSpentMinutes,
-      }))
-      .slice(-30); // Show last 30 entries for clarity
-  }, [dailyProgress]);
-
-  const satisfactionDistribution = useMemo(() => {
-    const distribution = new Map<SatisfactionLevel, number>();
-    dailyProgress.forEach(p => {
-      distribution.set(p.satisfactionLevel, (distribution.get(p.satisfactionLevel) || 0) + 1);
-    });
-    return Array.from(distribution.entries()).map(([level, count]) => ({
-      name: getSatisfactionInfo(level).label,
-      value: count,
-      color: getSatisfactionInfo(level).color,
+    const data = dailyProgress.map(p => ({
+      date: format(p.date.toDate(), 'MMM d'),
+      satisfaction: getSatisfactionInfo(p.satisfactionLevel).numeric,
+      timeSpent: p.timeSpentMinutes,
+      movingAvg: 0,
+      efficiency:
+        p.timeSpentMinutes > 0
+          ? getSatisfactionInfo(p.satisfactionLevel).numeric / (p.timeSpentMinutes / 60)
+          : 0,
     }));
+
+    // Calculate 7-day moving average
+    for (let i = 0; i < data.length; i++) {
+      const start = Math.max(0, i - 6);
+      const end = i + 1;
+      const window = data.slice(start, end);
+      const sum = window.reduce((acc, curr) => acc + curr.satisfaction, 0);
+      data[i].movingAvg = parseFloat((sum / window.length).toFixed(2));
+    }
+
+    return data;
   }, [dailyProgress]);
 
+  // Goal progress tracking
+  const goalProgressData = useMemo(() => {
+    if (!goal) return null;
+
+    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1;
+    const daysPassed = Math.min(
+      differenceInDays(new Date(), goal.startDate.toDate()) + 1,
+      totalDays
+    );
+    const daysLogged = dailyProgress.filter(
+      p => getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || p.timeSpentMinutes > 0
+    ).length;
+
+    const completionRate = (daysPassed / totalDays) * 100;
+    const loggingRate = (daysLogged / daysPassed) * 100;
+
+    return {
+      totalDays,
+      daysPassed,
+      daysRemaining: Math.max(0, totalDays - daysPassed),
+      daysLogged,
+      completionRate,
+      loggingRate,
+    };
+  }, [dailyProgress, goal]);
+
+  // Consistency metrics
+  const consistencyData = useMemo(() => {
+    if (!goal) return [];
+
+    const weeks = [];
+    let currentDate = goal.startDate.toDate();
+    const endDate = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
+
+    while (currentDate.getTime() <= endDate) {
+      const weekStart = startOfWeek(currentDate);
+      const weekEnd = endOfWeek(currentDate);
+      const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+      const weekProgress = weekDays
+        .filter(day => day >= goal.startDate.toDate() && day <= new Date())
+        .map(day => {
+          const dayKey = day.toISOString().split('T')[0];
+          return dailyProgress.find(p => p.date.toDate().toISOString().split('T')[0] === dayKey);
+        });
+
+      const activeDays = weekProgress.filter(
+        p => p && (getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || p.timeSpentMinutes > 0)
+      ).length;
+
+      const totalWeekDays = weekProgress.length;
+      const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0;
+
+      weeks.push({
+        week: format(weekStart, 'MMM d'),
+        consistency,
+        activeDays,
+        totalDays: totalWeekDays,
+      });
+
+      currentDate = new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    return weeks;
+  }, [dailyProgress, goal]);
+
+  // Enhanced cumulative data
+  const cumulativeTimeData = useMemo(() => {
+    let accumulatedTime = 0;
+    let accumulatedSatisfaction = 0;
+
+    return dailyProgress.map((p, index) => {
+      accumulatedTime += p.timeSpentMinutes;
+      accumulatedSatisfaction += getSatisfactionInfo(p.satisfactionLevel).numeric;
+
+      return {
+        date: format(p.date.toDate(), 'MMM d'),
+        cumulativeHours: parseFloat((accumulatedTime / 60).toFixed(2)),
+        avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)),
+      };
+    });
+  }, [dailyProgress]);
+
+  // Time vs satisfaction correlation
+  const correlationData = useMemo(() => {
+    return chartData.map(item => ({
+      timeSpent: item.timeSpent,
+      satisfaction: item.satisfaction,
+      efficiency: item.efficiency,
+      date: item.date,
+    }));
+  }, [chartData]);
+
+  // Weekly performance (enhanced)
   const weeklyPerformance = useMemo(() => {
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData: {
-      [key: number]: { totalSatisfaction: number; totalTime: number; count: number };
+      [key: number]: {
+        totalSatisfaction: number;
+        totalTime: number;
+        count: number;
+        highSatisfactionDays: number;
+      };
     } = {};
 
     dailyProgress.forEach(p => {
-      const dayIndex = getDay(p.date.toDate()); // 0 for Sunday, 1 for Monday, etc.
+      const dayIndex = getDay(p.date.toDate());
       if (!weeklyData[dayIndex]) {
-        weeklyData[dayIndex] = { totalSatisfaction: 0, totalTime: 0, count: 0 };
+        weeklyData[dayIndex] = {
+          totalSatisfaction: 0,
+          totalTime: 0,
+          count: 0,
+          highSatisfactionDays: 0,
+        };
       }
-      weeklyData[dayIndex].totalSatisfaction += p.satisfactionLevel;
+      const satisfaction = getSatisfactionInfo(p.satisfactionLevel).numeric;
+      weeklyData[dayIndex].totalSatisfaction += satisfaction;
       weeklyData[dayIndex].totalTime += p.timeSpentMinutes;
       weeklyData[dayIndex].count++;
+      if (satisfaction >= 4) weeklyData[dayIndex].highSatisfactionDays++;
     });
 
     return daysOfWeek.map((name, index) => ({
       name,
       avgSatisfaction: weeklyData[index]
-        ? weeklyData[index].totalSatisfaction / weeklyData[index].count
+        ? parseFloat((weeklyData[index].totalSatisfaction / weeklyData[index].count).toFixed(2))
         : 0,
-      avgTime: weeklyData[index] ? weeklyData[index].totalTime / weeklyData[index].count : 0,
+      avgTime: weeklyData[index]
+        ? parseFloat((weeklyData[index].totalTime / weeklyData[index].count).toFixed(2))
+        : 0,
+      successRate: weeklyData[index]
+        ? parseFloat(
+            ((weeklyData[index].highSatisfactionDays / weeklyData[index].count) * 100).toFixed(1)
+          )
+        : 0,
+    }));
+  }, [dailyProgress]);
+
+  // Satisfaction distribution (enhanced)
+  const satisfactionDistribution = useMemo(() => {
+    const distribution = new Map<SatisfactionLevel, number>();
+    dailyProgress.forEach(p => {
+      distribution.set(p.satisfactionLevel, (distribution.get(p.satisfactionLevel) || 0) + 1);
+    });
+
+    return Array.from(distribution.entries()).map(([level, count]) => ({
+      name: getSatisfactionInfo(level).label,
+      value: count,
+      percentage: parseFloat(((count / dailyProgress.length) * 100).toFixed(1)),
+      color: getSatisfactionInfo(level).color,
     }));
   }, [dailyProgress]);
 
   if (dailyProgress.length === 0) {
     return (
-      <div className="space-y-8">
-        <ChartCardSkeleton />
-        <ChartCardSkeleton />
-        <ChartCardSkeleton />
-        <ChartCardSkeleton />
+      <div className="p-8 text-center text-white/60">
+        <FiBarChart className="mx-auto mb-4 text-4xl" />
+        <p>No progress data available yet. Start logging your daily progress to see charts!</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Satisfaction Trend Chart */}
+      {/* Goal Progress Overview */}
+      {goalProgressData && (
+        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+            <FiTarget /> Goal Progress Overview
+          </h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <RadialBarChart
+              cx="50%"
+              cy="50%"
+              innerRadius="20%"
+              outerRadius="80%"
+              data={[
+                { name: 'Time Progress', value: goalProgressData.completionRate, fill: '#38bdf8' },
+                {
+                  name: 'Logging Consistency',
+                  value: goalProgressData.loggingRate,
+                  fill: '#84cc16',
+                },
+              ]}
+            >
+              <RadialBar dataKey="value" cornerRadius={10} />
+              <Legend iconType="circle" />
+              <Tooltip content={<CustomTooltip />} />
+            </RadialBarChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-2 gap-4 mt-4 text-center md:grid-cols-4">
+            <div>
+              <p className="text-2xl font-bold text-blue-400">{goalProgressData.daysPassed}</p>
+              <p className="text-sm text-white/60">Days Passed</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-400">{goalProgressData.daysLogged}</p>
+              <p className="text-sm text-white/60">Days Logged</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-400">{goalProgressData.daysRemaining}</p>
+              <p className="text-sm text-white/60">Days Remaining</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-purple-400">
+                {goalProgressData.loggingRate.toFixed(0)}%
+              </p>
+              <p className="text-sm text-white/60">Consistency</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Satisfaction Trend */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
-          <FiTrendingUp /> Satisfaction Trend
+          <FiTrendingUp /> Satisfaction Trend & Moving Average
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
@@ -140,23 +351,60 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress }) => {
             <Line
               type="monotone"
               dataKey="satisfaction"
+              name="Daily Satisfaction"
               stroke="#38bdf8"
               strokeWidth={2}
               dot={{ r: 4 }}
               activeDot={{ r: 8 }}
-              name="Satisfaction Level"
+            />
+            <Line
+              type="monotone"
+              dataKey="movingAvg"
+              name="7-Day Average"
+              stroke="#f97316"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Weekly Performance Analysis Chart */}
+      {/* Weekly Consistency */}
+      {consistencyData.length > 0 && (
+        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+            <FiCalendar /> Weekly Consistency Tracking
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={consistencyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+              <XAxis dataKey="week" stroke="#9ca3af" fontSize={12} />
+              <YAxis
+                stroke="#9ca3af"
+                fontSize={12}
+                label={{
+                  value: 'Consistency %',
+                  angle: -90,
+                  position: 'insideLeft',
+                  fill: '#9ca3af',
+                }}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+              <Legend iconType="circle" />
+              <Bar dataKey="consistency" fill="#8b5cf6" name="Weekly Consistency %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Enhanced Weekly Performance */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
-          <FiActivity /> Weekly Performance
+          <FiActivity /> Day-of-Week Performance Analysis
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={weeklyPerformance}>
+          <ComposedChart data={weeklyPerformance}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
             <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
             <YAxis
@@ -195,51 +443,112 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress }) => {
               stroke="#38bdf8"
               name="Avg Satisfaction"
             />
-          </BarChart>
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="successRate"
+              stroke="#f97316"
+              name="Success Rate %"
+              strokeDasharray="5 5"
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Effort vs. Satisfaction Chart */}
+      {/* Cumulative Progress */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
-          <FiStar /> Effort vs. Satisfaction
+          <FiClock /> Cumulative Progress & Satisfaction Trend
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart>
+          <ComposedChart data={cumulativeTimeData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis
-              type="number"
-              dataKey="timeSpent"
-              name="Time Spent (mins)"
-              unit="m"
-              stroke="#9ca3af"
+            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+            <YAxis
+              yAxisId="left"
+              stroke="#84cc16"
               fontSize={12}
+              label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#84cc16' }}
             />
             <YAxis
-              type="number"
-              dataKey="satisfaction"
-              name="Satisfaction"
+              yAxisId="right"
+              orientation="right"
               domain={[1, 5]}
-              tickCount={5}
-              stroke="#9ca3af"
+              stroke="#38bdf8"
               fontSize={12}
+              label={{
+                value: 'Avg Satisfaction',
+                angle: 90,
+                position: 'insideRight',
+                fill: '#38bdf8',
+              }}
             />
-            <ZAxis dataKey="satisfaction" range={[60, 400]} name="satisfaction" />
-            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
             <Legend iconType="circle" />
-            <Scatter name="Daily Log" data={chartData} fillOpacity={0.7}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getSatisfactionInfo(entry.satisfaction).color} />
-              ))}
-            </Scatter>
-          </ScatterChart>
+            <Area
+              yAxisId="left"
+              type="monotone"
+              dataKey="cumulativeHours"
+              name="Total Hours Invested"
+              stroke="#84cc16"
+              fill="#84cc16"
+              fillOpacity={0.2}
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="avgSatisfaction"
+              name="Rolling Avg Satisfaction"
+              stroke="#38bdf8"
+              strokeWidth={3}
+              dot={false}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Satisfaction Distribution Chart */}
+      {/* Time vs Satisfaction Efficiency */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
-          <FiCheckCircle /> Satisfaction Distribution
+          <FiStar /> Time vs Satisfaction Analysis
+        </h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={correlationData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+            <YAxis
+              yAxisId="left"
+              stroke="#84cc16"
+              fontSize={12}
+              label={{ value: 'Time (mins)', angle: -90, position: 'insideLeft', fill: '#84cc16' }}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              domain={[1, 5]}
+              stroke="#38bdf8"
+              fontSize={12}
+              label={{ value: 'Satisfaction', angle: 90, position: 'insideRight', fill: '#38bdf8' }}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+            <Legend iconType="circle" />
+            <Bar yAxisId="left" dataKey="timeSpent" fill="#84cc16" name="Time Spent (mins)" />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="satisfaction"
+              stroke="#38bdf8"
+              name="Satisfaction Level"
+              strokeWidth={2}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Enhanced Satisfaction Distribution */}
+      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+          <FiCheckCircle /> Satisfaction Level Distribution
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
@@ -252,7 +561,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress }) => {
               fill="#8884d8"
               dataKey="value"
               nameKey="name"
-              label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+              label={({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) => {
                 const radius = innerRadius + (outerRadius - innerRadius) * 1.2;
                 const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
                 const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
@@ -265,7 +574,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress }) => {
                     dominantBaseline="central"
                     fontSize={14}
                   >
-                    {`${(percent * 100).toFixed(0)}%`}
+                    {`${percentage.toFixed(0)}%`}
                   </text>
                 );
               }}

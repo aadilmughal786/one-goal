@@ -477,8 +477,9 @@ export default function LandingPage() {
               <div className="flex-grow space-y-4 leading-relaxed text-white/80">
                 <p>
                   As a developer, I&apos;ve always been drawn to creating tools that simplify
-                  complexity. The idea for &quot;One Goal&quot; emerged from a personal struggle
-                  with information overload and the constant push to do more, faster.
+                  complexity. The idea for <span className="font-medium text-white">One Goal</span>{' '}
+                  emerged from a personal struggle with information overload and the constant push
+                  to do more, faster.
                 </p>
                 <p>
                   I realized that true productivity isn&apos;t about juggling tasks; it&apos;s about

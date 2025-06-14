@@ -1,41 +1,108 @@
-// app/profile/page.tsx
+// app/(root)/profile/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import {
-  FiArrowLeft,
-  FiLogOut,
-  FiMail,
-  FiCalendar,
-  FiUser,
   FiDownload,
   FiUpload,
   FiTrash2,
-  FiEdit3,
-  FiSave,
-  FiX,
+  FiUser,
+  FiMail,
+  FiCalendar,
+  FiClock,
+  FiTrendingUp,
+  FiAward,
+  FiHash,
+  FiLogIn,
+  FiChevronsRight,
 } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
 import { User } from 'firebase/auth';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState } from '@/types';
+import { differenceInDays } from 'date-fns';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import ToastMessage from '@/components/ToastMessage';
+
+const ProfilePageSkeleton = () => (
+  <div className="space-y-8 animate-pulse">
+    {/* Profile Header Skeleton */}
+    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8">
+      <div className="flex flex-col gap-6 items-center md:flex-row md:items-start">
+        <div className="w-32 h-32 rounded-full bg-white/10"></div>
+        <div className="flex-grow space-y-3 w-full">
+          <div className="w-1/2 h-8 rounded-lg bg-white/10"></div>
+          <div className="w-3/4 h-5 rounded-lg bg-white/10"></div>
+          <div className="w-2/3 h-5 rounded-lg bg-white/10"></div>
+        </div>
+      </div>
+    </div>
+    {/* Goal Stats Skeleton */}
+    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8">
+      <div className="mb-6 w-1/3 h-8 rounded-lg bg-white/10"></div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="h-24 rounded-lg bg-white/5"></div>
+        <div className="h-24 rounded-lg bg-white/5"></div>
+        <div className="h-24 rounded-lg bg-white/5"></div>
+        <div className="h-24 rounded-lg bg-white/5"></div>
+        <div className="h-24 rounded-lg bg-white/5"></div>
+        <div className="h-24 rounded-lg bg-white/5"></div>
+      </div>
+    </div>
+    {/* Data Management & Account Info Skeletons */}
+    <div className="space-y-8">
+      <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8">
+        <div className="mb-6 w-1/2 h-8 rounded-lg bg-white/10"></div>
+        <div className="space-y-4">
+          <div className="h-16 rounded-lg bg-white/5"></div>
+          <div className="h-16 rounded-lg bg-white/5"></div>
+        </div>
+      </div>
+      <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8">
+        <div className="mb-6 w-1/2 h-8 rounded-lg bg-white/10"></div>
+        <div className="space-y-4">
+          <div className="h-6 rounded-lg bg-white/5"></div>
+          <div className="h-6 rounded-lg bg-white/5"></div>
+          <div className="h-6 rounded-lg bg-white/5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+type ModalType = 'confirmation' | null;
 
 export default function ProfilePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState('');
+
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [confirmationProps, setConfirmationProps] = useState({
+    title: '',
+    message: '',
+    action: () => {},
+    actionDelayMs: 0,
+  });
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+
+  const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
+    setToastMessage(text);
+    setToastType(type);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 5000);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(async user => {
       if (user) {
         setCurrentUser(user);
-        setDisplayName(user.displayName || '');
         try {
           const userData = await firebaseService.getUserData(user.uid);
           setAppState(userData);
@@ -51,67 +118,71 @@ export default function ProfilePage() {
     return () => unsubscribe();
   }, [router]);
 
-  const handleSignOut = async () => {
-    try {
-      await firebaseService.signOutUser();
-      router.push('/');
-    } catch (error) {
-      console.error('Failed to sign out:', error);
-    }
-  };
-
-  const handleExportData = () => {
-    if (!appState) return;
-
-    const exportData = firebaseService.serializeForExport(appState);
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
-    const exportFileDefaultName = `one-goal-data-${new Date().toISOString().split('T')[0]}.json`;
-
-    const link = document.createElement('a');
-    link.setAttribute('href', dataUri);
-    link.setAttribute('download', exportFileDefaultName);
-    link.click();
-  };
-
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !currentUser) return;
+    event.target.value = '';
 
     const reader = new FileReader();
     reader.onload = async e => {
       try {
         const importedData = JSON.parse(e.target?.result as string);
         const deserializedData = firebaseService.deserializeForImport(importedData);
-        await firebaseService.setUserData(currentUser.uid, deserializedData);
-        setAppState(deserializedData);
-        alert('Data imported successfully!');
-      } catch (error) {
-        console.error('Failed to import data:', error);
-        alert('Failed to import data. Please check the file format.');
+
+        setConfirmationProps({
+          title: 'Overwrite All Data?',
+          message:
+            'Importing will replace all current data. This action is irreversible and the confirm button will be enabled in 5 seconds.',
+          action: async () => {
+            if (!currentUser) return;
+            await firebaseService.setUserData(currentUser.uid, deserializedData);
+            setAppState(deserializedData);
+            showMessage('Data imported successfully!', 'success');
+          },
+          actionDelayMs: 5000,
+        });
+        setActiveModal('confirmation');
+      } catch {
+        showMessage('Failed to import data. Please check file format.', 'error');
       }
     };
     reader.readAsText(file);
   };
 
+  const handleExportData = async () => {
+    if (!currentUser || !appState) return;
+    try {
+      const serializableData = firebaseService.serializeForExport(appState);
+      const dataStr = JSON.stringify(serializableData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showMessage('Data exported successfully.', 'success');
+    } catch (error) {
+      showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
+    }
+  };
+
   const handleResetData = async () => {
-    if (!currentUser) return;
-
-    const confirmReset = window.confirm(
-      'Are you sure you want to reset all your data? This action cannot be undone.'
-    );
-
-    if (confirmReset) {
-      try {
+    setConfirmationProps({
+      title: 'Reset All Data?',
+      message:
+        'This will permanently erase all your goal data. This action cannot be undone. The confirm button will be enabled in 10 seconds.',
+      action: async () => {
+        if (!currentUser) return;
         const resetData = await firebaseService.resetUserData(currentUser.uid);
         setAppState(resetData);
-        alert('Data reset successfully!');
-      } catch (error) {
-        console.error('Failed to reset data:', error);
-        alert('Failed to reset data. Please try again.');
-      }
-    }
+        showMessage('Data has been reset.', 'info');
+      },
+      actionDelayMs: 10000,
+    });
+    setActiveModal('confirmation');
   };
 
   const formatDate = (dateString: string) => {
@@ -141,35 +212,34 @@ export default function ProfilePage() {
     const endDate = appState.goal.endDate.toDate();
     const now = new Date();
 
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysPassed = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
+    const totalDays = differenceInDays(endDate, startDate) + 1;
+    const daysPassed = differenceInDays(now, startDate) + 1;
+    const daysRemaining = differenceInDays(endDate, now) + 1;
     const progressEntries = appState.dailyProgress.length;
-    const totalTimeSpent = appState.dailyProgress.reduce(
-      (sum, entry) => sum + entry.timeSpentMinutes,
-      0
-    );
+
+    const totalTimeSpentHours =
+      appState.dailyProgress.reduce((sum, entry) => sum + entry.timeSpentMinutes, 0) / 60;
+
+    const avgSatisfaction =
+      progressEntries > 0
+        ? appState.dailyProgress.reduce((sum, p) => sum + p.satisfactionLevel, 0) / progressEntries
+        : 0;
 
     return {
       totalDays,
       daysPassed: Math.max(0, daysPassed),
       daysRemaining: Math.max(0, daysRemaining),
       progressEntries,
-      totalTimeSpent,
-      completedTodos: appState.toDoList.filter(todo => todo.completed).length,
-      totalTodos: appState.toDoList.length,
+      totalTimeSpentHours,
+      avgSatisfaction,
     };
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="flex flex-col gap-4 items-center">
-          <div className="w-8 h-8 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
-          <p className="text-white/60">Loading profile...</p>
-        </div>
-      </div>
+      <main className="relative z-10 px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
+        <ProfilePageSkeleton />
+      </main>
     );
   }
 
@@ -180,29 +250,9 @@ export default function ProfilePage() {
   const goalStats = getGoalStats();
 
   return (
-    <div className="relative z-10 px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex gap-2 items-center px-4 py-2 rounded-lg transition-colors text-white/70 hover:text-white hover:bg-white/5"
-        >
-          <FiArrowLeft size={20} />
-          Back to Dashboard
-        </Link>
+    <main className="relative z-10 px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
+      <ToastMessage message={toastMessage} type={toastType} />
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleSignOut}
-            className="inline-flex gap-2 items-center px-4 py-2 font-medium text-red-400 rounded-lg border transition-all border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50"
-          >
-            <FiLogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Profile Header */}
       <div className="mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
         <div className="flex flex-col gap-6 items-center md:flex-row md:items-start">
           <div className="flex-shrink-0">
@@ -220,53 +270,10 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-
           <div className="flex-grow text-center md:text-left">
-            <div className="flex flex-col gap-2 items-center md:flex-row md:items-center md:gap-4">
-              {isEditing ? (
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    className="px-3 py-1 text-2xl font-bold text-white rounded border bg-white/5 border-white/20 focus:outline-none focus:border-white/40"
-                    placeholder="Your name"
-                  />
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      // Note: Firebase Auth doesn't allow updating displayName directly
-                      // You might want to store custom names in Firestore if needed
-                    }}
-                    className="p-1 text-green-400 rounded hover:bg-white/5"
-                  >
-                    <FiSave size={16} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setDisplayName(currentUser.displayName || '');
-                    }}
-                    className="p-1 text-red-400 rounded hover:bg-white/5"
-                  >
-                    <FiX size={16} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2 items-center">
-                  <h1 className="text-2xl font-bold text-white md:text-3xl">
-                    {currentUser.displayName || 'Anonymous User'}
-                  </h1>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="p-1 rounded text-white/60 hover:text-white hover:bg-white/5"
-                  >
-                    <FiEdit3 size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
+            <h1 className="text-2xl font-bold text-white md:text-3xl">
+              {currentUser.displayName || 'Anonymous User'}
+            </h1>
             <div className="flex flex-col gap-2 mt-4 text-white/70">
               <div className="flex gap-2 justify-center items-center md:justify-start">
                 <FiMail size={16} />
@@ -285,122 +292,159 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Current Goal Stats */}
       {appState?.goal && goalStats && (
         <div className="mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
           <h2 className="mb-6 text-2xl font-bold text-white">Current Goal Progress</h2>
-          <div className="p-4 mb-4 rounded-lg bg-white/5">
+          <div className="p-4 mb-6 rounded-lg bg-white/5">
             <h3 className="text-lg font-semibold text-white">{appState.goal.name}</h3>
             {appState.goal.description && (
               <p className="mt-2 text-white/70">{appState.goal.description}</p>
             )}
           </div>
-
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="p-4 text-center rounded-lg bg-white/5">
-              <div className="text-2xl font-bold text-blue-400">{goalStats.daysPassed}</div>
-              <div className="text-sm text-white/60">Days Active</div>
-            </div>
-            <div className="p-4 text-center rounded-lg bg-white/5">
-              <div className="text-2xl font-bold text-green-400">{goalStats.daysRemaining}</div>
-              <div className="text-sm text-white/60">Days Remaining</div>
-            </div>
-            <div className="p-4 text-center rounded-lg bg-white/5">
-              <div className="text-2xl font-bold text-purple-400">
-                {Math.round(goalStats.totalTimeSpent / 60)}h
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiClock size={24} className="mr-4 text-blue-400" />
+              <div>
+                <div className="text-2xl font-bold">{goalStats.daysRemaining}</div>
+                <div className="text-sm text-white/60">Days Remaining</div>
               </div>
-              <div className="text-sm text-white/60">Time Invested</div>
             </div>
-            <div className="p-4 text-center rounded-lg bg-white/5">
-              <div className="text-2xl font-bold text-orange-400">
-                {goalStats.completedTodos}/{goalStats.totalTodos}
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiAward size={24} className="mr-4 text-yellow-400" />
+              <div>
+                <div className="text-2xl font-bold">
+                  {goalStats.totalTimeSpentHours.toFixed(1)}h
+                </div>
+                <div className="text-sm text-white/60">Time Invested</div>
               </div>
-              <div className="text-sm text-white/60">Tasks Done</div>
+            </div>
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiTrendingUp size={24} className="mr-4 text-purple-400" />
+              <div>
+                <div className="text-2xl font-bold">{goalStats.avgSatisfaction.toFixed(1)}/5</div>
+                <div className="text-sm text-white/60">Avg. Satisfaction</div>
+              </div>
+            </div>
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiHash size={24} className="mr-4 text-teal-400" />
+              <div>
+                <div className="text-2xl font-bold">{goalStats.totalDays}</div>
+                <div className="text-sm text-white/60">Total Duration</div>
+              </div>
+            </div>
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiLogIn size={24} className="mr-4 text-cyan-400" />
+              <div>
+                <div className="text-2xl font-bold">{goalStats.progressEntries}</div>
+                <div className="text-sm text-white/60">Progress Entries</div>
+              </div>
+            </div>
+            {/* --- NEW: Added Days Passed stat --- */}
+            <div className="flex items-center p-4 rounded-lg bg-white/5">
+              <FiChevronsRight size={24} className="mr-4 text-orange-400" />
+              <div>
+                <div className="text-2xl font-bold">{goalStats.daysPassed}</div>
+                <div className="text-sm text-white/60">Days Passed</div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Data Management */}
-      <div className="mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-        <h2 className="mb-6 text-2xl font-bold text-white">Data Management</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <button
-            onClick={handleExportData}
-            className="flex gap-3 items-center p-4 text-left text-white rounded-lg border transition-all border-white/10 hover:bg-white/5 hover:border-white/20"
-          >
-            <FiDownload className="text-green-400" size={20} />
-            <div>
-              <div className="font-medium">Export Data</div>
-              <div className="text-sm text-white/60">Download your data as JSON</div>
-            </div>
-          </button>
-
-          <div className="relative">
+      <div className="space-y-8">
+        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          <h2 className="mb-6 text-2xl font-bold text-white">Data Management</h2>
+          <div className="space-y-4">
+            <label
+              htmlFor="import-file-profile"
+              className="flex items-center p-4 text-left text-white rounded-lg border transition-all cursor-pointer border-white/10 hover:bg-white/5 hover:border-white/20"
+            >
+              <FiUpload className="text-green-400" size={24} />
+              <div className="ml-4">
+                <div className="font-medium">Import Data</div>
+                <div className="text-sm text-white/60">Upload a JSON backup file</div>
+              </div>
+            </label>
             <input
               type="file"
               accept=".json"
               onChange={handleImportData}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              id="import-file"
+              className="hidden"
+              id="import-file-profile"
             />
-            <label
-              htmlFor="import-file"
-              className="flex gap-3 items-center p-4 text-left text-white rounded-lg border transition-all cursor-pointer border-white/10 hover:bg-white/5 hover:border-white/20"
+
+            <div
+              onClick={handleExportData}
+              className="flex items-center p-4 text-left text-white rounded-lg border transition-all cursor-pointer border-white/10 hover:bg-white/5 hover:border-white/20"
             >
-              <FiUpload className="text-blue-400" size={20} />
-              <div>
-                <div className="font-medium">Import Data</div>
-                <div className="text-sm text-white/60">Upload JSON backup file</div>
+              <FiDownload className="text-blue-400" size={24} />
+              <div className="ml-4">
+                <div className="font-medium">Export Data</div>
+                <div className="text-sm text-white/60">Download your data as JSON</div>
               </div>
-            </label>
-          </div>
-
-          <button
-            onClick={handleResetData}
-            className="flex gap-3 items-center p-4 text-left text-white rounded-lg border transition-all border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50"
-          >
-            <FiTrash2 className="text-red-400" size={20} />
-            <div>
-              <div className="font-medium text-red-400">Reset Data</div>
-              <div className="text-sm text-white/60">Clear all data permanently</div>
             </div>
-          </button>
+            <div
+              onClick={handleResetData}
+              className="flex items-center p-4 text-left text-white rounded-lg border transition-all cursor-pointer border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50"
+            >
+              <FiTrash2 className="text-red-400" size={24} />
+              <div className="ml-4">
+                <div className="font-medium text-red-400">Reset Data</div>
+                <div className="text-sm text-white/60">Permanently clear all data</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">User ID</span>
+              <span className="font-mono text-sm text-white/80">{currentUser.uid}</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Account Created</span>
+              <span className="text-white/80">
+                {currentUser.metadata.creationTime
+                  ? formatDate(currentUser.metadata.creationTime)
+                  : 'Unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Last Sign In</span>
+              <span className="text-white/80">
+                {currentUser.metadata.lastSignInTime
+                  ? formatDate(currentUser.metadata.lastSignInTime)
+                  : 'Unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Email Verified</span>
+              <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
+                {currentUser.emailVerified ? 'Yes' : 'No'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Account Information */}
-      <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-        <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">User ID</span>
-            <span className="font-mono text-sm text-white/80">{currentUser.uid}</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Account Created</span>
-            <span className="text-white/80">
-              {currentUser.metadata.creationTime
-                ? formatDate(currentUser.metadata.creationTime)
-                : 'Unknown'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Last Sign In</span>
-            <span className="text-white/80">
-              {currentUser.metadata.lastSignInTime
-                ? formatDate(currentUser.metadata.lastSignInTime)
-                : 'Unknown'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Email Verified</span>
-            <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
-              {currentUser.emailVerified ? 'Yes' : 'No'}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+      <ConfirmationModal
+        isOpen={activeModal === 'confirmation'}
+        onClose={() => setActiveModal(null)}
+        title={confirmationProps.title}
+        message={confirmationProps.message}
+        confirmButton={{
+          text: 'Confirm',
+          onClick: () => {
+            confirmationProps.action();
+            setActiveModal(null);
+          },
+          className: 'bg-red-600 text-white hover:bg-red-700',
+        }}
+        cancelButton={{ text: 'Cancel', onClick: () => setActiveModal(null) }}
+        actionDelayMs={confirmationProps.actionDelayMs}
+      />
+    </main>
   );
 }

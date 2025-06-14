@@ -120,20 +120,22 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
 
                 {/* Tooltip */}
                 {progress && (
-                  <div className="absolute bottom-full invisible z-20 p-3 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
-                    <p className="text-sm font-bold">{format(day, 'MMMM d, yyyy')}</p>
+                  <div className="absolute bottom-full invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
+                    <p className="p-3 pb-1 text-sm font-bold">{format(day, 'MMMM d, yyyy')}</p>
                     <hr className="my-1 border-white/10" />
-                    <p className="text-xs">
-                      <span className="font-semibold">Satisfaction:</span>{' '}
-                      {getSatisfactionInfo(progress.satisfactionLevel).label}
-                    </p>
-                    <p className="text-xs">
-                      <span className="font-semibold">Time Spent:</span> {progress.timeSpentMinutes}{' '}
-                      mins
-                    </p>
-                    {progress.notes && (
-                      <p className="mt-1 text-xs italic text-white/70">{progress.notes}</p>
-                    )}
+                    <div className="px-3 py-1">
+                      <p className="text-xs">
+                        <span className="font-semibold">Satisfaction:</span>{' '}
+                        {getSatisfactionInfo(progress.satisfactionLevel).label}
+                      </p>
+                      <p className="text-xs">
+                        <span className="font-semibold">Time Spent:</span>{' '}
+                        {progress.timeSpentMinutes} mins
+                      </p>
+                      {progress.notes && (
+                        <p className="mt-1 text-xs italic text-white/70">{progress.notes}</p>
+                      )}
+                    </div>
                     <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-neutral-900 border-white/10"></div>
                   </div>
                 )}
