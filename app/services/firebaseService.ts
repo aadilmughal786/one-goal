@@ -27,64 +27,95 @@ import {
   DailyProgress,
   SatisfactionLevel,
   StopwatchSession,
-  // PriorityLevel removed
-} from '@/types'; // Removed PriorityLevel import
+  // Routine Imports from the final type structure
+  UserRoutineSettings,
+  SleepRoutineSettings,
+  WaterRoutineSettings,
+  ScheduledRoutineBase,
+} from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 
 // Helper for generating UUIDs for new item IDs
 const generateUUID = () => crypto.randomUUID();
 
 /**
+ * Serializable version of ScheduledRoutineBase for export/import
+ */
+interface SerializableScheduledRoutineBase {
+  scheduledTime: string;
+  durationMinutes: number;
+  label: string;
+  icon: string;
+  completed: boolean | null; // Null for Firestore, undefined locally
+  updatedAt: string;
+}
+
+/**
  * Defines the serializable structure of AppState for import/export operations.
  * All Timestamp objects are converted to ISO 8601 strings.
- * DailyProgress is an array for easier JSON serialization/deserialization.
  */
 interface SerializableAppState {
   goal: {
     name: string;
-    description: string; // Now mandatory
-    endDate: string; // ISO string
-    createdAt: string; // ISO string
-    updatedAt: string; // ISO string
+    description: string;
+    endDate: string;
+    createdAt: string;
+    updatedAt: string;
   } | null;
   dailyProgress: Array<{
-    date: string; // "YYYY-MM-DD"
+    date: string;
     satisfactionLevel: SatisfactionLevel;
     progressNote: string;
     stopwatchSessions: Array<{
-      startTime: string; // ISO string
+      startTime: string;
       label: string;
-      endTime: string; // ISO string
-      createdAt: string; // ISO string
-      updatedAt: string; // ISO string
+      endTime: string;
+      createdAt: string;
+      updatedAt: string;
     }>;
-    createdAt: string; // ISO string
-    updatedAt: string; // ISO string
+    createdAt: string;
+    updatedAt: string;
   }>;
   toDoList: Array<{
-    id: string; // string UUID
+    id: string;
     text: string;
-    description: string | null; // Optional detailed description for the task
+    description: string | null;
     order: number;
     completed: boolean;
-    completedAt: string | null; // ISO string (optional), explicitly null for Firestore
-    deadline: string | null; // ISO string (optional), explicitly null for Firestore
-    // priority: PriorityLevel | null; // Priority field removed
-    createdAt: string; // ISO string
-    updatedAt: string; // ISO string
+    completedAt: string | null;
+    deadline: string | null;
+    createdAt: string;
+    updatedAt: string;
   }>;
   notToDoList: Array<{
-    id: string; // string UUID
+    id: string;
     text: string;
-    createdAt: string; // ISO string
-    updatedAt: string; // ISO string
+    createdAt: string;
+    updatedAt: string;
   }>;
   contextList: Array<{
-    id: string; // string UUID
+    id: string;
     text: string;
-    createdAt: string; // ISO string
-    updatedAt: string; // ISO string
+    createdAt: string;
+    updatedAt: string;
   }>;
+  routineSettings?: {
+    sleep?:
+      | (SerializableScheduledRoutineBase & {
+          // SleepRoutineSettings extends ScheduledRoutineBase
+          napSchedule: SerializableScheduledRoutineBase[] | null;
+        })
+      | null;
+    bath?: SerializableScheduledRoutineBase[] | null;
+    water?: {
+      waterGoalGlasses: number;
+      currentWaterGlasses: number;
+      updatedAt: string;
+    } | null;
+    exercise?: SerializableScheduledRoutineBase[] | null;
+    meals?: SerializableScheduledRoutineBase[] | null;
+    teeth?: SerializableScheduledRoutineBase[] | null;
+  } | null;
 }
 
 class FirebaseService {
@@ -156,15 +187,14 @@ class FirebaseService {
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
         const firestoreData = docSnap.data() as AppState;
-        // Ensure dailyProgress is a record, handling potential empty/old formats
         if (!firestoreData.dailyProgress) {
           firestoreData.dailyProgress = {};
         }
-        // No longer 'fill missing progress' here directly as it's a map.
-        // UI components should handle displaying empty days based on goal range.
+        if (!firestoreData.routineSettings) {
+          firestoreData.routineSettings = {};
+        }
         return firestoreData;
       } else {
-        // If no document exists, reset and return initial data
         return this.resetUserData(userId);
       }
     } catch (error: unknown) {
@@ -199,10 +229,58 @@ class FirebaseService {
       notToDoList: [],
       contextList: [],
       toDoList: [],
-      dailyProgress: {}, // Initialize as an empty record
+      dailyProgress: {},
+      routineSettings: {},
     };
     await this.setUserData(userId, initialData);
     return initialData;
+  }
+
+  /**
+   * Helper to serialize a Timestamp to ISO string or null
+   */
+  private serializeTimestamp(ts?: Timestamp | null): string | null {
+    return ts ? ts.toDate().toISOString() : null;
+  }
+
+  /**
+   * Helper to deserialize an ISO string to Timestamp or null
+   */
+  private deserializeTimestamp(dateString?: string | null): Timestamp | null {
+    if (dateString === null) return null;
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : Timestamp.fromDate(date);
+  }
+
+  /**
+   * Helper to serialize ScheduledRoutineBase array items, converting 'completed' from boolean | undefined to boolean | null.
+   */
+  private serializeScheduledRoutineBaseArray(
+    arr?: ScheduledRoutineBase[] | null
+  ): SerializableScheduledRoutineBase[] | null {
+    return (
+      arr?.map(item => ({
+        ...item,
+        updatedAt: this.serializeTimestamp(item.updatedAt)!,
+        completed: item.completed === undefined ? null : item.completed, // Convert undefined to null for Firestore
+      })) || null
+    );
+  }
+
+  /**
+   * Helper to deserialize ScheduledRoutineBase array items, converting 'completed' from boolean | null to boolean | undefined.
+   */
+  private deserializeScheduledRoutineBaseArray(
+    arr?: SerializableScheduledRoutineBase[] | null
+  ): ScheduledRoutineBase[] | null {
+    return (
+      arr?.map(item => ({
+        ...item,
+        updatedAt: this.deserializeTimestamp(item.updatedAt)!,
+        completed: item.completed === null ? undefined : item.completed, // Convert null back to undefined
+      })) || null
+    );
   }
 
   /**
@@ -212,10 +290,6 @@ class FirebaseService {
    * @returns A SerializableAppState object.
    */
   serializeForExport(appState: AppState): SerializableAppState {
-    const serializeTimestamp = (ts?: Timestamp | null): string | null => {
-      return ts ? ts.toDate().toISOString() : null;
-    };
-
     return {
       goal: appState.goal
         ? {
@@ -239,10 +313,9 @@ class FirebaseService {
       })),
       toDoList: appState.toDoList.map(todo => ({
         ...todo,
-        description: todo.description || null, // Ensure null instead of undefined for Firestore
-        completedAt: serializeTimestamp(todo.completedAt),
-        deadline: serializeTimestamp(todo.deadline),
-        // priority: todo.priority || null, // Priority field removed
+        description: todo.description || null,
+        completedAt: this.serializeTimestamp(todo.completedAt),
+        deadline: this.serializeTimestamp(todo.deadline),
         createdAt: todo.createdAt.toDate().toISOString(),
         updatedAt: todo.updatedAt.toDate().toISOString(),
       })),
@@ -256,69 +329,130 @@ class FirebaseService {
         createdAt: item.createdAt.toDate().toISOString(),
         updatedAt: item.updatedAt.toDate().toISOString(),
       })),
+      routineSettings: appState.routineSettings
+        ? {
+            sleep: appState.routineSettings.sleep
+              ? {
+                  // Directly map properties from SleepRoutineSettings (which extends ScheduledRoutineBase)
+                  scheduledTime: appState.routineSettings.sleep.scheduledTime,
+                  durationMinutes: appState.routineSettings.sleep.durationMinutes,
+                  label: appState.routineSettings.sleep.label,
+                  icon: appState.routineSettings.sleep.icon,
+                  completed:
+                    appState.routineSettings.sleep.completed === undefined
+                      ? null
+                      : appState.routineSettings.sleep.completed,
+                  updatedAt: this.serializeTimestamp(appState.routineSettings.sleep.updatedAt)!,
+                  // SleepRoutineSettings specific: napSchedule
+                  napSchedule: this.serializeScheduledRoutineBaseArray(
+                    appState.routineSettings.sleep.napSchedule
+                  ),
+                }
+              : null,
+            bath: this.serializeScheduledRoutineBaseArray(appState.routineSettings.bath),
+            water: appState.routineSettings.water
+              ? {
+                  ...appState.routineSettings.water,
+                  updatedAt: this.serializeTimestamp(appState.routineSettings.water.updatedAt)!,
+                }
+              : null,
+            exercise: this.serializeScheduledRoutineBaseArray(appState.routineSettings.exercise),
+            meals: this.serializeScheduledRoutineBaseArray(appState.routineSettings.meals),
+            teeth: this.serializeScheduledRoutineBaseArray(appState.routineSettings.teeth),
+          }
+        : null,
     };
   }
 
   /**
    * Converts SerializableAppState (with ISO strings) back to AppState (with Firestore Timestamps)
    * for import.
-   * @param importedData The SerializableAppState to deserialize.
+   * @param importedData The Partial SerializableAppState to deserialize.
    * @returns An AppState object.
    */
   deserializeForImport(importedData: Partial<SerializableAppState>): AppState {
-    const safeToTimestamp = (dateString?: string | null): Timestamp | null => {
-      if (dateString === null) return null; // Explicitly handle null
-      if (!dateString) return null; // Default to null if undefined/empty string
-      const date = new Date(dateString);
-      return isNaN(date.getTime()) ? null : Timestamp.fromDate(date); // Return null for invalid dates
-    };
-
-    // Convert dailyProgress array back to a record
-    const deserializedDailyProgress: Record<string, DailyProgress> = {};
-    (importedData.dailyProgress || []).forEach(dp => {
-      deserializedDailyProgress[dp.date] = {
-        ...dp,
-        stopwatchSessions: dp.stopwatchSessions.map(session => ({
-          ...session,
-          startTime: safeToTimestamp(session.startTime)!, // Assume startTime is always valid
-          endTime: safeToTimestamp(session.endTime)!, // Assume endTime is always valid
-          createdAt: safeToTimestamp(session.createdAt)!,
-          updatedAt: safeToTimestamp(session.updatedAt)!,
-        })),
-        createdAt: safeToTimestamp(dp.createdAt)!,
-        updatedAt: safeToTimestamp(dp.updatedAt)!,
-      };
-    });
-
     return {
       goal: importedData.goal
         ? {
             ...importedData.goal,
-            endDate: safeToTimestamp(importedData.goal.endDate)!,
-            createdAt: safeToTimestamp(importedData.goal.createdAt)!,
-            updatedAt: safeToTimestamp(importedData.goal.updatedAt)!,
+            endDate: this.deserializeTimestamp(importedData.goal.endDate)!,
+            createdAt: this.deserializeTimestamp(importedData.goal.createdAt)!,
+            updatedAt: this.deserializeTimestamp(importedData.goal.updatedAt)!,
           }
         : null,
-      dailyProgress: deserializedDailyProgress,
+      dailyProgress: Object.fromEntries(
+        (importedData.dailyProgress || []).map(dp => [
+          dp.date,
+          {
+            ...dp,
+            stopwatchSessions: dp.stopwatchSessions.map(session => ({
+              ...session,
+              startTime: this.deserializeTimestamp(session.startTime)!,
+              endTime: this.deserializeTimestamp(session.endTime)!,
+              createdAt: this.deserializeTimestamp(session.createdAt)!,
+              updatedAt: this.deserializeTimestamp(session.updatedAt)!,
+            })),
+            createdAt: this.deserializeTimestamp(dp.createdAt)!,
+            updatedAt: this.deserializeTimestamp(dp.updatedAt)!,
+          },
+        ])
+      ),
       toDoList: (importedData.toDoList || []).map(todo => ({
         ...todo,
-        description: todo.description || null, // Ensure null instead of undefined
-        completedAt: safeToTimestamp(todo.completedAt),
-        deadline: safeToTimestamp(todo.deadline),
-        // priority: todo.priority || null, // Priority field removed
-        createdAt: safeToTimestamp(todo.createdAt)!,
-        updatedAt: safeToTimestamp(todo.updatedAt)!,
+        description: todo.description || null,
+        completedAt: this.deserializeTimestamp(todo.completedAt),
+        deadline: this.deserializeTimestamp(todo.deadline),
+        createdAt: this.deserializeTimestamp(todo.createdAt)!,
+        updatedAt: this.deserializeTimestamp(todo.updatedAt)!,
       })),
       notToDoList: (importedData.notToDoList || []).map(item => ({
         ...item,
-        createdAt: safeToTimestamp(item.createdAt)!,
-        updatedAt: safeToTimestamp(item.updatedAt)!,
+        createdAt: this.deserializeTimestamp(item.createdAt)!,
+        updatedAt: this.deserializeTimestamp(item.updatedAt)!,
       })),
       contextList: (importedData.contextList || []).map(item => ({
         ...item,
-        createdAt: safeToTimestamp(item.createdAt)!,
-        updatedAt: safeToTimestamp(item.updatedAt)!,
+        createdAt: this.deserializeTimestamp(item.createdAt)!,
+        updatedAt: this.deserializeTimestamp(item.updatedAt)!,
       })),
+      routineSettings: importedData.routineSettings
+        ? {
+            sleep: importedData.routineSettings.sleep
+              ? {
+                  // Directly map properties from SerializableScheduledRoutineBase to SleepRoutineSettings
+                  scheduledTime: importedData.routineSettings.sleep.scheduledTime,
+                  durationMinutes: importedData.routineSettings.sleep.durationMinutes,
+                  label: importedData.routineSettings.sleep.label,
+                  icon: importedData.routineSettings.sleep.icon,
+                  completed:
+                    importedData.routineSettings.sleep.completed === null
+                      ? undefined
+                      : importedData.routineSettings.sleep.completed,
+                  updatedAt: this.deserializeTimestamp(
+                    importedData.routineSettings.sleep.updatedAt
+                  )!,
+                  // SleepRoutineSettings specific: napSchedule
+                  napSchedule: this.deserializeScheduledRoutineBaseArray(
+                    importedData.routineSettings.sleep.napSchedule
+                  ),
+                }
+              : null,
+            bath: this.deserializeScheduledRoutineBaseArray(importedData.routineSettings.bath),
+            water: importedData.routineSettings.water
+              ? {
+                  ...importedData.routineSettings.water,
+                  updatedAt: this.deserializeTimestamp(
+                    importedData.routineSettings.water.updatedAt
+                  )!,
+                }
+              : null,
+            exercise: this.deserializeScheduledRoutineBaseArray(
+              importedData.routineSettings.exercise
+            ),
+            meals: this.deserializeScheduledRoutineBaseArray(importedData.routineSettings.meals),
+            teeth: this.deserializeScheduledRoutineBaseArray(importedData.routineSettings.teeth),
+          }
+        : null,
     };
   }
 
@@ -331,12 +465,11 @@ class FirebaseService {
   async updateGoal(userId: string, goal: Goal | null): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
-      // Ensure timestamps are correctly set for new/updated goals
       const now = Timestamp.now();
       const goalToSave = goal
         ? {
             ...goal,
-            createdAt: goal.createdAt || now, // Preserve existing or set new
+            createdAt: goal.createdAt || now,
             updatedAt: now,
           }
         : null;
@@ -348,8 +481,6 @@ class FirebaseService {
 
   /**
    * Adds a new item to either notToDoList or contextList.
-   * This now fetches the existing list, adds the new item, and updates the entire list.
-   * This is necessary to correctly handle auto-generated IDs and timestamps.
    * @param userId The ID of the current user.
    * @param listName The name of the list ('notToDoList' or 'contextList').
    * @param text The text content of the new item.
@@ -385,10 +516,9 @@ class FirebaseService {
 
   /**
    * Updates an existing item in any list (notToDoList, contextList, or toDoList).
-   * Fetches the current list, finds and updates the item, then saves the whole list back.
    * @param userId The ID of the current user.
    * @param listName The name of the list.
-   * @param itemId The ID of the item to update (now string).
+   * @param itemId The ID of the item to update.
    * @param updates Partial updates for the item.
    * @throws FirebaseServiceError if update fails.
    */
@@ -410,14 +540,11 @@ class FirebaseService {
 
       const updatedList = list.map(item => {
         if (item.id === itemId) {
-          // Create a new item object, preserving existing properties, and applying basic updates
           const newItem = { ...item, ...updates, updatedAt: now };
 
-          // Handle specific fields that can be `undefined` from UI but must be `null` in Firestore
           if (listName === 'toDoList') {
-            const todoItem = newItem as TodoItem; // Cast for specific properties
+            const todoItem = newItem as TodoItem;
 
-            // Convert description: if `undefined` from updates, set to `null`
             if ('description' in updates) {
               todoItem.description =
                 (updates as Partial<TodoItem>).description === undefined
@@ -425,16 +552,13 @@ class FirebaseService {
                   : (updates as Partial<TodoItem>).description;
             }
 
-            // Convert deadline: if `undefined` from updates, set to `null`
             if ('deadline' in updates) {
               todoItem.deadline =
                 (updates as Partial<TodoItem>).deadline === undefined
                   ? null
                   : (updates as Partial<TodoItem>).deadline;
             }
-            // Priority field removed, so no longer need to handle it here.
 
-            // Special handling for completedAt based on `completed` status
             if ('completed' in updates && (updates as Partial<TodoItem>).completed !== undefined) {
               if (
                 (updates as Partial<TodoItem>).completed === true &&
@@ -448,12 +572,8 @@ class FirebaseService {
                 todoItem.completedAt = null;
               }
             }
-            // If `completed` status is not being updated, completedAt remains as is from `item`
-
-            return todoItem; // Return the modified TodoItem
+            return todoItem;
           }
-
-          // For ListItem, just return the merged newItem
           return newItem;
         }
         return item;
@@ -467,10 +587,9 @@ class FirebaseService {
 
   /**
    * Removes an item from any list.
-   * Fetches the current list, filters out the item, then saves the whole list back.
    * @param userId The ID of the current user.
    * @param listName The name of the list.
-   * @param itemId The ID of the item to remove (now string).
+   * @param itemId The ID of the item to remove.
    * @throws FirebaseServiceError if removal fails.
    */
   async removeItemFromList(
@@ -495,7 +614,6 @@ class FirebaseService {
 
   /**
    * Saves or updates a DailyProgress entry for a specific date.
-   * Since dailyProgress is now a Record, it updates the specific key directly.
    * @param userId The ID of the current user.
    * @param progressData The DailyProgress object to save.
    * @throws FirebaseServiceError if saving daily progress fails.
@@ -512,7 +630,6 @@ class FirebaseService {
 
       const existingProgress = currentData.dailyProgress[progressData.date];
 
-      // Update createdAt/updatedAt for the DailyProgress entry itself
       const updatedProgressData: DailyProgress = {
         ...progressData,
         createdAt: existingProgress?.createdAt || now,
@@ -532,7 +649,6 @@ class FirebaseService {
 
   /**
    * Adds a new stopwatch session to the relevant DailyProgress entry.
-   * This function will find or create the DailyProgress entry for the session's date.
    * @param userId The ID of the current user.
    * @param session The StopwatchSession to add.
    * @throws FirebaseServiceError if adding stopwatch session fails.
@@ -545,10 +661,9 @@ class FirebaseService {
         throw new FirebaseServiceError('User data not found for adding stopwatch session.');
       }
       const currentData = docSnap.data() as AppState;
-      const sessionDateKey = session.startTime.toDate().toISOString().split('T')[0]; // "YYYY-MM-DD"
+      const sessionDateKey = session.startTime.toDate().toISOString().split('T')[0];
       const now = Timestamp.now();
 
-      // Ensure createdAt and updatedAt are set for the session itself
       const sessionToSave: StopwatchSession = {
         ...session,
         createdAt: session.createdAt || now,
@@ -559,18 +674,16 @@ class FirebaseService {
 
       let updatedDailyProgress: DailyProgress;
       if (existingDailyProgress) {
-        // If DailyProgress exists, append session and update timestamps
         updatedDailyProgress = {
           ...existingDailyProgress,
           stopwatchSessions: [...(existingDailyProgress.stopwatchSessions || []), sessionToSave],
           updatedAt: now,
         };
       } else {
-        // If DailyProgress does not exist, create a new one with default values
         updatedDailyProgress = {
           date: sessionDateKey,
-          satisfactionLevel: SatisfactionLevel.MEDIUM, // Default satisfaction
-          progressNote: '', // Empty note
+          satisfactionLevel: SatisfactionLevel.MEDIUM,
+          progressNote: '',
           stopwatchSessions: [sessionToSave],
           createdAt: now,
           updatedAt: now,
@@ -619,12 +732,10 @@ class FirebaseService {
         };
 
         if (updatedSessions.length === 0 && updatedDailyProgress.progressNote === '') {
-          // If no sessions and no notes, remove the daily progress entry entirely
           const newDailyProgress = { ...currentData.dailyProgress };
           delete newDailyProgress[dateKey];
           await updateDoc(userDocRef, { dailyProgress: newDailyProgress });
         } else {
-          // Otherwise, just update the daily progress entry
           await updateDoc(userDocRef, {
             [`dailyProgress.${dateKey}`]: updatedDailyProgress,
           });
@@ -637,7 +748,6 @@ class FirebaseService {
 
   /**
    * Overwrites the entire to-do list with a new, reordered list.
-   * This is the preferred method for modifying the order or content of toDoList.
    * @param userId The UID of the current user.
    * @param newTodoList The full, reordered array of to-do items.
    * @throws FirebaseServiceError if update fails.
@@ -653,7 +763,6 @@ class FirebaseService {
 
   /**
    * Adds a new TodoItem to the toDoList.
-   * This will place the new item at the top (order 0) and reorder existing items.
    * @param userId The ID of the current user.
    * @param text The text content of the new to-do item.
    * @returns The newly added TodoItem.
@@ -670,29 +779,120 @@ class FirebaseService {
       const existingTodoList = currentData.toDoList || [];
       const now = Timestamp.now();
 
-      // Reorder existing items to make space for the new item at the top (order 0)
       const reorderedList = existingTodoList.map(item => ({
         ...item,
-        order: item.order + 1, // Increment order of existing items
+        order: item.order + 1,
       }));
 
       const newItem: TodoItem = {
         id: generateUUID(),
         text: text.trim(),
-        description: null, // Default to null for new items
-        order: 0, // New item is at the top
+        description: null,
+        order: 0,
         completed: false,
         createdAt: now,
         updatedAt: now,
-        deadline: null, // Default to null for new items
+        deadline: null,
       };
 
-      const updatedTodoList = [newItem, ...reorderedList]; // Place new item at the beginning
+      const updatedTodoList = [newItem, ...reorderedList];
 
       await updateDoc(userDocRef, { toDoList: updatedTodoList });
       return newItem;
     } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to add to-do item.', error);
+    }
+  }
+
+  /**
+   * Generic function to update a specific top-level routine setting or an array of schedules/meals/sessions.
+   * @param userId The ID of the current user.
+   * @param settingPath The dot-separated path to the setting (e.g., 'sleep', 'water', 'bath').
+   * @param data The new data to set. This can be a Partial of a setting object, or a full array for schedule types.
+   * @throws FirebaseServiceError if the update fails.
+   */
+  async updateSpecificRoutineSetting(
+    userId: string,
+    settingPath: string,
+    data:
+      | Partial<SleepRoutineSettings>
+      | Partial<WaterRoutineSettings>
+      | ScheduledRoutineBase[]
+      | null // Allows clearing a setting
+  ): Promise<void> {
+    const userDocRef = doc(this.db, 'users', userId);
+    try {
+      const docSnap = await getDoc(userDocRef);
+      if (!docSnap.exists()) {
+        throw new FirebaseServiceError('User data not found for updating routine settings.');
+      }
+      const currentData = docSnap.data() as AppState;
+      const now = Timestamp.now();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateObject: { [key: string]: any } = {}; // Needs 'any' for dynamic string paths for updateDoc
+      const pathParts = settingPath.split('.');
+      const topLevelKey = pathParts[0] as keyof UserRoutineSettings;
+
+      if (!currentData.routineSettings) {
+        updateObject['routineSettings'] = {};
+      }
+
+      // Handle clearing a setting (setting to null)
+      if (data === null) {
+        updateObject[`routineSettings.${topLevelKey}`] = null;
+      } else if (Array.isArray(data)) {
+        // Handle array updates for bath, exercise, meals, teeth (all are ScheduledRoutineBase[])
+        const updatedArray = data.map(item => {
+          const baseItem = item as ScheduledRoutineBase;
+          return {
+            ...item,
+            updatedAt: now,
+            completed: baseItem.completed === undefined ? null : baseItem.completed, // Convert undefined to null for Firestore
+          };
+        });
+        updateObject[`routineSettings.${topLevelKey}`] = updatedArray;
+      } else {
+        // Handle single object updates (e.g., for 'sleep' or 'water')
+        // We know 'data' is either Partial<SleepRoutineSettings> or Partial<WaterRoutineSettings>
+        const currentSetting = currentData.routineSettings?.[topLevelKey]; // Can be undefined or null if not set yet
+
+        // Create a new object to merge into, starting with current data or an empty object
+        const mergedSetting: SleepRoutineSettings | WaterRoutineSettings = {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...(currentSetting || ({} as any)), // Cast to any to allow spreading of potentially null/undefined currentSetting
+          updatedAt: now, // Always update updatedAt
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any; // Cast for the dynamic assignment loop below
+
+        // Iterate over keys in the incoming 'data' (the partial update) to merge and handle undefined -> null
+        for (const key in data) {
+          if (Object.prototype.hasOwnProperty.call(data, key)) {
+            // Assert key is valid for SleepRoutineSettings or WaterRoutineSettings
+            const val = (data as Partial<SleepRoutineSettings> & Partial<WaterRoutineSettings>)[
+              key as keyof (SleepRoutineSettings | WaterRoutineSettings)
+            ];
+
+            // If the value is explicitly undefined in the partial update, set to null for Firestore.
+            // Otherwise, use the provided value.
+            if (val === undefined) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (mergedSetting as any)[key] = null;
+            } else {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (mergedSetting as any)[key] = val;
+            }
+          }
+        }
+        updateObject[`routineSettings.${topLevelKey}`] = mergedSetting;
+      }
+
+      await updateDoc(userDocRef, updateObject);
+    } catch (error: unknown) {
+      throw new FirebaseServiceError(
+        `Failed to update routine setting at path '${settingPath}'.`,
+        error
+      );
     }
   }
 }

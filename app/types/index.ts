@@ -10,8 +10,6 @@ export enum SatisfactionLevel {
   VERY_HIGH = 5,
 }
 
-// PriorityLevel enum removed as requested.
-
 // Single goal structure (no ID needed — app is scoped to one goal)
 export interface Goal {
   name: string; // Goal title
@@ -66,6 +64,43 @@ export interface DailyProgress {
   updatedAt: Timestamp; // Last updated time
 }
 
+// Interfaces for Routine Management Settings
+
+// Base interface for routines that have a scheduled time and duration
+export interface ScheduledRoutineBase {
+  scheduledTime: string; // e.g., "20:00" (time of day)
+  durationMinutes: number; // e.g., 20
+  label: string; // Label for the schedule (e.g., "Morning Nap", "Evening Bath")
+  icon: string; // Icon identifier (e.g., "MdOutlineShower", "FaBed") - will be string name for react-icons
+  completed?: boolean; // Optional field to track if this specific scheduled item has been completed
+  updatedAt: Timestamp;
+}
+
+// Settings for the Sleep routine - now extends ScheduledRoutineBase
+export interface SleepRoutineSettings extends ScheduledRoutineBase {
+  // `scheduledTime` from ScheduledRoutineBase will represent the bedtime.
+  // `durationMinutes` from ScheduledRoutineBase will represent the sleep goal in minutes.
+  // `wakeTime` is intended to be derived from `scheduledTime` + `durationMinutes`.
+  napSchedule?: ScheduledRoutineBase[] | null; // Optional array of nap entries, each is a scheduled routine
+}
+
+// Settings for Water Intake
+export interface WaterRoutineSettings {
+  waterGoalGlasses: number; // e.g., 8
+  currentWaterGlasses: number; // Tracks consumed glasses for the current day
+  updatedAt: Timestamp;
+}
+
+// Container for all user-specific routine settings
+export interface UserRoutineSettings {
+  sleep?: SleepRoutineSettings | null;
+  bath?: ScheduledRoutineBase[] | null;
+  water?: WaterRoutineSettings | null;
+  exercise?: ScheduledRoutineBase[] | null;
+  meals?: ScheduledRoutineBase[] | null;
+  teeth?: ScheduledRoutineBase[] | null;
+}
+
 // Root state of the application (stored as one document)
 export interface AppState {
   goal: Goal | null; // User-defined goal (or null before setup)
@@ -75,4 +110,6 @@ export interface AppState {
   toDoList: TodoItem[]; // Ordered actionable items
   notToDoList: ListItem[]; // Things to avoid doing
   contextList: ListItem[]; // Useful resources, ideas, etc.
+
+  routineSettings?: UserRoutineSettings | null; // Optional routine settings for the user
 }
