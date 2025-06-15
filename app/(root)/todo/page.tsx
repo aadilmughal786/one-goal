@@ -1,16 +1,16 @@
 // app/(root)/todo/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 
 import { firebaseService } from '@/services/firebaseService';
 import { TodoItem } from '@/types';
-
-import { FiCheck, FiTrash2, FiEdit, FiPlus, FiSave, FiMenu } from 'react-icons/fi';
 import ToastMessage from '@/components/ToastMessage';
+import TodoList from '@/components/todo/TodoList';
+import TodoEditModal from '@/components/todo/TodoEditModal';
 
 const TodoSkeletonLoader = () => (
   <div className="animate-pulse">
@@ -40,16 +40,11 @@ export default function TodoPage() {
   const [toDoList, setToDoList] = useState<TodoItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
-  const [newTodoText, setNewTodoText] = useState('');
-  const [editText, setEditText] = useState('');
-
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  // --- NEW --- State for managing drag-and-drop
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTodoItem, setSelectedTodoItem] = useState<TodoItem | null>(null);
 
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
@@ -64,8 +59,7 @@ export default function TodoPage() {
       if (user) {
         setCurrentUser(user);
         firebaseService.getUserData(user.uid).then(data => {
-          // --- MODIFIED --- Do NOT sort by date anymore, to respect user's custom order.
-          setToDoList(data.toDoList || []);
+          setToDoList(data.toDoList ? [...data.toDoList].sort((a, b) => a.order - b.order) : []);
           setIsLoading(false);
         });
       } else {
@@ -75,114 +69,115 @@ export default function TodoPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // --- NEW --- Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
-    dragItem.current = index;
-    // Optional: Add a class for visual feedback
-    e.currentTarget.classList.add('opacity-50');
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLLIElement>, index: number) => {
-    dragOverItem.current = index;
-  };
-
-  const handleDragEnd = (e: React.DragEvent<HTMLLIElement>) => {
-    e.currentTarget.classList.remove('opacity-50');
-  };
-
-  const handleDrop = async (_: React.DragEvent<HTMLLIElement>) => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
-
-    const newToDoList = [...toDoList];
-    const draggedItemContent = newToDoList.splice(dragItem.current, 1)[0];
-    newToDoList.splice(dragOverItem.current, 0, draggedItemContent);
-
-    dragItem.current = null;
-    dragOverItem.current = null;
-
-    // Update state immediately for a responsive UI
-    setToDoList(newToDoList);
-
-    // Persist the new order to Firebase
-    if (currentUser) {
-      await firebaseService.updateTodoListOrder(currentUser.uid, newToDoList);
-    }
-  };
-
-  const handleAddTodo = useCallback(async () => {
-    if (!newTodoText.trim()) {
-      showMessage('Task cannot be empty.', 'error');
-      return;
-    }
-    if (!currentUser) return;
-
-    const newItem: TodoItem = {
-      id: Date.now(),
-      text: newTodoText.trim(),
-      completed: false,
-      startDate: Timestamp.now(),
-    };
-
-    // --- MODIFIED --- Add new items to the top of the list
-    const newToDoList = [newItem, ...toDoList];
-    setToDoList(newToDoList);
-    setNewTodoText('');
-    await firebaseService.updateTodoListOrder(currentUser.uid, newToDoList);
-  }, [newTodoText, currentUser, showMessage, toDoList]);
+  const handleAddTodo = useCallback(
+    async (text: string) => {
+      if (!currentUser) return;
+      try {
+        const newItem = await firebaseService.addTodoItem(currentUser.uid, text);
+        setToDoList(prev => [...prev, newItem].sort((a, b) => a.order - b.order));
+        showMessage('Task added!', 'success');
+      } catch (error) {
+        showMessage('Failed to add task.', 'error');
+        console.error('Error adding todo item:', error);
+      }
+    },
+    [currentUser, showMessage]
+  );
 
   const handleToggleComplete = useCallback(
-    async (id: number, completed: boolean) => {
+    async (id: string, completed: boolean) => {
       if (!currentUser) return;
-      setToDoList(prev => prev.map(item => (item.id === id ? { ...item, completed } : item)));
-      await firebaseService.updateItemInList(currentUser.uid, 'toDoList', id, { completed });
+      try {
+        // When task is completed, set completedAt to now and deadline to undefined (which becomes null in service)
+        // When task is uncompleted, set completedAt to undefined and leave deadline as is.
+        await firebaseService.updateItemInList(currentUser.uid, 'toDoList', id, {
+          completed: completed,
+          completedAt: completed ? Timestamp.now() : undefined,
+          deadline: completed ? undefined : toDoList.find(item => item.id === id)?.deadline || null, // Set deadline to null if completed, otherwise keep original.
+        });
+        setToDoList(prev =>
+          prev
+            .map(item =>
+              item.id === id
+                ? {
+                    ...item,
+                    completed,
+                    completedAt: completed ? Timestamp.now() : null,
+                    deadline: completed ? null : item.deadline, // Update local state with null if completed
+                  }
+                : item
+            )
+            .sort((a, b) => a.order - b.order)
+        );
+        showMessage(completed ? 'Task completed!' : 'Task uncompleted.', 'success');
+      } catch (error) {
+        showMessage('Failed to update task status.', 'error');
+        console.error('Error toggling todo completion:', error);
+      }
     },
-    [currentUser]
+    [currentUser, showMessage, toDoList] // Added toDoList to dependencies for current deadline access
   );
 
   const handleDeleteItem = useCallback(
-    async (id: number) => {
+    async (id: string) => {
       if (!currentUser) return;
-      setToDoList(prev => prev.filter(item => item.id !== id));
-      await firebaseService.removeItemFromList(currentUser.uid, 'toDoList', id);
+      try {
+        await firebaseService.removeItemFromList(currentUser.uid, 'toDoList', id);
+        setToDoList(prev => prev.filter(item => item.id !== id).sort((a, b) => a.order - b.order));
+        showMessage('Task deleted.', 'info');
+      } catch (error) {
+        showMessage('Failed to delete task.', 'error');
+        console.error('Error deleting todo item:', error);
+      }
     },
-    [currentUser]
+    [currentUser, showMessage]
   );
-
-  const handleStartEditing = (item: TodoItem) => {
-    setEditingItemId(item.id);
-    setEditText(item.text);
-  };
-
-  const handleCancelEditing = () => {
-    setEditingItemId(null);
-    setEditText('');
-  };
 
   const handleUpdateItem = useCallback(
-    async (id: number) => {
-      if (!editText.trim()) {
-        showMessage('Task cannot be empty.', 'error');
-        return;
-      }
+    async (id: string, updates: Partial<TodoItem>) => {
       if (!currentUser) return;
-
-      setToDoList(prev =>
-        prev.map(item => (item.id === id ? { ...item, text: editText.trim() } : item))
-      );
-      await firebaseService.updateItemInList(currentUser.uid, 'toDoList', id, {
-        text: editText.trim(),
-      });
-      handleCancelEditing();
+      try {
+        await firebaseService.updateItemInList(currentUser.uid, 'toDoList', id, updates);
+        setToDoList(prev =>
+          prev
+            .map(item => (item.id === id ? { ...item, ...updates } : item))
+            .sort((a, b) => a.order - b.order)
+        );
+      } catch (error) {
+        showMessage('Failed to update task.', 'error');
+        console.error('Error updating todo item:', error);
+      }
     },
-    [editText, currentUser, showMessage]
+    [currentUser, showMessage]
   );
 
-  const formatDate = (timestamp: Timestamp) => {
-    return timestamp.toDate().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const handleUpdateTodoListOrder = useCallback(
+    async (newOrder: TodoItem[]) => {
+      if (!currentUser) return;
+      try {
+        const listToSave = newOrder.map(item => ({
+          ...item,
+          updatedAt: Timestamp.now(),
+        }));
+        await firebaseService.updateTodoListOrder(currentUser.uid, listToSave);
+        setToDoList(listToSave);
+      } catch (error) {
+        showMessage('Failed to update task order.', 'error');
+        console.error('Error updating todo list order:', error);
+      }
+    },
+    [currentUser, showMessage]
+  );
+
+  const handleOpenEditModal = useCallback((item: TodoItem) => {
+    setSelectedTodoItem(item);
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleCloseEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setSelectedTodoItem(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -205,117 +200,29 @@ export default function TodoPage() {
             <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">Actionable Tasks</h2>
             <p className="mx-auto max-w-2xl text-lg text-white/70">
               Your goal is the destination, but these tasks are the steps that get you there. Drag
-              and drop to prioritize your list.
+              and drop to prioritize your list, and add deadlines/priorities.
             </p>
           </div>
 
-          <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
-            <div className="flex flex-col gap-2 mb-6 sm:flex-row">
-              <input
-                type="text"
-                value={newTodoText}
-                onChange={e => setNewTodoText(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && handleAddTodo()}
-                placeholder="Add a new task..."
-                className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-              <button
-                onClick={handleAddTodo}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 hover:scale-105 active:scale-95"
-              >
-                <FiPlus />
-                <span>Add</span>
-              </button>
-            </div>
-
-            <ul className="space-y-3">
-              {toDoList.length === 0 ? (
-                <div className="flex flex-col gap-3 items-center p-8 text-center text-white/40">
-                  <FiCheck size={40} />
-                  <p className="text-lg">Your task list is empty.</p>
-                  <p>Add a task above to get started!</p>
-                </div>
-              ) : (
-                toDoList.map((item, index) => (
-                  <li
-                    key={item.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border transition-all duration-300 cursor-grab ${item.completed ? 'bg-green-500/10 border-transparent' : 'bg-white/[0.03] border-white/10'}`}
-                    // --- NEW --- Drag and drop event handlers
-                    draggable
-                    onDragStart={e => handleDragStart(e, index)}
-                    onDragEnter={e => handleDragEnter(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={handleDrop}
-                    onDragOver={e => e.preventDefault()}
-                  >
-                    <div className="flex flex-grow items-center mb-2 sm:mb-0">
-                      <FiMenu className="mr-3 text-white/40 cursor-grab" />
-                      <label className="flex items-center cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={item.completed}
-                          onChange={e => handleToggleComplete(item.id, e.target.checked)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-all duration-300 ${item.completed ? 'bg-green-500 border-green-500' : 'border-white/30 group-hover:border-white/50'}`}
-                        >
-                          {item.completed && <FiCheck className="w-4 h-4 text-white" />}
-                        </span>
-                      </label>
-
-                      {editingItemId === item.id ? (
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={e => setEditText(e.target.value)}
-                          onKeyPress={e => e.key === 'Enter' && handleUpdateItem(item.id)}
-                          onBlur={handleCancelEditing}
-                          autoFocus
-                          className="flex-1 ml-4 text-lg text-white bg-transparent border-b outline-none border-white/20"
-                        />
-                      ) : (
-                        <span
-                          className={`ml-4 text-lg ${item.completed ? 'line-through text-white/50' : 'text-white'}`}
-                        >
-                          {item.text}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2 items-center self-end sm:self-center">
-                      <span className="text-xs text-white/40">{formatDate(item.startDate)}</span>
-                      {editingItemId === item.id ? (
-                        <button
-                          onClick={() => handleUpdateItem(item.id)}
-                          className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10"
-                          aria-label="Save changes"
-                        >
-                          <FiSave />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleStartEditing(item)}
-                          className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
-                          aria-label="Edit item"
-                        >
-                          <FiEdit />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                        aria-label="Delete item"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
+          <TodoList
+            toDoList={toDoList}
+            onAddTodo={handleAddTodo}
+            onToggleComplete={handleToggleComplete}
+            onDeleteItem={handleDeleteItem}
+            onUpdateTodoListOrder={handleUpdateTodoListOrder}
+            onEditTodoItem={handleOpenEditModal}
+            showMessage={showMessage}
+          />
         </section>
       </div>
+
+      <TodoEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        todoItem={selectedTodoItem}
+        onSave={handleUpdateItem}
+        showMessage={showMessage}
+      />
     </main>
   );
 }
