@@ -17,6 +17,8 @@ import BathSchedule from '@/components/routine/BathSchedule';
 import TeethCare from '@/components/routine/TeethCare';
 import WaterTracker from '@/components/routine/WaterTracker';
 import ExerciseTracker from '@/components/routine/ExerciseTracker';
+// SleepCalendar is now imported and used inside SleepSchedule.tsx
+// import SleepCalendar from '@/components/routine/SleepCalendar';
 
 // Import icons for sidebar/tabs
 import {
@@ -39,6 +41,9 @@ interface SidebarItem {
     currentUser: User | null;
     appState: AppState | null;
     showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+    // For SleepSchedule specifically, we need to pass a way to update appState
+    // This is now REQUIRED as per SleepScheduleProps
+    onAppStateUpdate: (newAppState: AppState) => void;
   }>;
 }
 
@@ -299,16 +304,16 @@ const RoutinePage = () => {
                 Go to Dashboard to Set Goal
               </Link>
             </div>
-          ) : ActiveComponent ? (
-            <ActiveComponent
-              currentUser={currentUser}
-              appState={appState}
-              showMessage={showMessage}
-            />
           ) : (
-            <div className="pt-10 text-center text-white/50">
-              <p>Select a routine from the sidebar to view its settings.</p>
-            </div>
+            // Render the selected routine component, passing onAppStateUpdate for SleepSchedule
+            ActiveComponent && (
+              <ActiveComponent
+                currentUser={currentUser}
+                appState={appState}
+                showMessage={showMessage}
+                onAppStateUpdate={setAppState} // Pass setAppState to the active component
+              />
+            )
           )}
         </div>
       </main>

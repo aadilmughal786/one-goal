@@ -14,13 +14,16 @@ import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 
-// Import the reusable RoutineSectionCard
+// Import the reusable RoutineSectionCard and SleepCalendar
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import SleepCalendar from '@/components/routine/SleepCalendar'; // Import SleepCalendar
 
 interface SleepScheduleProps {
   currentUser: User | null;
   appState: AppState | null;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // This prop is now received from RoutinePage and passed down, and it is REQUIRED.
+  onAppStateUpdate: (newAppState: AppState) => void;
 }
 
 // Define the IconComponents map for SleepSchedule to pass to RoutineSectionCard
@@ -33,7 +36,12 @@ const IconComponents: { [key: string]: React.ElementType } = {
 
 const napIcons: string[] = ['MdOutlineAccessTime', 'MdOutlineWbSunny', 'MdOutlineNightlight'];
 
-const SleepSchedule: React.FC<SleepScheduleProps> = ({ currentUser, appState, showMessage }) => {
+const SleepSchedule: React.FC<SleepScheduleProps> = ({
+  currentUser,
+  appState,
+  showMessage,
+  onAppStateUpdate, // Receive this prop from parent
+}) => {
   // Initialize state based on existing appState or defaults
   const initialSleepSettings = appState?.routineSettings?.sleep;
 
@@ -404,6 +412,16 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({ currentUser, appState, sh
         buttonLabel="Add & Save Nap"
         onAddSchedule={addNapSchedule}
       />
+
+      {/* Integrate SleepCalendar component here */}
+      <div className="mt-8">
+        <SleepCalendar
+          appState={appState}
+          currentUser={currentUser}
+          showMessage={showMessage}
+          onAppStateUpdate={onAppStateUpdate} // Pass the parent's update function
+        />
+      </div>
     </>
   );
 };

@@ -74,6 +74,7 @@ export interface DailyProgress {
   progressNote: string; // Daily journal/notes
   stopwatchSessions: StopwatchSession[]; // Log of focus sessions for this day
   effortTimeMinutes: number | null; // Sum of durationMs from stopwatchSessions, in minutes
+  isSleepLogged: boolean | null; // Indicates if sleep was logged for the day
 
   createdAt: Timestamp;
   updatedAt: Timestamp;

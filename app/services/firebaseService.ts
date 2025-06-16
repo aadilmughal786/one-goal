@@ -58,7 +58,7 @@ interface SerializableScheduledRoutineBase {
 interface SerializableAppState {
   goal: {
     name: string;
-    description: string;
+    description: string | null; // Corrected: allow null for description
     endDate: string;
     createdAt: string;
     updatedAt: string;
@@ -75,6 +75,7 @@ interface SerializableAppState {
       updatedAt: string;
     }>;
     effortTimeMinutes: number | null;
+    isSleepLogged: boolean | null; // Changed from sleepTimeMinutes
     createdAt: string;
     updatedAt: string;
   }>;
@@ -192,6 +193,16 @@ class FirebaseService {
         appState.toDoList = appState.toDoList || [];
         appState.notToDoList = appState.notToDoList || [];
         appState.contextList = appState.contextList || [];
+
+        // Ensure isSleepLogged is initialized for existing dailyProgress entries
+        for (const dateKey in appState.dailyProgress) {
+          if (Object.prototype.hasOwnProperty.call(appState.dailyProgress, dateKey)) {
+            const entry = appState.dailyProgress[dateKey];
+            if (entry.isSleepLogged === undefined) {
+              entry.isSleepLogged = null;
+            }
+          }
+        }
 
         // Initialize routineSettings and its array properties to empty arrays if null/undefined
         if (!appState.routineSettings) {
@@ -442,6 +453,7 @@ class FirebaseService {
           updatedAt: session.updatedAt.toDate().toISOString(),
         })),
         effortTimeMinutes: dp.effortTimeMinutes, // No ?? null needed as type is already number | null
+        isSleepLogged: dp.isSleepLogged, // Include new field
         createdAt: dp.createdAt.toDate().toISOString(),
         updatedAt: dp.updatedAt.toDate().toISOString(),
       })),
@@ -540,6 +552,7 @@ class FirebaseService {
               updatedAt: this.deserializeTimestamp(session.updatedAt)!,
             })),
             effortTimeMinutes: dp.effortTimeMinutes, // No ?? undefined needed as type is already number | null
+            isSleepLogged: dp.isSleepLogged, // Deserialize new field
             createdAt: this.deserializeTimestamp(dp.createdAt)!,
             updatedAt: this.deserializeTimestamp(dp.updatedAt)!,
           },
@@ -762,26 +775,60 @@ class FirebaseService {
       if (!docSnap.exists()) {
         throw new FirebaseServiceError('User data not found for saving daily progress.');
       }
+
       const currentData = docSnap.data() as AppState;
-      const now = Timestamp.now();
+      // Ensure dailyProgress is an object, even if it was null/undefined in Firestore
+      currentData.dailyProgress = currentData.dailyProgress || {};
 
-      const existingProgress = currentData.dailyProgress[progressData.date];
-
-      const updatedProgressData: DailyProgress = {
-        ...progressData,
-        createdAt: existingProgress?.createdAt || now,
-        updatedAt: now,
+      // Create a mutable copy of the existing daily progress or an initialized one
+      const existingProgress = currentData.dailyProgress[progressData.date] || {
+        date: progressData.date,
+        satisfactionLevel: SatisfactionLevel.MEDIUM,
+        progressNote: '',
+        stopwatchSessions: [],
+        effortTimeMinutes: 0,
+        isSleepLogged: null, // Ensure this new field is initialized
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
 
-      // Recalculate effortTimeMinutes based on existing or new sessions
-      const totalDurationMs = updatedProgressData.stopwatchSessions.reduce(
+      const updatedProgressData: DailyProgress = {
+        ...existingProgress, // Start with existing data (or initialized default)
+        ...progressData, // Overlay with new data from progressData parameter
+        // Ensure Timestamps are correctly set
+        createdAt: existingProgress.createdAt || Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      };
+
+      // Sanitize potential 'undefined' values before sending to Firestore
+      // For arrays, ensure they are always arrays (even if empty)
+      if (updatedProgressData.stopwatchSessions === undefined) {
+        updatedProgressData.stopwatchSessions = [];
+      }
+      // For nullable fields, ensure they are 'null' not 'undefined'
+      if (updatedProgressData.progressNote === undefined) {
+        updatedProgressData.progressNote = '';
+      }
+      if (updatedProgressData.effortTimeMinutes === undefined) {
+        updatedProgressData.effortTimeMinutes = null;
+      }
+      if (updatedProgressData.isSleepLogged === undefined) {
+        updatedProgressData.isSleepLogged = null;
+      }
+
+      // Recalculate effortTimeMinutes to be safe, using the finalized sessions
+      const totalDurationMs = (updatedProgressData.stopwatchSessions || []).reduce(
         (sum, s) => sum + s.durationMs,
         0
       );
       updatedProgressData.effortTimeMinutes = Math.round(totalDurationMs / (1000 * 60));
 
+      // Convert to a plain JavaScript object before sending to Firestore
+      // This helps in cases where internal React/Firebase objects might cause issues
+      const cleanUpdatedProgressData = JSON.parse(JSON.stringify(updatedProgressData));
+
       await updateDoc(userDocRef, {
-        [`dailyProgress.${progressData.date}`]: updatedProgressData,
+        [`dailyProgress.${progressData.date}`]: cleanUpdatedProgressData,
       });
     } catch (error: unknown) {
       throw new FirebaseServiceError(
@@ -829,6 +876,7 @@ class FirebaseService {
           progressNote: existingDailyProgress.progressNote, // Preserve existing notes
           stopwatchSessions: newSessions,
           effortTimeMinutes: existingDailyProgress.effortTimeMinutes, // Preserve existing, will be recalculated
+          isSleepLogged: existingDailyProgress.isSleepLogged, // Preserve existing isSleepLogged
           createdAt: existingDailyProgress.createdAt, // Preserve original creation date
           updatedAt: now,
         };
@@ -840,6 +888,7 @@ class FirebaseService {
           progressNote: '',
           stopwatchSessions: newSessions,
           effortTimeMinutes: 0, // Initialize for new daily progress, will be recalculated
+          isSleepLogged: null, // Initialize new field for daily progress
           createdAt: now,
           updatedAt: now,
         };
