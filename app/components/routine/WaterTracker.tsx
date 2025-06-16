@@ -8,8 +8,6 @@ import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 
-// Import the reusable RoutineSectionCard and IconOption
-
 interface WaterTrackerProps {
   currentUser: User | null;
   appState: AppState | null;
@@ -17,25 +15,30 @@ interface WaterTrackerProps {
 }
 
 const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, showMessage }) => {
-  // Access initial values correctly, defaulting currentWaterGlasses to 0 if not present
-  const initialWaterGoal = appState?.routineSettings?.water?.waterGoalGlasses || 8;
-  const initialCurrentWater = appState?.routineSettings?.water?.currentWaterGlasses || 0;
+  // Access initial values correctly. WaterRoutineSettings is now guaranteed non-null if routineSettings exists.
+  // If routineSettings or water is null (initial load for new user), use defaults.
+  const initialWaterGoal = appState?.routineSettings?.water?.waterGoalGlasses ?? 8;
+  const initialCurrentWater = appState?.routineSettings?.water?.currentWaterGlasses ?? 0;
 
   const [waterGoal, setWaterGoal] = useState(initialWaterGoal);
   const [currentWater, setCurrentWater] = useState(initialCurrentWater);
 
-  // Sync local state with appState from Firebase
+  // Sync local state with appState from Firebase.
+  // This useEffect ensures UI reflects the single source of truth from appState.
   useEffect(() => {
+    // If appState.routineSettings.water exists, use its values.
     if (appState?.routineSettings?.water) {
       setWaterGoal(appState.routineSettings.water.waterGoalGlasses);
       setCurrentWater(appState.routineSettings.water.currentWaterGlasses);
     } else {
+      // If routineSettings.water is null (e.g., brand new user or reset), set to defaults.
       setWaterGoal(8);
       setCurrentWater(0);
     }
   }, [appState]);
 
-  // Save water settings dynamically
+  // Save water settings to Firestore.
+  // This function is debounced by the useEffect below to prevent excessive writes.
   const saveWaterSettings = useCallback(async () => {
     if (!currentUser) {
       showMessage('You must be logged in to save settings.', 'error');
@@ -49,21 +52,24 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
     };
 
     try {
-      await firebaseService.updateSpecificRoutineSetting(currentUser.uid, 'water', newSettings);
-      // showMessage('Water settings saved!', 'success'); // Removed dynamic save toast
+      // Use the dedicated update function for water routine settings
+      await firebaseService.updateWaterRoutineSettings(currentUser.uid, newSettings);
+      // Removed dynamic save toast, as requested previously (implicit save is fine)
     } catch (error: unknown) {
       console.error('Failed to save water settings:', error);
       showMessage('Failed to save water settings.', 'error');
     }
   }, [currentUser, waterGoal, currentWater, showMessage]);
 
-  // Effect to trigger save when waterGoal or currentWater changes
+  // Effect to trigger save when waterGoal or currentWater changes (with debounce)
   useEffect(() => {
-    // Only save if currentUser is available and not during initial load
+    // Only save if currentUser is available
     if (currentUser) {
       const handler = setTimeout(() => {
         saveWaterSettings();
-      }, 500); // Debounce saves to avoid too many writes
+      }, 500); // Debounce saves to avoid too many Firestore writes
+
+      // Cleanup function to clear the timeout if state changes before it fires
       return () => clearTimeout(handler);
     }
   }, [waterGoal, currentWater, currentUser, saveWaterSettings]);
@@ -76,27 +82,25 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
     setCurrentWater(prev => Math.max(prev - 1, 0)); // Don't go below zero
   }, []);
 
-  // Handler for goal input change (now a slider)
+  // Handler for goal input change (slider)
   const handleWaterGoalChange = useCallback((value: string) => {
     const val = parseInt(value);
     setWaterGoal(isNaN(val) ? 8 : Math.max(8, Math.min(30, val))); // Ensure min 8, max 30 glasses
   }, []);
 
-  // Corrected progress bar calculation: clamped between 0 and 100
+  // Progress bar calculation
   const progressPercentage = waterGoal > 0 ? (currentWater / waterGoal) * 100 : 0;
   const clampedProgressPercentage = Math.max(0, Math.min(100, progressPercentage));
 
   return (
     <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-      {/* Header handled by RoutineSectionCard, but without time display as it's not a scheduled routine */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="flex gap-3 items-center text-2xl font-bold text-white">
-          <MdOutlineWaterDrop size={28} />
-          Water Intake
-        </h2>
-      </div>
+      {/* Section Header */}
+      <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-white">
+        <MdOutlineWaterDrop size={28} />
+        Water Intake
+      </h2>
 
-      {/* Summary handled by RoutineSectionCard */}
+      {/* Summary Display */}
       <div className="mb-6 text-center">
         <div className="text-4xl font-bold text-blue-400">
           {currentWater}/{waterGoal}
@@ -104,29 +108,25 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
         <div className="text-sm opacity-75 text-white/70">Glasses Consumed Today</div>
       </div>
 
+      {/* Progress Bar */}
       <div className="mb-8 h-3 rounded-full bg-white/20">
         <div
           className="h-3 bg-blue-400 rounded-full transition-all duration-500"
-          style={{ width: `${clampedProgressPercentage}%` }} // Using clamped value here
+          style={{ width: `${clampedProgressPercentage}%` }}
         ></div>
       </div>
 
-      {/* Water Intake Controls (unique to this component) - RESTRUCTURED UI */}
+      {/* Water Intake Controls */}
       <div className="flex flex-col gap-4 items-center mb-8">
-        {' '}
-        {/* Changed to flex-col for vertical stacking */}
         <div className="flex flex-wrap gap-2 justify-center max-w-full">
-          {' '}
-          {/* Container for glasses */}
           {Array.from({ length: waterGoal }, (_, i) => (
             <div
               key={i}
               className={`w-10 h-12 mx-0.5 my-1 rounded-b-full border-2 transition-all duration-300 flex items-end justify-center overflow-hidden relative ${
-                i < currentWater ? 'bg-blue-400 border-blue-500' : 'bg-white/10 border-white/30' // Lighter empty glass
+                i < currentWater ? 'bg-blue-400 border-blue-500' : 'bg-white/10 border-white/30'
               }`}
               title={`${i < currentWater ? 'Filled' : 'Empty'} Glass`}
             >
-              {/* Optional: Add a subtle water effect or icon inside */}
               {i < currentWater && (
                 <MdOutlineWaterDrop size={20} className="absolute bottom-1 text-blue-700" />
               )}
@@ -134,8 +134,6 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
           ))}
         </div>
         <div className="flex gap-4">
-          {' '}
-          {/* Buttons directly below glasses */}
           <button
             onClick={removeWater}
             className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors cursor-pointer bg-red-500/20 hover:bg-red-500/30"
@@ -153,7 +151,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
         </div>
       </div>
 
-      {/* Water Goal Settings (custom, using a slider) */}
+      {/* Water Goal Settings (slider) */}
       <div className="bg-white/[0.02] rounded-xl p-6 shadow-lg border border-white/10">
         <h3 className="mb-4 font-semibold text-white">Water Intake Goal</h3>
         <div className="mb-4 text-center">
@@ -173,8 +171,6 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, show
           <span>30 glasses</span>
         </div>
       </div>
-
-      {/* No explicit save button here as saving is dynamic */}
     </div>
   );
 };

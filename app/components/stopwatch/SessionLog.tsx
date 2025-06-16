@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { AppState } from '@/types';
+import { AppState, StopwatchSession } from '@/types'; // Import DailyProgress and StopwatchSession
 import {
   FiActivity,
   FiClock,
@@ -15,29 +15,46 @@ import {
 } from 'react-icons/fi';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { isToday, isYesterday, format, addDays, subDays, startOfDay } from 'date-fns';
+import { isToday, isYesterday, format, addDays, subDays, startOfDay, parseISO } from 'date-fns'; // Import parseISO
 
 interface SessionLogProps {
   appState: AppState | null;
-  onDeleteSession: (sessionId: number) => void;
+  // Updated onDeleteSession to match firebaseService signature
+  onDeleteSession: (
+    dateKey: string,
+    sessionStartTime: StopwatchSession['startTime']
+  ) => Promise<void>;
 }
 
 export default function SessionLog({ appState, onDeleteSession }: SessionLogProps) {
-  const [selectedDay, setSelectedDay] = useState<Date | undefined>(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date()); // Initialize with Date object directly
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
   const calendarRef = useRef<HTMLDivElement>(null);
 
+  // Effect to determine the initial selected day based on the most recent logged session
   useEffect(() => {
-    const lastLoggedDay = appState?.stopwatchSessions
-      ?.sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
-      ?.date.toDate();
-    const initialDate = lastLoggedDay || new Date();
+    let mostRecentDate: Date | null = null;
+    if (appState?.dailyProgress) {
+      // Iterate through dailyProgress entries to find the latest date with sessions
+      for (const dateKey of Object.keys(appState.dailyProgress).sort().reverse()) {
+        const dailyProgressEntry = appState.dailyProgress[dateKey];
+        if (
+          dailyProgressEntry.stopwatchSessions &&
+          dailyProgressEntry.stopwatchSessions.length > 0
+        ) {
+          mostRecentDate = parseISO(dateKey); // Convert date string to Date object
+          break;
+        }
+      }
+    }
+    const initialDate = mostRecentDate || new Date();
     setSelectedDay(initialDate);
     setCalendarMonth(initialDate);
-  }, [appState?.stopwatchSessions]);
+  }, [appState?.dailyProgress]); // Depend on dailyProgress changes
 
+  // Effect to close the calendar when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
@@ -50,6 +67,7 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
     };
   }, [calendarRef]);
 
+  // Helper function to format duration from milliseconds to a readable string
   const formatDuration = (ms: number) => {
     if (ms === 0) return '0s';
     const totalSeconds = Math.floor(ms / 1000);
@@ -65,47 +83,66 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
     return parts.join(' ');
   };
 
-  const formatDisplayDate = (date: Date | undefined): string => {
-    if (!date) return 'Select a Date';
+  // Helper function to format the display date (Today, Yesterday, or full date)
+  const formatDisplayDate = (date: Date): string => {
+    // Changed type to Date (non-optional)
     if (isToday(date)) return 'Today';
     if (isYesterday(date)) return 'Yesterday';
-    return format(date, 'MMMM d, yyyy');
+    return format(date, 'MMMM d, yyyy'); // Corrected format string for year
   };
 
+  // Memoized list of days that have logged sessions, for calendar highlighting
   const loggedDays = useMemo(() => {
-    if (!appState?.stopwatchSessions) return [];
     const daysWithLogs = new Set<string>();
-    appState.stopwatchSessions.forEach(session => {
-      daysWithLogs.add(session.date.toDate().toISOString().split('T')[0]);
-    });
-    return Array.from(daysWithLogs).map(dateStr => new Date(`${dateStr}T00:00:00`));
-  }, [appState?.stopwatchSessions]);
+    if (appState?.dailyProgress) {
+      for (const dateKey in appState.dailyProgress) {
+        if (Object.prototype.hasOwnProperty.call(appState.dailyProgress, dateKey)) {
+          const dailyProgressEntry = appState.dailyProgress[dateKey];
+          if (
+            dailyProgressEntry.stopwatchSessions &&
+            dailyProgressEntry.stopwatchSessions.length > 0
+          ) {
+            daysWithLogs.add(dateKey);
+          }
+        }
+      }
+    }
+    // Convert date strings back to Date objects for DayPicker modifiers
+    return Array.from(daysWithLogs).map(dateStr => parseISO(dateStr));
+  }, [appState?.dailyProgress]);
 
+  // Memoized list of stopwatch sessions for the currently selected day
   const filteredSessions = useMemo(() => {
-    if (!selectedDay) return [];
+    if (!selectedDay || !appState?.dailyProgress) return [];
 
-    const selectedDateStr = selectedDay.toISOString().split('T')[0];
+    const selectedDateStr = format(selectedDay, 'yyyy-MM-dd');
+    const dailyProgressEntry = appState.dailyProgress[selectedDateStr];
 
-    return (appState?.stopwatchSessions || [])
-      .filter(session => {
-        const sessionDateStr = session.date.toDate().toISOString().split('T')[0];
-        return sessionDateStr === selectedDateStr;
-      })
-      .sort((a, b) => b.date.toMillis() - a.date.toMillis());
-  }, [appState?.stopwatchSessions, selectedDay]);
+    if (dailyProgressEntry && dailyProgressEntry.stopwatchSessions) {
+      // Sort sessions by startTime (descending)
+      return [...dailyProgressEntry.stopwatchSessions].sort(
+        (a, b) => b.startTime.toDate().getTime() - a.startTime.toDate().getTime()
+      );
+    }
+    return [];
+  }, [appState?.dailyProgress, selectedDay]);
 
+  // Memoized total time spent for the currently filtered sessions
   const totalFilteredTime = useMemo(() => {
     return filteredSessions.reduce((total, session) => total + session.durationMs, 0);
   }, [filteredSessions]);
 
-  const goalStartDate = appState?.goal?.startDate.toDate();
-  const goalEndDate = appState?.goal?.endDate.toDate();
+  // Get goal start and end dates from appState.goal
+  const goalStartDate = appState?.goal?.createdAt?.toDate(); // Use createdAt
+  const goalEndDate = appState?.goal?.endDate?.toDate();
 
+  // Navigation for previous/next day in the calendar view
   const navigateDay = (direction: 'prev' | 'next') => {
     if (!selectedDay || !goalStartDate || !goalEndDate) return;
 
     const newDay = direction === 'prev' ? subDays(selectedDay, 1) : addDays(selectedDay, 1);
 
+    // Ensure newDay is within the goal's start and end dates
     if (
       startOfDay(newDay) >= startOfDay(goalStartDate) &&
       startOfDay(newDay) <= startOfDay(goalEndDate)
@@ -155,6 +192,7 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
                         modifiers={{
                           logged: loggedDays,
                           disabled: date => {
+                            // Disable dates outside the goal range if goal exists
                             if (!goalStartDate || !goalEndDate) return false;
                             return (
                               date < startOfDay(goalStartDate) || date > startOfDay(goalEndDate)
@@ -179,14 +217,20 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
             <div className="flex gap-2 items-center">
               <button
                 onClick={() => navigateDay('prev')}
-                disabled={!selectedDay || startOfDay(selectedDay) <= startOfDay(goalStartDate!)}
+                disabled={
+                  !selectedDay ||
+                  !goalStartDate ||
+                  startOfDay(selectedDay) <= startOfDay(goalStartDate)
+                }
                 className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <FiChevronLeft />
               </button>
               <button
                 onClick={() => navigateDay('next')}
-                disabled={!selectedDay || startOfDay(selectedDay) >= startOfDay(goalEndDate!)}
+                disabled={
+                  !selectedDay || !goalEndDate || startOfDay(selectedDay) >= startOfDay(goalEndDate)
+                }
                 className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <FiChevronRight />
@@ -200,13 +244,13 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
             <ul className="space-y-3">
               {filteredSessions.map(session => (
                 <li
-                  key={session.id}
+                  key={session.startTime.toMillis()} // Use toMillis for a unique key from Timestamp
                   className="flex justify-between items-center p-3 rounded-lg transition-colors group bg-white/5 hover:bg-white/10"
                 >
                   <div>
                     <p className="font-semibold text-white">{session.label}</p>
                     <p className="text-sm text-white/60">
-                      {session.date
+                      {session.startTime // Use startTime to display time
                         .toDate()
                         .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -217,7 +261,9 @@ export default function SessionLog({ appState, onDeleteSession }: SessionLogProp
                       {formatDuration(session.durationMs)}
                     </div>
                     <button
-                      onClick={() => onDeleteSession(session.id)}
+                      onClick={() =>
+                        onDeleteSession(format(selectedDay, 'yyyy-MM-dd'), session.startTime)
+                      } // Pass dateKey and session.startTime
                       className="p-2 opacity-0 transition-all text-red-400/70 hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
                       aria-label="Delete session"
                     >

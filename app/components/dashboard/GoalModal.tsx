@@ -7,7 +7,7 @@ import { MdRocketLaunch } from 'react-icons/md';
 
 interface ModalGoalData {
   name: string;
-  description?: string;
+  description: string | null; // Changed to string | null
   startDate: string;
   endDate: string;
 }
@@ -15,9 +15,9 @@ interface ModalGoalData {
 interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSetGoal: (goalName: string, endDate: string, description?: string) => Promise<void>;
+  onSetGoal: (goalName: string, endDate: string, description: string | null) => Promise<void>; // Changed description to string | null
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
-  initialGoalData?: ModalGoalData | null;
+  initialGoalData: ModalGoalData | null; // Changed from optional to explicit null
   isEditMode?: boolean;
 }
 
@@ -30,7 +30,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
   isEditMode = false,
 }) => {
   const [goalName, setGoalName] = useState('');
-  const [goalDescription, setGoalDescription] = useState('');
+  const [goalDescription, setGoalDescription] = useState<string | null>(''); // State can be string or null
   const [endDate, setEndDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,11 +38,11 @@ const GoalModal: React.FC<GoalModalProps> = ({
     if (isOpen) {
       if (isEditMode && initialGoalData) {
         setGoalName(initialGoalData.name);
-        setGoalDescription(initialGoalData.description || '');
+        setGoalDescription(initialGoalData.description); // Directly assign null/string
         setEndDate(initialGoalData.endDate.slice(0, 16));
       } else {
         setGoalName('');
-        setGoalDescription('');
+        setGoalDescription(null); // Default to null for new goal
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         now.setDate(now.getDate() + 1);
@@ -67,7 +67,8 @@ const GoalModal: React.FC<GoalModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSetGoal(goalName, endDate, goalDescription.trim());
+      // Pass goalDescription directly, it's already string | null
+      await onSetGoal(goalName, endDate, goalDescription);
       // The parent component handles closing the modal and success message
     } catch (error) {
       showMessage((error as Error).message || 'An unknown error occurred.', 'error');
@@ -94,7 +95,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
         onClick={onClose}
       >
         <div
-          className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100"
+          className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-center p-6 border-b border-white/10">
@@ -139,8 +140,8 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   placeholder="Describe what success looks like..."
                   rows={3}
                   className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  value={goalDescription}
-                  onChange={e => setGoalDescription(e.target.value)}
+                  value={goalDescription || ''} // Handle null for textarea value
+                  onChange={e => setGoalDescription(e.target.value === '' ? null : e.target.value)}
                 />
               </div>
               <div>

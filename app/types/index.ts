@@ -1,7 +1,9 @@
 // app/types/index.ts
 import { Timestamp } from 'firebase/firestore';
 
-// Enum for satisfaction levels (used in daily reflections)
+/**
+ * Enum for satisfaction levels, used in daily reflections.
+ */
 export enum SatisfactionLevel {
   VERY_LOW = 1,
   LOW = 2,
@@ -10,106 +12,130 @@ export enum SatisfactionLevel {
   VERY_HIGH = 5,
 }
 
-// Single goal structure (no ID needed — app is scoped to one goal)
+/**
+ * Defines the structure for the user's primary overarching goal.
+ */
 export interface Goal {
-  name: string; // Goal title
-  description: string; // Goal summary/plan
-  endDate: Timestamp; // Intended end date
+  name: string;
+  description: string | null;
+  endDate: Timestamp; // Intended end date of the goal
 
-  createdAt: Timestamp; // Acts as start date (when goal was set)
-  updatedAt: Timestamp; // Tracks last modification
+  createdAt: Timestamp; // When the goal was first set
+  updatedAt: Timestamp; // Last modification time of the goal
 }
 
-// Task item toward the goal (supports drag-and-drop ordering)
+/**
+ * Represents an actionable task item in the to-do list.
+ * Properties are explicitly `null` if empty, not `undefined`.
+ */
 export interface TodoItem {
-  id: string; // Unique ID (manual or auto)
-  text: string; // Task description
-  description?: string | null; // Optional detailed description for the task
-  order: number; // Sort order for UI
-  completed: boolean; // Completion status
-  completedAt?: Timestamp | null; // When task was completed (optional), can be null for Firestore
-  deadline?: Timestamp | null; // Optional deadline for the task, can be null for Firestore
+  id: string;
+  text: string;
+  description: string | null; // Detailed description of the task
+  order: number; // For UI sorting and prioritization
+  completed: boolean;
+  completedAt: Timestamp | null; // Timestamp when the task was completed
+  deadline: Timestamp | null; // Optional deadline for the task
 
-  createdAt: Timestamp; // When task was created
-  updatedAt: Timestamp; // When last edited (not completion)
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// Generic list item (used in Not-To-Do and Context Lists)
+/**
+ * Generic structure for items in simple lists like "What Not To Do" and "Contextual Notes".
+ */
 export interface ListItem {
-  id: string; // Unique ID (manual or auto)
-  text: string; // List entry text
+  id: string;
+  text: string;
 
-  createdAt: Timestamp; // When added
-  updatedAt: Timestamp; // When edited
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// Stopwatch session for a specific time block (belongs to one day only)
+/**
+ * Defines a single logged session from the stopwatch feature.
+ */
 export interface StopwatchSession {
-  startTime: Timestamp; // Acts as unique ID (no overlap allowed)
-  label: string; // What user focused on during session
-  endTime: Timestamp; // When session ended
+  startTime: Timestamp; // Serves as unique ID for the session
+  label: string; // User-defined label for the focus session
+  durationMs: number; // Duration of the session in milliseconds
 
-  createdAt: Timestamp; // When session record was created
-  updatedAt: Timestamp; // Updated if session is edited
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// One day's logged progress (keyed by date-string in AppState)
+/**
+ * Represents a user's logged progress for a specific day.
+ * Keys in `dailyProgress` Record are "YYYY-MM-DD" strings.
+ */
 export interface DailyProgress {
-  date: string; // Unique key: formatted as "YYYY-MM-DD"
-  satisfactionLevel: SatisfactionLevel; // User reflection
+  date: string; // Unique key for the daily entry ("YYYY-MM-DD")
+  satisfactionLevel: SatisfactionLevel; // User's reflection on daily satisfaction
   progressNote: string; // Daily journal/notes
-  stopwatchSessions: StopwatchSession[]; // Session logs for this day
+  stopwatchSessions: StopwatchSession[]; // Log of focus sessions for this day
+  effortTimeMinutes: number | null; // Sum of durationMs from stopwatchSessions, in minutes
 
-  createdAt: Timestamp; // When this day log was initialized
-  updatedAt: Timestamp; // Last updated time
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// Interfaces for Routine Management Settings
-
-// Base interface for routines that have a scheduled time and duration
+/**
+ * Base interface for routine items with a scheduled time and duration.
+ * `completed` explicitly allows `null` for Firestore storage of optional booleans.
+ */
 export interface ScheduledRoutineBase {
-  scheduledTime: string; // e.g., "20:00" (time of day)
-  durationMinutes: number; // e.g., 20
-  label: string; // Label for the schedule (e.g., "Morning Nap", "Evening Bath")
-  icon: string; // Icon identifier (e.g., "MdOutlineShower", "FaBed") - will be string name for react-icons
-  completed?: boolean; // Optional field to track if this specific scheduled item has been completed
+  scheduledTime: string; // e.g., "20:00"
+  durationMinutes: number;
+  label: string;
+  icon: string; // React Icon identifier string (e.g., "MdOutlineShower")
+  completed: boolean | null; // True if completed for the current day, null if not set/reset
   updatedAt: Timestamp;
 }
 
-// Settings for the Sleep routine - now extends ScheduledRoutineBase
+/**
+ * Settings specific to the sleep routine.
+ * `napSchedule` is an array and will be empty `[]` if no naps are scheduled.
+ */
 export interface SleepRoutineSettings extends ScheduledRoutineBase {
-  // `scheduledTime` from ScheduledRoutineBase will represent the bedtime.
-  // `durationMinutes` from ScheduledRoutineBase will represent the sleep goal in minutes.
-  // `wakeTime` is intended to be derived from `scheduledTime` + `durationMinutes`.
-  napSchedule?: ScheduledRoutineBase[] | null; // Optional array of nap entries, each is a scheduled routine
+  napSchedule: ScheduledRoutineBase[];
 }
 
-// Settings for Water Intake
+/**
+ * Settings for tracking water intake.
+ */
 export interface WaterRoutineSettings {
-  waterGoalGlasses: number; // e.g., 8
-  currentWaterGlasses: number; // Tracks consumed glasses for the current day
+  waterGoalGlasses: number;
+  currentWaterGlasses: number;
   updatedAt: Timestamp;
 }
 
-// Container for all user-specific routine settings
+/**
+ * Container for all user-specific routine settings.
+ * Array properties will be empty `[]` if no schedules are set.
+ * `lastDailyResetDate` explicitly allows `null`.
+ */
 export interface UserRoutineSettings {
-  sleep?: SleepRoutineSettings | null;
-  bath?: ScheduledRoutineBase[] | null;
-  water?: WaterRoutineSettings | null;
-  exercise?: ScheduledRoutineBase[] | null;
-  meals?: ScheduledRoutineBase[] | null;
-  teeth?: ScheduledRoutineBase[] | null;
+  sleep: SleepRoutineSettings | null; // `null` if sleep routine not configured
+  bath: ScheduledRoutineBase[];
+  water: WaterRoutineSettings | null; // `null` if water routine not configured
+  exercise: ScheduledRoutineBase[];
+  meals: ScheduledRoutineBase[];
+  teeth: ScheduledRoutineBase[];
+  lastDailyResetDate: Timestamp | null; // Tracks the last date daily completion statuses were reset (can be null)
 }
 
-// Root state of the application (stored as one document)
+/**
+ * The root application state, stored as a single document per user.
+ * Object properties (like `goal`, `routineSettings`) are `null` if not set.
+ */
 export interface AppState {
-  goal: Goal | null; // User-defined goal (or null before setup)
+  goal: Goal | null; // The user-defined primary goal
 
-  dailyProgress: Record<string, DailyProgress>; // Fast date-based lookup for logs/UI
+  dailyProgress: Record<string, DailyProgress>; // Date-based lookup for daily logs
 
-  toDoList: TodoItem[]; // Ordered actionable items
+  toDoList: TodoItem[]; // Ordered actionable tasks
   notToDoList: ListItem[]; // Things to avoid doing
   contextList: ListItem[]; // Useful resources, ideas, etc.
 
-  routineSettings?: UserRoutineSettings | null; // Optional routine settings for the user
+  routineSettings: UserRoutineSettings | null; // All user-specific routine configurations
 }

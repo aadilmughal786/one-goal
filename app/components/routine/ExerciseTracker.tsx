@@ -16,7 +16,7 @@ import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 
-// Import the reusable RoutineSectionCard and IconOption
+// Import the reusable RoutineSectionCard
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
 interface ExerciseTrackerProps {
@@ -49,7 +49,10 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
   appState,
   showMessage,
 }) => {
-  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
+  // `schedules` is guaranteed to be an array or null from AppState, init to empty array if null
+  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>(
+    appState?.routineSettings?.exercise || []
+  );
 
   // States for new exercise input fields (passed to RoutineSectionCard)
   const [newExerciseLabel, setNewExerciseLabel] = useState('');
@@ -61,82 +64,38 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
 
   // Sync local state with appState from Firebase
   useEffect(() => {
-    if (appState?.routineSettings?.exercise) {
-      setSchedules(appState.routineSettings.exercise);
-    } else {
-      setSchedules([]);
-    }
+    // `appState.routineSettings.exercise` is guaranteed to be an array or null
+    setSchedules(appState?.routineSettings?.exercise || []);
   }, [appState]);
 
-  // Helper to calculate time until a scheduled event
-  const getTimeUntilSchedule = useCallback(
-    (
-      scheduledTime: string
-    ): {
-      hours: number;
-      minutes: number;
-      total: number;
-      isPast: boolean;
-      shouldStart?: boolean;
-    } => {
-      const now = new Date();
-      const [targetH, targetM] = scheduledTime.split(':').map(Number);
-      const targetDate = new Date();
-      targetDate.setHours(targetH, targetM, 0, 0);
-
-      let isPastToday = false;
-      if (targetDate <= now) {
-        isPastToday = true;
-        targetDate.setDate(targetDate.getDate() + 1); // Set for next day if already passed
-      }
-
-      const diff = targetDate.getTime() - now.getTime();
-      const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      // Logic for 'shouldStart' (within 5 minutes)
-      const shouldStart = diff <= 5 * 60 * 1000 && diff > 0;
-
-      return {
-        hours: hoursLeft,
-        minutes: minutesLeft,
-        total: diff,
-        isPast: isPastToday,
-        shouldStart: shouldStart,
-      };
-    },
-    []
-  );
-
-  const saveExerciseSettings = useCallback(async () => {
-    if (!currentUser) {
-      showMessage('You must be logged in to save settings.', 'error');
-      return;
-    }
-    try {
-      await firebaseService.updateSpecificRoutineSetting(currentUser.uid, 'exercise', schedules);
-    } catch (error: unknown) {
-      console.error('Failed to save exercise settings:', error);
-      showMessage('Failed to save exercise settings.', 'error');
-    }
-  }, [currentUser, schedules, showMessage]);
-
   const toggleExerciseCompletion = useCallback(
-    (index: number) => {
-      setSchedules(prevSchedules => {
-        const newSchedules = [...prevSchedules];
-        const scheduleToUpdate = { ...newSchedules[index] };
-        scheduleToUpdate.completed = !scheduleToUpdate.completed;
-        scheduleToUpdate.updatedAt = Timestamp.now();
-        newSchedules[index] = scheduleToUpdate;
-        return newSchedules;
+    async (index: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to update schedules.', 'error');
+        return;
+      }
+      // Create a new array to ensure immutability before updating Firestore
+      const updatedSchedules = schedules.map((schedule, i) => {
+        if (i === index) {
+          return { ...schedule, completed: !schedule.completed, updatedAt: Timestamp.now() };
+        }
+        return schedule;
       });
-      setTimeout(saveExerciseSettings, 0); // Save after state update
+      setSchedules(updatedSchedules); // Update local state immediately
+
+      try {
+        // Use the dedicated update function for exercise schedules
+        await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Exercise schedule updated!', 'success');
+      } catch (error: unknown) {
+        console.error('Failed to save exercise settings:', error);
+        showMessage('Failed to save exercise settings.', 'error');
+      }
     },
-    [saveExerciseSettings]
+    [currentUser, schedules, showMessage]
   );
 
-  const addExerciseSchedule = useCallback(() => {
+  const addExerciseSchedule = useCallback(async () => {
     const sessionDuration = parseInt(String(newExerciseDurationMinutes));
     if (
       !newExerciseLabel.trim() ||
@@ -148,41 +107,65 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
       showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
       return;
     }
+    if (!currentUser) {
+      showMessage('You must be logged in to add schedules.', 'error');
+      return;
+    }
 
     const newSchedule: ScheduledRoutineBase = {
       scheduledTime: newExerciseScheduledTime,
       durationMinutes: sessionDuration,
       label: newExerciseLabel.trim(),
       icon: newExerciseIcon,
-      completed: false,
+      completed: null, // New schedule starts as not completed (null)
       updatedAt: Timestamp.now(),
     };
 
     const updatedSchedules = [...schedules, newSchedule];
-    setSchedules(updatedSchedules);
-    setNewExerciseLabel('');
-    setNewExerciseScheduledTime(format(new Date(), 'HH:mm'));
-    setNewExerciseDurationMinutes(30);
-    setNewExerciseIcon('MdOutlineFlashOn');
-    saveExerciseSettings(); // Save updated schedule list
+    setSchedules(updatedSchedules); // Update local state immediately
+
+    try {
+      // Use the dedicated update function for exercise schedules
+      await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
+      showMessage('Exercise schedule added!', 'success');
+      // Reset form fields
+      setNewExerciseLabel('');
+      setNewExerciseScheduledTime(format(new Date(), 'HH:mm'));
+      setNewExerciseDurationMinutes(30);
+      setNewExerciseIcon(exerciseIcons[0]); // Reset to first icon
+    } catch (error: unknown) {
+      console.error('Failed to add exercise schedule:', error);
+      showMessage('Failed to add exercise schedule.', 'error');
+    }
   }, [
+    currentUser,
     schedules,
     newExerciseLabel,
     newExerciseScheduledTime,
     newExerciseDurationMinutes,
     newExerciseIcon,
-    saveExerciseSettings,
     showMessage,
   ]);
 
   const removeExerciseSchedule = useCallback(
-    (indexToRemove: number) => {
+    async (indexToRemove: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to remove schedules.', 'error');
+        return;
+      }
       const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
-      setSchedules(updatedSchedules);
+      setSchedules(updatedSchedules); // Update local state immediately
 
-      saveExerciseSettings(); // Save updated schedule list
+      try {
+        // Use the dedicated update function for exercise schedules
+        await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Exercise schedule removed!', 'info');
+      } catch (error: unknown) {
+        console.error('Failed to remove exercise schedule:', error);
+        showMessage('Failed to remove exercise schedule.', 'error');
+      }
     },
-    [schedules, saveExerciseSettings]
+    [currentUser, schedules, showMessage]
   );
 
   const completedSchedulesCount = schedules.filter(s => s.completed).length;
@@ -209,7 +192,7 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
       schedules={schedules}
       onToggleCompletion={toggleExerciseCompletion}
       onRemoveSchedule={removeExerciseSchedule}
-      getTimeUntilSchedule={getTimeUntilSchedule}
+      // Removed getTimeUntilSchedule prop as it's now internal to RoutineSectionCard
       newInputLabelPlaceholder="Workout Label"
       newInputValue={newExerciseLabel}
       onNewInputChange={setNewExerciseLabel}

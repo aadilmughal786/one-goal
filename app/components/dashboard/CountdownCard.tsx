@@ -22,7 +22,7 @@ const CountdownCard: React.FC<CountdownCardProps> = ({ goal }) => {
 
   const { timeLeft, progressPercent, totalDays, remainingDays, daysPassed } = useMemo(() => {
     const goalEndDate = goal.endDate.toDate();
-    const goalStartDate = goal.startDate.toDate();
+    const goalStartDate = goal.createdAt.toDate(); // Corrected to use createdAt
     const currentTime = now.getTime();
 
     const timeLeft = Math.max(0, goalEndDate.getTime() - currentTime);
@@ -60,7 +60,10 @@ const CountdownCard: React.FC<CountdownCardProps> = ({ goal }) => {
       {/* --- Top Section: Title & Description --- */}
       <div className="mb-8 text-center md:text-left">
         <h2 className="text-2xl font-bold text-white sm:text-3xl">{goal.name}</h2>
-        {goal.description && <p className="mt-2 text-white/70">{goal.description}</p>}
+        {/* Changed from goal.description && to goal.description !== null && goal.description !== '' */}
+        {goal.description !== null && goal.description !== '' && (
+          <p className="mt-2 text-white/70">{goal.description}</p>
+        )}
       </div>
 
       {/* --- Main Section: Progress Visualization & Countdown --- */}
@@ -102,7 +105,7 @@ const CountdownCard: React.FC<CountdownCardProps> = ({ goal }) => {
           <div className="flex gap-4 justify-center my-4 text-sm md:justify-start sm:gap-6 text-white/80">
             <div className="flex gap-2 items-center">
               <FiPlayCircle className="text-green-400" />
-              <span>Start: {format(goal.startDate.toDate(), 'd MMM yy')}</span>
+              <span>Start: {format(goal.createdAt.toDate(), 'd MMM yy')}</span>
             </div>
             <div className="flex gap-2 items-center">
               <FiFlag className="text-red-400" />

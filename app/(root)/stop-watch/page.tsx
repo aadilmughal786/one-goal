@@ -11,7 +11,13 @@ import { FiTrash2, FiX } from 'react-icons/fi';
 import { Timestamp } from 'firebase/firestore';
 import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import SessionLog from '@/components/stopwatch/SessionLog'; // --- NEW --- Import the new component
+import SessionLog from '@/components/stopwatch/SessionLog';
+
+// Define a type for the session to be deleted, including its date key
+interface SessionToDeleteInfo {
+  dateKey: string;
+  sessionStartTime: Timestamp;
+}
 
 const StopwatchPageSkeleton = () => (
   <div className="mx-auto w-full max-w-3xl animate-pulse">
@@ -52,15 +58,16 @@ export default function StopwatchPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [sessionToDeleteId, setSessionToDeleteId] = useState<number | null>(null);
+  // Store info about the session to delete, not just its ID
+  const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
 
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  const showMessage = (text: string, _: 'success' | 'error' | 'info') => {
+  const showMessage = useCallback((text: string, _: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setTimeout(() => setToastMessage(null), 5000);
-  };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(currentUser => {
@@ -121,48 +128,54 @@ export default function StopwatchPage() {
     }
 
     const newSession: StopwatchSession = {
-      id: Date.now(),
+      startTime: Timestamp.now(), // Automatically sets to current time
       label: sessionLabel.trim(),
       durationMs: elapsedTime,
-      date: Timestamp.now(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
 
     try {
       await firebaseService.addStopwatchSession(currentUser.uid, newSession);
-      setAppState(prev => {
-        if (!prev) return null;
-        const updatedSessions = [...(prev.stopwatchSessions || []), newSession];
-        return { ...prev, stopwatchSessions: updatedSessions };
-      });
+      // After adding, refetch user data to ensure appState is fully synchronized
+      // as addStopwatchSession modifies a nested map (dailyProgress)
+      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
+      setAppState(updatedAppState);
       showMessage('Focus session saved!', 'success');
-      handleReset();
-    } catch {
+      handleReset(); // Reset stopwatch after successful save
+    } catch (error) {
+      console.error('Error saving session:', error);
       showMessage('Could not save session. Please try again.', 'error');
     }
   };
 
-  const handleDeleteSession = (sessionId: number) => {
-    setSessionToDeleteId(sessionId);
+  // This function now receives dateKey and sessionStartTime directly from SessionLog
+  const handleDeleteSession = useCallback(async (dateKey: string, sessionStartTime: Timestamp) => {
+    // Made async
+    setSessionToDeleteInfo({ dateKey, sessionStartTime });
     setIsConfirmModalOpen(true);
-  };
+  }, []);
 
   const confirmDeleteSession = async () => {
-    if (!currentUser || sessionToDeleteId === null) return;
-
-    const currentSessions = appState?.stopwatchSessions || [];
-    const updatedSessions = currentSessions.filter(s => s.id !== sessionToDeleteId);
+    if (!currentUser || !sessionToDeleteInfo) return;
 
     try {
-      const newAppState = { ...appState!, stopwatchSessions: updatedSessions };
-      await firebaseService.setUserData(currentUser.uid, newAppState);
-      setAppState(newAppState);
+      await firebaseService.deleteStopwatchSession(
+        currentUser.uid,
+        sessionToDeleteInfo.dateKey,
+        sessionToDeleteInfo.sessionStartTime
+      );
+      // After deletion, refetch user data to ensure appState is fully synchronized
+      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
+      setAppState(updatedAppState);
       showMessage('Session deleted.', 'info');
-    } catch {
+    } catch (error) {
+      console.error('Error deleting session:', error);
       showMessage('Failed to delete session.', 'error');
+    } finally {
+      setIsConfirmModalOpen(false);
+      setSessionToDeleteInfo(null);
     }
-
-    setIsConfirmModalOpen(false);
-    setSessionToDeleteId(null);
   };
 
   if (isLoading) {

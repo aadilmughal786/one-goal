@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiX, FiClock, FiEdit3, FiCheckCircle, FiLoader, FiChevronDown } from 'react-icons/fi';
-import { DailyProgress, SatisfactionLevel } from '@/types';
+import { FiX, FiEdit3, FiCheckCircle, FiLoader, FiChevronDown } from 'react-icons/fi';
+import { DailyProgress, SatisfactionLevel, StopwatchSession } from '@/types'; // Import StopwatchSession
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 
@@ -11,7 +11,7 @@ interface DailyProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
   date: Date;
-  initialProgress?: DailyProgress | null;
+  initialProgress: DailyProgress | null; // Changed to non-optional as it's either data or null for new
   onSave: (progressData: DailyProgress) => Promise<void>;
 }
 
@@ -31,20 +31,20 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   onSave,
 }) => {
   const [satisfaction, setSatisfaction] = useState<SatisfactionLevel | null>(null);
-  const [timeSpent, setTimeSpent] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Initialize state based on initialProgress
   useEffect(() => {
     if (isOpen) {
-      setSatisfaction(initialProgress?.satisfactionLevel ?? null);
-      setTimeSpent(String(initialProgress?.timeSpentMinutes ?? ''));
-      setNotes(initialProgress?.notes ?? '');
+      setSatisfaction(initialProgress?.satisfactionLevel || null); // Ensure null default if not present
+      setNotes(initialProgress?.progressNote || '');
       setIsDropdownOpen(false);
     }
   }, [isOpen, initialProgress]);
 
+  // Prevent scrolling body when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -58,18 +58,38 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
 
   const handleSubmit = async () => {
     if (satisfaction === null) {
-      alert('Please select a satisfaction level.');
+      // Replaced alert with a more user-friendly message or toast if available
+      // For now, let's log to console or use a temporary state for a message.
+      console.error('Please select a satisfaction level.');
+      // If you have a ToastMessage component available, you could use:
+      // showMessage('Please select a satisfaction level.', 'error');
       return;
     }
     setIsSubmitting(true);
+
+    // Prepare stopwatchSessions. If initialProgress exists, use its sessions; otherwise, an empty array.
+    const currentStopwatchSessions: StopwatchSession[] = initialProgress?.stopwatchSessions || [];
+
     const progressData: DailyProgress = {
-      date: Timestamp.fromDate(date),
+      date: format(date, 'yyyy-MM-dd'), // Date string as per DailyProgress interface
       satisfactionLevel: satisfaction,
-      timeSpentMinutes: Math.max(0, Number(timeSpent)), // Ensure it's not negative on save
-      notes: notes.trim(),
+      progressNote: notes.trim(),
+      stopwatchSessions: currentStopwatchSessions, // Pass existing sessions
+      effortTimeMinutes: initialProgress?.effortTimeMinutes || 0, // Initial value, will be re-calculated by service
+      createdAt: initialProgress?.createdAt || Timestamp.now(), // Preserve existing creation time or set new
+      updatedAt: Timestamp.now(),
     };
-    await onSave(progressData);
-    setIsSubmitting(false);
+
+    try {
+      await onSave(progressData);
+      // Parent component is expected to handle success message and modal close.
+    } catch (error) {
+      console.error('Failed to save daily progress:', error);
+      // If you have a ToastMessage component available, you could use:
+      // showMessage('Failed to save daily progress.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -138,27 +158,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
               )}
             </div>
           </div>
-          <div>
-            <label htmlFor="timeSpent" className="block mb-2 text-sm font-medium text-white/70">
-              <FiClock className="inline -mt-1 mr-1" />
-              Time Spent (minutes)
-            </label>
-            {/* --- MODIFIED: Added min="0" and updated onChange to prevent negative values --- */}
-            <input
-              id="timeSpent"
-              type="number"
-              min="0"
-              value={timeSpent}
-              onChange={e => {
-                // Only update state if the value is not negative
-                if (Number(e.target.value) >= 0) {
-                  setTimeSpent(e.target.value);
-                }
-              }}
-              placeholder="e.g., 60"
-              className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-            />
-          </div>
+          {/* Removed Time Spent (minutes) input as it's derived from stopwatch sessions */}
           <div>
             <label htmlFor="notes" className="block mb-2 text-sm font-medium text-white/70">
               Notes (Optional)

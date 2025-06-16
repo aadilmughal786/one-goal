@@ -100,14 +100,18 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
 const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
   // Enhanced chart data with more meaningful metrics
   const chartData = useMemo(() => {
+    // Ensure dailyProgress is an array before mapping
+    if (!dailyProgress) return [];
+
     const data = dailyProgress.map(p => ({
-      date: format(p.date.toDate(), 'MMM d'),
+      date: format(new Date(p.date), 'MMM d'), // Use new Date(p.date) as p.date is string
       satisfaction: getSatisfactionInfo(p.satisfactionLevel).numeric,
-      timeSpent: p.timeSpentMinutes,
+      // Use effortTimeMinutes which is now number | null
+      timeSpent: p.effortTimeMinutes || 0,
       movingAvg: 0,
       efficiency:
-        p.timeSpentMinutes > 0
-          ? getSatisfactionInfo(p.satisfactionLevel).numeric / (p.timeSpentMinutes / 60)
+        (p.effortTimeMinutes || 0) > 0
+          ? getSatisfactionInfo(p.satisfactionLevel).numeric / ((p.effortTimeMinutes || 0) / 60)
           : 0,
     }));
 
@@ -127,14 +131,15 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
   const goalProgressData = useMemo(() => {
     if (!goal) return null;
 
-    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1;
+    // Use goal.createdAt instead of goal.startDate
+    const totalDays = differenceInDays(goal.endDate.toDate(), goal.createdAt.toDate()) + 1;
     const daysPassed = Math.min(
-      differenceInDays(new Date(), goal.startDate.toDate()) + 1,
+      differenceInDays(new Date(), goal.createdAt.toDate()) + 1,
       totalDays
     );
     const daysLogged = dailyProgress.filter(
-      p => getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || p.timeSpentMinutes > 0
-    ).length;
+      p => getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || (p.effortTimeMinutes || 0) > 0
+    ).length; // Use effortTimeMinutes
 
     const completionRate = (daysPassed / totalDays) * 100;
     const loggingRate = (daysLogged / daysPassed) * 100;
@@ -154,7 +159,8 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
     if (!goal) return [];
 
     const weeks = [];
-    let currentDate = goal.startDate.toDate();
+    // Use goal.createdAt instead of goal.startDate
+    let currentDate = goal.createdAt.toDate();
     const endDate = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
 
     while (currentDate.getTime() <= endDate) {
@@ -163,15 +169,18 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
       const weekProgress = weekDays
-        .filter(day => day >= goal.startDate.toDate() && day <= new Date())
+        // Use goal.createdAt instead of goal.startDate
+        .filter(day => day >= goal.createdAt.toDate() && day <= new Date())
         .map(day => {
-          const dayKey = day.toISOString().split('T')[0];
-          return dailyProgress.find(p => p.date.toDate().toISOString().split('T')[0] === dayKey);
+          const dayKey = format(day, 'yyyy-MM-dd'); // Format date string correctly
+          return dailyProgress.find(p => p.date === dayKey); // Compare date strings
         });
 
       const activeDays = weekProgress.filter(
-        p => p && (getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || p.timeSpentMinutes > 0)
-      ).length;
+        p =>
+          p &&
+          (getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || (p.effortTimeMinutes || 0) > 0)
+      ).length; // Use effortTimeMinutes
 
       const totalWeekDays = weekProgress.length;
       const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0;
@@ -191,15 +200,18 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   // Enhanced cumulative data
   const cumulativeTimeData = useMemo(() => {
+    // Ensure dailyProgress is an array before mapping
+    if (!dailyProgress) return [];
+
     let accumulatedTime = 0;
     let accumulatedSatisfaction = 0;
 
     return dailyProgress.map((p, index) => {
-      accumulatedTime += p.timeSpentMinutes;
+      accumulatedTime += p.effortTimeMinutes || 0; // Use effortTimeMinutes
       accumulatedSatisfaction += getSatisfactionInfo(p.satisfactionLevel).numeric;
 
       return {
-        date: format(p.date.toDate(), 'MMM d'),
+        date: format(new Date(p.date), 'MMM d'), // Use new Date(p.date)
         cumulativeHours: parseFloat((accumulatedTime / 60).toFixed(2)),
         avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)),
       };
@@ -208,8 +220,11 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   // Time vs satisfaction correlation
   const correlationData = useMemo(() => {
+    // Ensure chartData is an array before mapping
+    if (!chartData) return [];
+
     return chartData.map(item => ({
-      timeSpent: item.timeSpent,
+      timeSpent: item.timeSpent, // Already uses effortTimeMinutes from chartData
       satisfaction: item.satisfaction,
       efficiency: item.efficiency,
       date: item.date,
@@ -218,6 +233,9 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   // Weekly performance (enhanced)
   const weeklyPerformance = useMemo(() => {
+    // Ensure dailyProgress is an array before processing
+    if (!dailyProgress) return [];
+
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData: {
       [key: number]: {
@@ -229,7 +247,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
     } = {};
 
     dailyProgress.forEach(p => {
-      const dayIndex = getDay(p.date.toDate());
+      const dayIndex = getDay(new Date(p.date)); // Use new Date(p.date)
       if (!weeklyData[dayIndex]) {
         weeklyData[dayIndex] = {
           totalSatisfaction: 0,
@@ -240,7 +258,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       }
       const satisfaction = getSatisfactionInfo(p.satisfactionLevel).numeric;
       weeklyData[dayIndex].totalSatisfaction += satisfaction;
-      weeklyData[dayIndex].totalTime += p.timeSpentMinutes;
+      weeklyData[dayIndex].totalTime += p.effortTimeMinutes || 0; // Use effortTimeMinutes
       weeklyData[dayIndex].count++;
       if (satisfaction >= 4) weeklyData[dayIndex].highSatisfactionDays++;
     });
@@ -263,6 +281,9 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   // Satisfaction distribution (enhanced)
   const satisfactionDistribution = useMemo(() => {
+    // Ensure dailyProgress is an array before processing
+    if (!dailyProgress) return [];
+
     const distribution = new Map<SatisfactionLevel, number>();
     dailyProgress.forEach(p => {
       distribution.set(p.satisfactionLevel, (distribution.get(p.satisfactionLevel) || 0) + 1);
@@ -474,6 +495,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
               yAxisId="right"
               orientation="right"
               domain={[1, 5]}
+              tickCount={5}
               stroke="#38bdf8"
               fontSize={12}
               label={{
@@ -526,6 +548,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
               yAxisId="right"
               orientation="right"
               domain={[1, 5]}
+              tickCount={5}
               stroke="#38bdf8"
               fontSize={12}
               label={{ value: 'Satisfaction', angle: 90, position: 'insideRight', fill: '#38bdf8' }}

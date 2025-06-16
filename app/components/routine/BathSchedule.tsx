@@ -9,7 +9,7 @@ import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 
-// Import the reusable RoutineSectionCard and IconOption
+// Import the reusable RoutineSectionCard
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
 interface BathScheduleProps {
@@ -20,7 +20,6 @@ interface BathScheduleProps {
 
 // Define the IconComponents map for BathSchedule
 const IconComponents: { [key: string]: React.ElementType } = {
-  // Specific icons for Bathing
   MdOutlineShower,
   MdOutlineHotTub,
   MdOutlinePool,
@@ -35,8 +34,11 @@ const bathIcons: string[] = [
 ];
 
 const BathSchedule: React.FC<BathScheduleProps> = ({ currentUser, appState, showMessage }) => {
-  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
-  const [, setCurrentTime] = useState(new Date());
+  // `schedules` is guaranteed to be an array or null from AppState, init to empty array if null
+  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>(
+    appState?.routineSettings?.bath || []
+  );
+  const [, setCurrentTime] = useState(new Date()); // Used for getTimeUntilSchedule, kept for dependency
 
   // States for new bath input fields (passed to RoutineSectionCard)
   const [newBathLabel, setNewBathLabel] = useState('');
@@ -44,7 +46,7 @@ const BathSchedule: React.FC<BathScheduleProps> = ({ currentUser, appState, show
   const [newBathDurationMinutes, setNewBathDurationMinutes] = useState(15);
   const [newBathIcon, setNewBathIcon] = useState(bathIcons[0]);
 
-  // Effect to update current time every second
+  // Effect to update current time every second (dependency for getTimeUntilSchedule)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -54,85 +56,45 @@ const BathSchedule: React.FC<BathScheduleProps> = ({ currentUser, appState, show
 
   // Sync local state with appState from Firebase
   useEffect(() => {
-    if (appState?.routineSettings?.bath) {
-      setSchedules(appState.routineSettings.bath);
-    } else {
-      setSchedules([]);
-    }
+    // `appState.routineSettings.bath` is guaranteed to be an array or null
+    setSchedules(appState?.routineSettings?.bath || []);
   }, [appState]);
 
-  // Helper to calculate time until a scheduled event
-  const getTimeUntilSchedule = useCallback(
-    (
-      scheduledTime: string
-    ): {
-      hours: number;
-      minutes: number;
-      total: number;
-      isPast: boolean;
-      shouldStart?: boolean;
-    } => {
-      const now = new Date();
-      const [targetH, targetM] = scheduledTime.split(':').map(Number);
-      const targetDate = new Date();
-      targetDate.setHours(targetH, targetM, 0, 0);
-
-      let isPastToday = false;
-      if (targetDate <= now) {
-        isPastToday = true;
-        targetDate.setDate(targetDate.getDate() + 1); // Set for next day if already passed
-      }
-
-      const diff = targetDate.getTime() - now.getTime();
-      const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      // Logic for 'shouldStart' (within 5 minutes)
-      const shouldStart = diff <= 5 * 60 * 1000 && diff > 0;
-
-      return {
-        hours: hoursLeft,
-        minutes: minutesLeft,
-        total: diff,
-        isPast: isPastToday,
-        shouldStart: shouldStart,
-      };
-    },
-    []
-  );
-
-  const saveBathSettings = useCallback(async () => {
-    if (!currentUser) {
-      showMessage('You must be logged in to save settings.', 'error');
-      return;
-    }
-    try {
-      await firebaseService.updateSpecificRoutineSetting(currentUser.uid, 'bath', schedules);
-    } catch (error: unknown) {
-      console.error('Failed to save bath settings:', error);
-      showMessage('Failed to save bath settings.', 'error');
-    }
-  }, [currentUser, schedules, showMessage]);
-
   const toggleBathCompletion = useCallback(
-    (index: number) => {
-      setSchedules(prevSchedules => {
-        const newSchedules = [...prevSchedules];
-        const scheduleToUpdate = { ...newSchedules[index] };
-        scheduleToUpdate.completed = !scheduleToUpdate.completed;
-        scheduleToUpdate.updatedAt = Timestamp.now();
-        newSchedules[index] = scheduleToUpdate;
-        return newSchedules;
+    async (index: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to update schedules.', 'error');
+        return;
+      }
+      // Create a new array to ensure immutability before updating Firestore
+      const updatedSchedules = schedules.map((schedule, i) => {
+        if (i === index) {
+          return { ...schedule, completed: !schedule.completed, updatedAt: Timestamp.now() };
+        }
+        return schedule;
       });
-      setTimeout(saveBathSettings, 0); // Save after state update
+      setSchedules(updatedSchedules); // Update local state immediately
+
+      try {
+        // Use the dedicated update function for bath schedules
+        await firebaseService.updateBathRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Bath schedule updated!', 'success');
+      } catch (error: unknown) {
+        console.error('Failed to save bath settings:', error);
+        showMessage('Failed to save bath settings.', 'error');
+      }
     },
-    [saveBathSettings]
+    [currentUser, schedules, showMessage]
   );
 
-  const addBathSchedule = useCallback(() => {
+  const addBathSchedule = useCallback(async () => {
     const bathDuration = parseInt(String(newBathDurationMinutes));
     if (!newBathLabel.trim() || !newBathScheduledTime || isNaN(bathDuration) || bathDuration < 5) {
       showMessage('Please provide a valid label, time, and duration (min 5 min).', 'error');
+      return;
+    }
+    if (!currentUser) {
+      showMessage('You must be logged in to add schedules.', 'error');
       return;
     }
 
@@ -141,35 +103,55 @@ const BathSchedule: React.FC<BathScheduleProps> = ({ currentUser, appState, show
       durationMinutes: bathDuration,
       label: newBathLabel.trim(),
       icon: newBathIcon,
-      completed: false,
+      completed: null, // New schedule starts as not completed (null)
       updatedAt: Timestamp.now(),
     };
 
     const updatedSchedules = [...schedules, newSchedule];
-    setSchedules(updatedSchedules);
-    setNewBathLabel('');
-    setNewBathScheduledTime(format(new Date(), 'HH:mm'));
-    setNewBathDurationMinutes(15);
-    setNewBathIcon('MdOutlineShower');
-    saveBathSettings(); // Save updated schedule list
+    setSchedules(updatedSchedules); // Update local state immediately
+
+    try {
+      // Use the dedicated update function for bath schedules
+      await firebaseService.updateBathRoutineSchedules(currentUser.uid, updatedSchedules);
+      showMessage('Bath schedule added!', 'success');
+      // Reset form fields
+      setNewBathLabel('');
+      setNewBathScheduledTime(format(new Date(), 'HH:mm'));
+      setNewBathDurationMinutes(15);
+      setNewBathIcon(bathIcons[0]); // Reset to first icon
+    } catch (error: unknown) {
+      console.error('Failed to add bath schedule:', error);
+      showMessage('Failed to add bath schedule.', 'error');
+    }
   }, [
+    currentUser,
     schedules,
     newBathLabel,
     newBathScheduledTime,
     newBathDurationMinutes,
     newBathIcon,
-    saveBathSettings,
     showMessage,
   ]);
 
   const removeBathSchedule = useCallback(
-    (indexToRemove: number) => {
+    async (indexToRemove: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to remove schedules.', 'error');
+        return;
+      }
       const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
-      setSchedules(updatedSchedules);
+      setSchedules(updatedSchedules); // Update local state immediately
 
-      saveBathSettings(); // Save updated schedule list
+      try {
+        // Use the dedicated update function for bath schedules
+        await firebaseService.updateBathRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Bath schedule removed!', 'info');
+      } catch (error: unknown) {
+        console.error('Failed to remove bath schedule:', error);
+        showMessage('Failed to remove bath schedule.', 'error');
+      }
     },
-    [schedules, saveBathSettings]
+    [currentUser, schedules, showMessage]
   );
 
   const completedSchedulesCount = schedules.filter(s => s.completed).length;
@@ -196,7 +178,7 @@ const BathSchedule: React.FC<BathScheduleProps> = ({ currentUser, appState, show
       schedules={schedules}
       onToggleCompletion={toggleBathCompletion}
       onRemoveSchedule={removeBathSchedule}
-      getTimeUntilSchedule={getTimeUntilSchedule}
+      // Removed getTimeUntilSchedule prop as it's now internal to RoutineSectionCard
       newInputLabelPlaceholder="Bath Label"
       newInputValue={newBathLabel}
       onNewInputChange={setNewBathLabel}

@@ -447,7 +447,7 @@ export default function LandingPage() {
       </section>
 
       {/* About Section */}
-      <section className="py-20">
+      <section className="py-20" id="about-developer">
         <div className="mx-auto max-w-4xl">
           <h2 className="mb-16 text-3xl font-bold text-center sm:text-4xl">Meet the Creator</h2>
           <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8 sm:p-12 hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">

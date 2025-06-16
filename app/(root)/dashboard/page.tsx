@@ -10,7 +10,7 @@ import { isToday, format } from 'date-fns';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState, Goal, DailyProgress } from '@/types';
 
-import GoalModal from '@/components/GoalModal';
+import GoalModal from '@/components/dashboard/GoalModal';
 import ToastMessage from '@/components/ToastMessage';
 import CountdownCard from '@/components/dashboard/CountdownCard';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
@@ -128,14 +128,15 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleSetGoal = useCallback(
-    async (goalName: string, endDateStr: string, description?: string) => {
+    async (goalName: string, endDateStr: string, description: string | null) => {
       if (!currentUser) return;
       const goalEndDate = new Date(endDateStr);
       const newGoal: Goal = {
         name: goalName,
-        description: description || '',
-        startDate: isEditMode && appState?.goal ? appState.goal.startDate : Timestamp.now(),
+        description: description, // Now directly uses description, which can be string | null
+        createdAt: isEditMode && appState?.goal ? appState.goal.createdAt : Timestamp.now(), // Use createdAt
         endDate: Timestamp.fromDate(goalEndDate),
+        updatedAt: Timestamp.now(), // Add updatedAt as it's required
       };
       await firebaseService.updateGoal(currentUser.uid, newGoal);
       const updatedUserData = await firebaseService.getUserData(currentUser.uid);
@@ -152,6 +153,7 @@ export default function DashboardPage() {
   };
 
   const handleDayClick = (date: Date) => {
+    // Only allow clicking today's date for logging progress
     if (isToday(date)) {
       setSelectedDate(date);
       setActiveModal('dailyProgress');
@@ -163,12 +165,14 @@ export default function DashboardPage() {
     await firebaseService.saveDailyProgress(currentUser.uid, progressData);
     setAppState(prev => {
       if (!prev) return null;
-      const newProgressList = prev.dailyProgress.filter(
-        p => p.date.toDate().toDateString() !== progressData.date.toDate().toDateString()
-      );
-      newProgressList.push(progressData);
-      newProgressList.sort((a, b) => a.date.toMillis() - b.date.toMillis());
-      return { ...prev, dailyProgress: newProgressList };
+      // Update the dailyProgress record immutably
+      return {
+        ...prev,
+        dailyProgress: {
+          ...prev.dailyProgress,
+          [progressData.date]: progressData,
+        },
+      };
     });
     setActiveModal(null);
     showMessage('Progress saved successfully!', 'success');
@@ -182,14 +186,10 @@ export default function DashboardPage() {
           'This will erase your current goal and all associated data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
         action: () => {
           if (!currentUser) return;
-          // *** FIX START ***
-          // The fix is to use the returned `newAppState` from the `resetUserData` promise
-          // to correctly update the local state before opening the modal.
           firebaseService.resetUserData(currentUser.uid).then(newAppState => {
             setAppState(newAppState);
             handleOpenGoalModal(false);
           });
-          // *** FIX END ***
         },
         actionDelayMs: 10000,
       });
@@ -285,15 +285,17 @@ export default function DashboardPage() {
     );
   }
 
-  const initialProgress = appState?.dailyProgress.find(
-    p =>
-      selectedDate && format(p.date.toDate(), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
-  );
+  // Get initialProgress from the dailyProgress Record
+  const initialProgress = selectedDate
+    ? appState.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
+    : null;
+
+  // Prepare goal data for GoalModal, using createdAt for startDate
   const transformedGoalForModal = appState.goal
     ? {
         name: appState.goal.name,
-        description: appState.goal.description || '',
-        startDate: appState.goal.startDate.toDate().toISOString(),
+        description: appState.goal.description, // description is string | null
+        startDate: appState.goal.createdAt.toDate().toISOString(), // Use createdAt
         endDate: appState.goal.endDate.toDate().toISOString(),
       }
     : null;
@@ -353,7 +355,8 @@ export default function DashboardPage() {
                   you.
                 </p>
               </div>
-              <Charts dailyProgress={appState.dailyProgress} goal={appState.goal} />
+              <Charts dailyProgress={Object.values(appState.dailyProgress)} goal={appState.goal} />{' '}
+              {/* Pass array for Charts component */}
             </section>
 
             <section>

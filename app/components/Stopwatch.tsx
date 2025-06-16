@@ -7,7 +7,7 @@ import { GrPowerReset } from 'react-icons/gr';
 
 interface StopwatchProps {
   isRunning: boolean;
-  elapsedTime: number;
+  elapsedTime: number; // This corresponds to durationMs in StopwatchSession
   isLabeling: boolean;
   sessionLabel: string;
   setSessionLabel: (label: string) => void;

@@ -18,24 +18,21 @@ import {
 
 interface ProgressCalendarProps {
   goal: Goal;
-  dailyProgress: DailyProgress[];
+  dailyProgress: Record<string, DailyProgress>; // Changed to Record<string, DailyProgress> as per AppState
   onDayClick: (date: Date) => void;
 }
 
 const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress, onDayClick }) => {
-  // Use the goal's start date as the initial month to display
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(goal.startDate.toDate()));
+  // Use the goal's createdAt date as the initial month to display
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(goal.createdAt.toDate()));
 
-  const goalStartDate = goal.startDate.toDate();
+  const goalStartDate = goal.createdAt.toDate(); // Corrected to use createdAt
   const goalEndDate = goal.endDate.toDate();
 
   const progressMap = useMemo(() => {
-    const map = new Map<string, DailyProgress>();
-    dailyProgress.forEach(progress => {
-      const dateKey = format(progress.date.toDate(), 'yyyy-MM-dd');
-      map.set(dateKey, progress);
-    });
-    return map;
+    // Since dailyProgress is already a Record<string, DailyProgress>, we just use it directly
+    // No need to create a new Map from an array
+    return dailyProgress;
   }, [dailyProgress]);
 
   const goalDays = useMemo(() => {
@@ -95,7 +92,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
         {daysInView.length > 0 ? (
           daysInView.map(day => {
             const dateKey = format(day, 'yyyy-MM-dd');
-            const progress = progressMap.get(dateKey);
+            const progress = progressMap[dateKey]; // Access directly from the record
             const isClickable = isToday(day);
 
             let dayClasses =
@@ -121,7 +118,9 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                 {/* Tooltip */}
                 {progress && (
                   <div className="absolute bottom-full invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
-                    <p className="p-3 pb-1 text-sm font-bold">{format(day, 'MMMM d, yyyy')}</p>
+                    <p className="p-3 pb-1 text-sm font-bold">
+                      {format(new Date(progress.date), 'MMMM d, yyyy')}
+                    </p>
                     <hr className="my-1 border-white/10" />
                     <div className="px-3 py-1">
                       <p className="text-xs">
@@ -130,10 +129,10 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                       </p>
                       <p className="text-xs">
                         <span className="font-semibold">Time Spent:</span>{' '}
-                        {progress.timeSpentMinutes} mins
+                        {progress.effortTimeMinutes} mins {/* Corrected to effortTimeMinutes */}
                       </p>
-                      {progress.notes && (
-                        <p className="mt-1 text-xs italic text-white/70">{progress.notes}</p>
+                      {progress.progressNote && ( // Corrected to progressNote
+                        <p className="mt-1 text-xs italic text-white/70">{progress.progressNote}</p>
                       )}
                     </div>
                     <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-neutral-900 border-white/10"></div>

@@ -23,7 +23,7 @@ import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 
-// Import the new RoutineSectionCard component and its dependency types
+// Import the new RoutineSectionCard component
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
 interface MealScheduleProps {
@@ -67,7 +67,10 @@ const mealIcons: string[] = [
 ];
 
 const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, showMessage }) => {
-  const [meals, setMeals] = useState<ScheduledRoutineBase[]>([]);
+  // `meals` is guaranteed to be an array or null from AppState, init to empty array if null
+  const [meals, setMeals] = useState<ScheduledRoutineBase[]>(
+    appState?.routineSettings?.meals || []
+  );
   const [, setCurrentTime] = useState(new Date());
 
   // States for new meal input fields (passed to RoutineSectionCard)
@@ -76,6 +79,7 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, show
   const [newMealDurationMinutes, setNewMealDurationMinutes] = useState(30);
   const [newMealIcon, setNewMealIcon] = useState(mealIcons[0]); // Default icon for new meals
 
+  // Effect to update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -85,69 +89,45 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, show
 
   // Sync local state with appState from Firebase
   useEffect(() => {
-    if (appState?.routineSettings?.meals) {
-      setMeals(appState.routineSettings.meals);
-    } else {
-      setMeals([]); // Initialize to empty array if no data from Firebase
-    }
+    // `appState.routineSettings.meals` is guaranteed to be an array or null
+    setMeals(appState?.routineSettings?.meals || []);
   }, [appState]);
 
-  const getTimeUntilSchedule = useCallback(
-    (scheduledTime: string): { hours: number; minutes: number; total: number; isPast: boolean } => {
-      const now = new Date();
-      const [targetH, targetM] = scheduledTime.split(':').map(Number);
-      const targetDate = new Date();
-      targetDate.setHours(targetH, targetM, 0, 0);
-
-      let isPastToday = false;
-      if (targetDate <= now) {
-        isPastToday = true;
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
-
-      const diff = targetDate.getTime() - now.getTime();
-      const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      return { hours: hoursLeft, minutes: minutesLeft, total: diff, isPast: isPastToday };
-    },
-    []
-  );
-
-  // Function to save meal settings to Firebase - now triggered on state changes/actions
-  const saveMealSettings = useCallback(async () => {
-    if (!currentUser) {
-      showMessage('You must be logged in to save settings.', 'error');
-      return;
-    }
-
-    try {
-      await firebaseService.updateSpecificRoutineSetting(currentUser.uid, 'meals', meals);
-    } catch (error: unknown) {
-      console.error('Failed to save meal settings:', error);
-      showMessage('Failed to save meal settings.', 'error');
-    }
-  }, [currentUser, meals, showMessage]);
-
   const toggleMealCompletion = useCallback(
-    (index: number) => {
-      setMeals(prevMeals => {
-        const newMeals = [...prevMeals];
-        const mealToUpdate = { ...newMeals[index] };
-        mealToUpdate.completed = !mealToUpdate.completed;
-        mealToUpdate.updatedAt = Timestamp.now();
-        newMeals[index] = mealToUpdate;
-        return newMeals;
+    async (index: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to update schedules.', 'error');
+        return;
+      }
+      // Create a new array to ensure immutability before updating Firestore
+      const updatedMeals = meals.map((meal, i) => {
+        if (i === index) {
+          return { ...meal, completed: !meal.completed, updatedAt: Timestamp.now() };
+        }
+        return meal;
       });
-      setTimeout(saveMealSettings, 0);
+      setMeals(updatedMeals); // Update local state immediately
+
+      try {
+        // Use the dedicated update function for meal schedules
+        await firebaseService.updateMealRoutineSchedules(currentUser.uid, updatedMeals);
+        showMessage('Meal schedule updated!', 'success');
+      } catch (error: unknown) {
+        console.error('Failed to save meal settings:', error);
+        showMessage('Failed to save meal settings.', 'error');
+      }
     },
-    [saveMealSettings]
+    [currentUser, meals, showMessage]
   );
 
-  const addMealSchedule = useCallback(() => {
+  const addMealSchedule = useCallback(async () => {
     const mealDuration = parseInt(String(newMealDurationMinutes));
     if (!newMealLabel.trim() || !newMealScheduledTime || isNaN(mealDuration) || mealDuration < 5) {
       showMessage('Please provide a valid label, time, and duration (min 5 min).', 'error');
+      return;
+    }
+    if (!currentUser) {
+      showMessage('You must be logged in to add schedules.', 'error');
       return;
     }
 
@@ -156,34 +136,55 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, show
       durationMinutes: mealDuration,
       label: newMealLabel.trim(),
       icon: newMealIcon, // Use selected icon
-      completed: false,
+      completed: null, // New schedule starts as not completed (null)
       updatedAt: Timestamp.now(),
     };
 
     const updatedMeals = [...meals, newMeal];
-    setMeals(updatedMeals);
-    setNewMealLabel('');
-    setNewMealScheduledTime(format(new Date(), 'HH:mm'));
-    setNewMealDurationMinutes(30);
-    setNewMealIcon('MdOutlineRestaurant'); // Reset icon to default
-    saveMealSettings();
+    setMeals(updatedMeals); // Update local state immediately
+
+    try {
+      // Use the dedicated update function for meal schedules
+      await firebaseService.updateMealRoutineSchedules(currentUser.uid, updatedMeals);
+      showMessage('Meal schedule added!', 'success');
+      // Reset form fields
+      setNewMealLabel('');
+      setNewMealScheduledTime(format(new Date(), 'HH:mm'));
+      setNewMealDurationMinutes(30);
+      setNewMealIcon(mealIcons[0]); // Reset to first icon
+    } catch (error: unknown) {
+      console.error('Failed to add meal schedule:', error);
+      showMessage('Failed to add meal schedule.', 'error');
+    }
   }, [
+    currentUser,
     meals,
     newMealLabel,
     newMealScheduledTime,
     newMealDurationMinutes,
     newMealIcon,
-    saveMealSettings,
     showMessage,
   ]);
 
   const removeMealSchedule = useCallback(
-    (indexToRemove: number) => {
+    async (indexToRemove: number) => {
+      if (!currentUser) {
+        showMessage('You must be logged in to remove schedules.', 'error');
+        return;
+      }
       const updatedMeals = meals.filter((_, index) => index !== indexToRemove);
-      setMeals(updatedMeals);
-      saveMealSettings();
+      setMeals(updatedMeals); // Update local state immediately
+
+      try {
+        // Use the dedicated update function for meal schedules
+        await firebaseService.updateMealRoutineSchedules(currentUser.uid, updatedMeals);
+        showMessage('Meal schedule removed!', 'info');
+      } catch (error: unknown) {
+        console.error('Failed to remove meal schedule:', error);
+        showMessage('Failed to remove meal schedule.', 'error');
+      }
     },
-    [meals, saveMealSettings]
+    [currentUser, meals, showMessage]
   );
 
   const completedMealsCount = meals.filter(meal => meal.completed).length;
@@ -208,8 +209,7 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, show
       schedules={meals} // Pass the actual list for rendering
       onToggleCompletion={toggleMealCompletion} // Pass the toggle handler
       onRemoveSchedule={removeMealSchedule} // Pass the remove handler
-      getTimeUntilSchedule={getTimeUntilSchedule} // Pass the time until helper for list rendering
-      // Props for the new schedule form, passed to RoutineSectionCard
+      // Removed getTimeUntilSchedule prop as it's now internal to RoutineSectionCard
       newInputLabelPlaceholder="Meal Label"
       newInputValue={newMealLabel}
       onNewInputChange={setNewMealLabel}

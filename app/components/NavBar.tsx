@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { FiHome, FiList, FiCheckSquare, FiMenu, FiX, FiLogOut } from 'react-icons/fi';
 import { firebaseService } from '@/services/firebaseService';
 import ProfileDropdown from './nav/ProfileDropdown';
-import { MdRocketLaunch } from 'react-icons/md';
+import { MdRocketLaunch, MdOutlineRepeat } from 'react-icons/md'; // Import MdOutlineRepeat for Routine
 import { GoStopwatch } from 'react-icons/go';
 
 // Navigation links are defined in an array for easier management and mapping.
@@ -17,6 +17,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
   { href: '/todo', label: 'To-Do', icon: <FiCheckSquare /> },
   { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
+  { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> }, // Added Routine link
   { href: '/list', label: 'Lists', icon: <FiList /> },
 ];
 
@@ -65,7 +66,12 @@ export default function NavBar() {
     const activeClasses = 'bg-white/10 text-white font-semibold';
     const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
 
-    return `${baseClasses} ${pathname.startsWith(navPath) ? activeClasses : inactiveClasses}`;
+    // Special handling for '/routine' to match all sub-paths under it
+    if (navPath === '/routine') {
+      return `${baseClasses} ${pathname.startsWith('/routine') ? activeClasses : inactiveClasses}`;
+    }
+
+    return `${baseClasses} ${pathname === navPath ? activeClasses : inactiveClasses}`;
   };
 
   // Handler for signing the user out.
@@ -77,20 +83,37 @@ export default function NavBar() {
   return (
     <>
       <nav className="flex sticky top-0 z-40 justify-between items-center px-4 py-3 border-b shadow-lg backdrop-blur-md md:px-6 bg-black/50 border-white/10">
-        <Link href="/dashboard" className="flex gap-2 items-center cursor-pointer">
-          <MdRocketLaunch size={30} className="text-white" />
-          <span className="hidden text-xl font-bold sm:inline">One Goal</span>
-        </Link>
+        {/* App Icon and Logo Skeleton */}
+        {authLoading ? (
+          <div className="flex gap-2 items-center">
+            <div className="w-8 h-8 rounded-full animate-pulse bg-white/10"></div>
+            <div className="hidden w-20 h-6 rounded-md animate-pulse bg-white/10 sm:inline"></div>
+          </div>
+        ) : (
+          <Link href="/dashboard" className="flex gap-2 items-center cursor-pointer">
+            <MdRocketLaunch size={30} className="text-white" />
+            <span className="hidden text-xl font-bold sm:inline">One Goal</span>
+          </Link>
+        )}
 
         {/* --- Desktop Navigation --- */}
-        <div className="hidden gap-1 text-sm md:flex">
-          {navLinks.map(link => (
-            <Link key={link.href} href={link.href} className={getNavLinkClasses(link.href)}>
-              {React.cloneElement(link.icon, { size: 20 })}
-              <span className="hidden lg:inline">{link.label}</span>
-            </Link>
-          ))}
-        </div>
+        {authLoading ? (
+          <div className="hidden gap-3 items-center md:flex">
+            {/* Skeletons for desktop nav links */}
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="w-20 h-8 rounded-lg animate-pulse bg-white/10"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="hidden gap-1 text-sm md:flex">
+            {navLinks.map(link => (
+              <Link key={link.href} href={link.href} className={getNavLinkClasses(link.href)}>
+                {React.cloneElement(link.icon, { size: 20 })}
+                <span className="hidden lg:inline">{link.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-3 items-center">
           <div className="relative w-7 h-7" ref={profileDropdownRef}>
@@ -100,7 +123,7 @@ export default function NavBar() {
               className="rounded-full transition-opacity duration-200 cursor-pointer"
             >
               {authLoading ? (
-                <div className="w-7 h-7 bg-gray-700 rounded-full animate-pulse"></div>
+                <div className="w-7 h-7 rounded-full animate-pulse bg-white/10"></div>
               ) : currentUser?.photoURL ? (
                 <Image
                   src={currentUser.photoURL}
@@ -156,16 +179,24 @@ export default function NavBar() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {navLinks.map(link => (
-                <Link
-                  key={`mobile-${link.href}`}
-                  href={link.href}
-                  className={`${getNavLinkClasses(link.href)} text-lg py-3`}
-                >
-                  {React.cloneElement(link.icon, { size: 22 })}
-                  <span>{link.label}</span>
-                </Link>
-              ))}
+              {/* Mobile nav links skeleton */}
+              {authLoading
+                ? [...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="my-1 w-full h-12 bg-gray-700 rounded-lg animate-pulse"
+                    ></div>
+                  ))
+                : navLinks.map(link => (
+                    <Link
+                      key={`mobile-${link.href}`}
+                      href={link.href}
+                      className={`${getNavLinkClasses(link.href)} text-lg py-3`}
+                    >
+                      {React.cloneElement(link.icon, { size: 22 })}
+                      <span>{link.label}</span>
+                    </Link>
+                  ))}
             </div>
           </div>
 
