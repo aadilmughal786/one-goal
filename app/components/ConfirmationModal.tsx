@@ -2,8 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FiAlertTriangle, FiX } from 'react-icons/fi';
-// Removed import of ConfirmationModalProps, ModalButton from '@/types'
+import { FiAlertTriangle, FiX, FiLoader } from 'react-icons/fi';
 
 // Define a type for a single button in the modal
 interface ModalButton {
@@ -38,6 +37,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 }) => {
   const [countdown, setCountdown] = useState(actionDelayMs / 1000);
   const [actionsEnabled, setActionsEnabled] = useState(actionDelayMs === 0);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Effect to manage the countdown timer for the confirm button
   useEffect(() => {
@@ -65,6 +65,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     };
   }, [isOpen, actionDelayMs]); // Re-run effect if modal opens or delay changes
 
+  const handleConfirm = async () => {
+    if (!actionsEnabled || isConfirming) return;
+    setIsConfirming(true);
+    try {
+      await Promise.resolve(confirmButton.onClick());
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   // If modal is not open, don't render anything
   if (!isOpen) return null;
 
@@ -78,7 +88,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   return (
     // Overlay for the modal
     <div
-      className="flex fixed inset-0 z-40 justify-center items-center p-4 bg-black/50"
+      className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/50"
       onClick={handleOutsideClick}
       role="dialog" // ARIA role for dialog
       aria-modal="true" // ARIA attribute to indicate it's a modal dialog
@@ -87,18 +97,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     >
       {/* Modal Content Box */}
       <div
-        className="relative w-full max-w-sm text-center bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg
-                   transform transition-all duration-300 scale-100 opacity-100 hover:bg-white/[0.06] hover:border-white/20"
+        className="relative w-full max-w-sm text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl"
         onClick={e => e.stopPropagation()} // Prevent clicks inside content from closing modal
       >
         {/* Modal Header */}
-        <div className="flex justify-between items-center p-4 mb-4 border-b border-white/10">
+        <div className="flex justify-between items-center p-6 border-b border-white/10">
           <h3 id="modal-title" className="flex gap-2 items-center text-xl font-bold text-white">
             <FiAlertTriangle className="w-6 h-6 text-yellow-400" /> {title}
           </h3>
-          {/* Close Button */}
           <button
-            className="p-1 rounded-full transition-colors duration-200 cursor-pointer text-white/60 hover:text-white/90 hover:bg-white/10"
+            className="p-1.5 rounded-full transition-colors duration-200 cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
             onClick={onClose}
             aria-label="Close modal"
           >
@@ -106,40 +114,45 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-6">
           {/* Message Body */}
           <p id="modal-message" className="mb-6 leading-relaxed text-left text-white/80">
             {message}
           </p>
 
           {/* Action Buttons */}
-          {/* Cancel Button - always enabled */}
-          <button
-            className={
-              'px-4 cursor-pointer w-full py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20'
-            }
-            onClick={cancelButton.onClick}
-          >
-            {cancelButton.icon} {cancelButton.text}
-          </button>
-
-          {/* Confirm Button - timed disable */}
-          <button
-            className={`px-4 cursor-pointer w-full mt-3 py-2 rounded-lg transition-all duration-300 flex items-center justify-center gap-2
-              ${confirmButton.className || 'bg-white text-black hover:bg-white/90 hover:scale-105'} // Default primary style
-              ${!actionsEnabled ? 'opacity-50 cursor-not-allowed' : ''} // Disable styling
-            `}
-            onClick={() => {
-              if (actionsEnabled) {
-                confirmButton.onClick();
+          <div className="flex flex-col gap-3">
+            <button
+              className={`px-4 cursor-pointer w-full py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2
+                  ${confirmButton.className || 'bg-red-600 text-white hover:bg-red-700'}
+                  ${!actionsEnabled || isConfirming ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              onClick={handleConfirm}
+              disabled={!actionsEnabled || isConfirming}
+            >
+              {isConfirming ? (
+                <>
+                  <FiLoader className="w-5 h-5 animate-spin" />
+                  <span>Confirming...</span>
+                </>
+              ) : (
+                <>
+                  {confirmButton.icon} {confirmButton.text}
+                  {actionDelayMs > 0 && !actionsEnabled && (
+                    <span className="text-sm font-semibold">({countdown}s)</span>
+                  )}
+                </>
+              )}
+            </button>
+            <button
+              className={
+                'px-4 cursor-pointer w-full py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white bg-white/[0.05] border border-white/10 hover:bg-white/10'
               }
-            }}
-            disabled={!actionsEnabled} // Disable button during countdown
-          >
-            {confirmButton.icon} {confirmButton.text}
-            {/* Countdown Timer */}
-            {actionDelayMs > 0 && <p className="text-sm font-semibold">( {countdown}s )</p>}
-          </button>
+              onClick={onClose}
+            >
+              {cancelButton.icon} {cancelButton.text}
+            </button>
+          </div>
         </div>
       </div>
     </div>

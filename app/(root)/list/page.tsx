@@ -7,10 +7,11 @@ import { useRouter } from 'next/navigation';
 
 import { firebaseService } from '@/services/firebaseService';
 import { ListItem } from '@/types';
-import ListComponent from '@/components/List'; // Corrected import path
+import ListComponent from '@/components/List';
 import ToastMessage from '@/components/ToastMessage';
 import { RiAlarmWarningLine } from 'react-icons/ri';
 import { FiBookOpen } from 'react-icons/fi';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 const ListsPageSkeletonLoader = () => (
   <div className="space-y-8 animate-pulse">
@@ -36,8 +37,16 @@ export default function ListsPage() {
   const [notToDoList, setNotToDoList] = useState<ListItem[]>([]);
   const [contextList, setContextList] = useState<ListItem[]>([]);
 
+  // State for loaders
+  const [isAdding, setIsAdding] = useState({ notToDoList: false, contextList: false });
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    listType: 'notToDoList' | 'contextList';
+    id: string;
+  } | null>(null);
+
   // State for editing
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
   // State for toast notifications
@@ -47,26 +56,34 @@ export default function ListsPage() {
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 5000);
   }, []);
+
+  const fetchUserData = useCallback(
+    async (uid: string) => {
+      try {
+        const data = await firebaseService.getUserData(uid);
+        setNotToDoList(data.notToDoList || []);
+        setContextList(data.contextList || []);
+      } catch {
+        showMessage('Failed to load lists.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [showMessage]
+  );
 
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(user => {
       if (user) {
         setCurrentUser(user);
-        firebaseService.getUserData(user.uid).then(data => {
-          setNotToDoList(data.notToDoList || []);
-          setContextList(data.contextList || []);
-          setIsLoading(false);
-        });
+        fetchUserData(user.uid);
       } else {
         router.replace('/login');
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, fetchUserData]);
 
   const addToList = useCallback(
     async (listType: 'notToDoList' | 'contextList', text: string) => {
@@ -75,59 +92,83 @@ export default function ListsPage() {
         return;
       }
       if (!currentUser) return;
-      const newItem: ListItem = { text: text.trim(), id: Date.now() + Math.random() };
 
-      if (listType === 'notToDoList') {
-        setNotToDoList(prev => [...prev, newItem]);
-      } else {
-        setContextList(prev => [...prev, newItem]);
+      setIsAdding(prev => ({ ...prev, [listType]: true }));
+
+      try {
+        await firebaseService.addItemToList(currentUser.uid, listType, text.trim());
+        await fetchUserData(currentUser.uid); // Refetch to get the new item with its server-generated timestamp
+        showMessage('Item added!', 'success');
+      } catch {
+        showMessage('Failed to add item.', 'error');
+      } finally {
+        setIsAdding(prev => ({ ...prev, [listType]: false }));
       }
-      await firebaseService.addItemToList(currentUser.uid, listType, newItem);
     },
-    [currentUser, showMessage]
+    [currentUser, showMessage, fetchUserData]
   );
 
-  const removeFromList = useCallback(
-    async (listType: 'notToDoList' | 'contextList', id: number) => {
-      if (!currentUser) return;
+  const handleDeleteConfirmation = (listType: 'notToDoList' | 'contextList', id: string) => {
+    setItemToDelete({ listType, id });
+    setIsConfirmModalOpen(true);
+  };
+
+  const removeFromList = useCallback(async () => {
+    if (!currentUser || !itemToDelete) return;
+
+    const { listType, id } = itemToDelete;
+
+    try {
+      await firebaseService.removeItemFromList(currentUser.uid, listType, id);
       if (listType === 'notToDoList') {
         setNotToDoList(prev => prev.filter(item => item.id !== id));
       } else {
         setContextList(prev => prev.filter(item => item.id !== id));
       }
-      await firebaseService.removeItemFromList(currentUser.uid, listType, id);
-    },
-    [currentUser]
-  );
+      showMessage('Item removed.', 'info');
+    } catch {
+      showMessage('Failed to remove item.', 'error');
+    } finally {
+      setIsConfirmModalOpen(false);
+      setItemToDelete(null);
+    }
+  }, [currentUser, showMessage, itemToDelete]);
 
   const updateItem = useCallback(
-    async (listType: 'notToDoList' | 'contextList', id: number, text: string) => {
+    async (listType: 'notToDoList' | 'contextList', id: string, text: string) => {
       if (!text.trim()) {
         showMessage('Item cannot be empty.', 'error');
         return;
       }
       if (!currentUser) return;
 
-      if (listType === 'notToDoList') {
-        setNotToDoList(prev =>
-          prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
-        );
-      } else {
-        setContextList(prev =>
-          prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
-        );
+      try {
+        await firebaseService.updateItemInList(currentUser.uid, listType, id, {
+          text: text.trim(),
+        });
+        if (listType === 'notToDoList') {
+          setNotToDoList(prev =>
+            prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
+          );
+        } else {
+          setContextList(prev =>
+            prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
+          );
+        }
+        showMessage('Item updated.', 'success');
+      } catch {
+        showMessage('Failed to update item.', 'error');
+      } finally {
+        setEditingItemId(null);
+        setEditText('');
       }
-
-      await firebaseService.updateItemInList(currentUser.uid, listType, id, { text: text.trim() });
-      setEditingItemId(null);
-      setEditText('');
     },
     [currentUser, showMessage]
   );
 
   if (isLoading) {
     return (
-      <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+      <main className="flex flex-col min-h-screen text-white bg-black">
         <ToastMessage message={toastMessage} type={toastType} />
         <div className="container flex-grow p-4 mx-auto max-w-4xl">
           <section className="py-8">
@@ -142,7 +183,7 @@ export default function ListsPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+    <main className="flex flex-col min-h-screen text-white bg-black">
       <ToastMessage message={toastMessage} type={toastType} />
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <section className="py-8">
@@ -169,7 +210,7 @@ export default function ListsPage() {
               <ListComponent
                 list={notToDoList}
                 addToList={text => addToList('notToDoList', text)}
-                removeFromList={id => removeFromList('notToDoList', id)}
+                removeFromList={id => handleDeleteConfirmation('notToDoList', id)}
                 updateItem={(id, text) => updateItem('notToDoList', id, text)}
                 placeholder="Add a distraction to avoid..."
                 themeColor="red"
@@ -177,6 +218,7 @@ export default function ListsPage() {
                 setEditingItemId={setEditingItemId}
                 editText={editText}
                 setEditText={setEditText}
+                isAdding={isAdding.notToDoList}
               />
             </div>
 
@@ -192,7 +234,7 @@ export default function ListsPage() {
               <ListComponent
                 list={contextList}
                 addToList={text => addToList('contextList', text)}
-                removeFromList={id => removeFromList('contextList', id)}
+                removeFromList={id => handleDeleteConfirmation('contextList', id)}
                 updateItem={(id, text) => updateItem('contextList', id, text)}
                 placeholder="Add a note or learning..."
                 themeColor="blue"
@@ -200,11 +242,24 @@ export default function ListsPage() {
                 setEditingItemId={setEditingItemId}
                 editText={editText}
                 setEditText={setEditText}
+                isAdding={isAdding.contextList}
               />
             </div>
           </div>
         </section>
       </div>
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="Delete Item?"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+        confirmButton={{
+          text: 'Delete',
+          onClick: removeFromList,
+          className: 'bg-red-600 text-white hover:bg-red-700',
+        }}
+        cancelButton={{ text: 'Cancel', onClick: () => setIsConfirmModalOpen(false) }}
+      />
     </main>
   );
 }

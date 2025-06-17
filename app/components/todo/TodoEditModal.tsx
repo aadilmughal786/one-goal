@@ -2,14 +2,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiX, FiSave, FiCalendar, FiLoader, FiTrash2 } from 'react-icons/fi'; // Added FiTrash2 for clear button
+import { FiX, FiSave, FiCalendar, FiLoader, FiTrash2, FiEdit } from 'react-icons/fi';
 import { TodoItem } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 
 interface TodoEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  todoItem: TodoItem | null; // The item to edit
+  todoItem: TodoItem | null;
   onSave: (id: string, updates: Partial<TodoItem>) => Promise<void>;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -22,34 +22,29 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   showMessage,
 }) => {
   const [editText, setEditText] = useState('');
-  const [editDescription, setEditDescription] = useState(''); // State for description
+  const [editDescription, setEditDescription] = useState('');
   const [editDeadline, setEditDeadline] = useState<string>('');
-
   const [isSaving, setIsSaving] = useState(false);
 
-  // Populate form fields when modal opens or todoItem changes
   useEffect(() => {
     if (isOpen && todoItem) {
       setEditText(todoItem.text);
-      setEditDescription(todoItem.description || ''); // Populate description
+      setEditDescription(todoItem.description || '');
       setEditDeadline(
         todoItem.deadline ? todoItem.deadline.toDate().toISOString().slice(0, 16) : ''
       );
-      setIsSaving(false); // Reset saving state
     }
   }, [isOpen, todoItem]);
 
-  // Prevent scrolling body when modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-    return () => {
-      document.body.style.overflow = 'auto';
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
     };
-  }, [isOpen]);
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
 
   const handleClearDeadline = useCallback(() => {
     setEditDeadline('');
@@ -58,46 +53,32 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   const handleSubmit = async () => {
     if (!todoItem) return;
     if (!editText.trim()) {
-      showMessage('Task description cannot be empty.', 'error');
+      showMessage('Task text cannot be empty.', 'error');
       return;
     }
 
     setIsSaving(true);
-    const updates: Partial<TodoItem> = { text: editText.trim() };
-
-    // Handle description update: if empty string, set to null
-    updates.description = editDescription.trim() === '' ? null : editDescription.trim();
-
-    // Handle deadline update
-    if (editDeadline) {
-      const newDeadlineDate = new Date(editDeadline);
-      if (isNaN(newDeadlineDate.getTime())) {
-        showMessage('Invalid deadline date. Please check the format.', 'error');
-        setIsSaving(false);
-        return;
-      }
-      updates.deadline = Timestamp.fromDate(newDeadlineDate);
-    } else {
-      updates.deadline = undefined; // Set to undefined to signal null in FirebaseService
-    }
+    const updates: Partial<TodoItem> = {
+      text: editText.trim(),
+      description: editDescription.trim() ? editDescription.trim() : null,
+      deadline: editDeadline ? Timestamp.fromDate(new Date(editDeadline)) : null,
+    };
 
     try {
       await onSave(todoItem.id, updates);
       showMessage('Task updated successfully!', 'success');
       onClose();
-    } catch (error) {
+    } catch {
       showMessage('Failed to save task updates.', 'error');
-      console.error('Error saving todo item:', error);
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!isOpen || !todoItem) return null;
+  if (!isOpen) return null;
 
   return (
     <>
-      {/* Inline style to make datetime-local calendar icon white */}
       <style>{`
         input[type="datetime-local"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
@@ -113,66 +94,65 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-center p-6 border-b border-white/10">
-            <h2 className="text-xl font-semibold text-white">Edit Task</h2>
+            <div className="flex gap-3 items-center">
+              <FiEdit className="w-5 h-5 text-white" />
+              <h2 className="text-xl font-semibold text-white">Edit Task</h2>
+            </div>
             <button
-              className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+              className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white"
               onClick={onClose}
               aria-label="Close modal"
             >
-              <FiX />
+              <FiX size={20} />
             </button>
           </div>
-          <div className="p-6 space-y-6">
+
+          <div className="p-6 space-y-4">
             <div>
-              <label
-                htmlFor="task-description"
-                className="block mb-2 text-sm font-medium text-white/70"
-              >
-                Task Description
+              <label htmlFor="task-text" className="block mb-2 text-sm font-medium text-white/70">
+                Task <span className="text-red-400">*</span>
               </label>
               <input
-                id="task-description"
+                id="task-text"
                 type="text"
                 value={editText}
                 onChange={e => setEditText(e.target.value)}
-                className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 autoFocus
               />
             </div>
             <div>
               <label
-                htmlFor="task-long-description"
+                htmlFor="task-description"
                 className="block mb-2 text-sm font-medium text-white/70"
               >
-                Detailed Notes (Optional)
+                Notes (Optional)
               </label>
               <textarea
-                id="task-long-description"
+                id="task-description"
                 value={editDescription}
                 onChange={e => setEditDescription(e.target.value)}
                 rows={3}
-                placeholder="Add more details about this task..."
-                className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+                placeholder="Add more details..."
+                className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
             <div>
               <label htmlFor="deadline" className="block mb-2 text-sm font-medium text-white/70">
-                <FiCalendar className="inline -mt-0.5 mr-1" /> Deadline (Optional)
+                <FiCalendar className="inline mr-1 -mt-0.5" /> Deadline (Optional)
               </label>
               <div className="flex gap-2 items-center">
-                {' '}
-                {/* Flex container for input and clear button */}
                 <input
                   id="deadline"
                   type="datetime-local"
                   value={editDeadline}
                   onChange={e => setEditDeadline(e.target.value)}
-                  className="flex-1 p-3 text-base text-white rounded-md border cursor-pointer border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 accent-white"
+                  className="p-3 w-full text-base text-white rounded-md border cursor-pointer bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 />
-                {editDeadline && ( // Show clear button only if deadline is set
+                {editDeadline && (
                   <button
                     onClick={handleClearDeadline}
-                    className="p-3 rounded-md transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                    className="p-3 rounded-md text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
                     aria-label="Clear deadline"
                   >
                     <FiTrash2 size={20} />
@@ -181,11 +161,12 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
               </div>
             </div>
           </div>
+
           <div className="p-6 border-t border-white/10">
             <button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
             >
               {isSaving ? (
                 <>

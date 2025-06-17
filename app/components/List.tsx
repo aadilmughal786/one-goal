@@ -2,23 +2,24 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { FiPlus, FiTrash2, FiEdit, FiSave, FiBookOpen } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit, FiSave, FiBookOpen, FiClock, FiLoader } from 'react-icons/fi';
 import { RiAlarmWarningLine } from 'react-icons/ri';
 import { ListItem } from '@/types';
+import { Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 interface ListComponentProps {
   list: ListItem[];
   addToList: (text: string) => void;
-  removeFromList: (id: number) => void;
-  updateItem: (id: number, text: string) => void;
+  removeFromList: (id: string) => void;
+  updateItem: (id: string, text: string) => void;
   placeholder: string;
   themeColor: 'red' | 'blue';
-
-  // Props for managing editing state, passed from parent
-  editingItemId: number | null;
-  setEditingItemId: (id: number | null) => void;
+  editingItemId: string | null;
+  setEditingItemId: (id: string | null) => void;
   editText: string;
   setEditText: (text: string) => void;
+  isAdding: boolean;
 }
 
 const ListComponent: React.FC<ListComponentProps> = ({
@@ -32,23 +33,30 @@ const ListComponent: React.FC<ListComponentProps> = ({
   setEditingItemId,
   editText,
   setEditText,
+  isAdding,
 }) => {
   const [inputValue, setInputValue] = useState('');
 
   const handleAddItem = useCallback(() => {
-    addToList(inputValue); // Parent will handle validation
+    if (isAdding) return;
+    addToList(inputValue);
     if (inputValue.trim()) {
       setInputValue('');
     }
-  }, [inputValue, addToList]);
+  }, [inputValue, addToList, isAdding]);
+
+  const formatDate = (timestamp: Timestamp): string => {
+    if (!timestamp) return '...';
+    return format(timestamp.toDate(), 'MMM d, yyyy');
+  };
 
   const handleStartEditing = (item: ListItem) => {
     setEditingItemId(item.id);
     setEditText(item.text);
   };
 
-  const handleUpdateItem = (id: number) => {
-    updateItem(id, editText); // Parent will handle validation and state update
+  const handleUpdateItem = (id: string) => {
+    updateItem(id, editText);
   };
 
   const themeClasses = {
@@ -80,13 +88,24 @@ const ListComponent: React.FC<ListComponentProps> = ({
           onKeyPress={e => e.key === 'Enter' && handleAddItem()}
           placeholder={placeholder}
           className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+          disabled={isAdding}
         />
         <button
           onClick={handleAddItem}
-          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 hover:scale-105 active:scale-95"
+          disabled={isAdding}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-60"
         >
-          <FiPlus />
-          <span>Add</span>
+          {isAdding ? (
+            <>
+              <FiLoader className="w-5 h-5 animate-spin" />
+              <span>Adding...</span>
+            </>
+          ) : (
+            <>
+              <FiPlus />
+              <span>Add</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -113,10 +132,16 @@ const ListComponent: React.FC<ListComponentProps> = ({
                   onKeyPress={e => e.key === 'Enter' && handleUpdateItem(item.id)}
                   onBlur={() => setEditingItemId(null)}
                   autoFocus
-                  className="flex-1 text-lg text-white bg-transparent border-b outline-none border-white/20"
+                  className="w-full text-lg text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400"
                 />
               ) : (
-                <span className="text-lg text-white/90">{item.text}</span>
+                <div className="flex flex-col">
+                  <span className="text-lg text-white/90">{item.text}</span>
+                  <div className="flex gap-1 items-center mt-1 text-xs text-white/50">
+                    <FiClock size={12} />
+                    <span>Created: {formatDate(item.createdAt)}</span>
+                  </div>
+                </div>
               )}
 
               <div className="flex gap-2 items-center">
