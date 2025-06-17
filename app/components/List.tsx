@@ -20,6 +20,7 @@ interface ListComponentProps {
   editText: string;
   setEditText: (text: string) => void;
   isAdding: boolean;
+  isUpdatingId: string | null;
 }
 
 const ListComponent: React.FC<ListComponentProps> = ({
@@ -34,6 +35,7 @@ const ListComponent: React.FC<ListComponentProps> = ({
   editText,
   setEditText,
   isAdding,
+  isUpdatingId,
 }) => {
   const [inputValue, setInputValue] = useState('');
 
@@ -47,7 +49,7 @@ const ListComponent: React.FC<ListComponentProps> = ({
 
   const formatDate = (timestamp: Timestamp): string => {
     if (!timestamp) return '...';
-    return format(timestamp.toDate(), 'MMM d, yyyy');
+    return format(timestamp.toDate(), 'MMM d,yyyy');
   };
 
   const handleStartEditing = (item: ListItem) => {
@@ -119,59 +121,63 @@ const ListComponent: React.FC<ListComponentProps> = ({
             </div>
           </li>
         ) : (
-          list.map((item: ListItem) => (
-            <li
-              key={item.id}
-              className={`flex justify-between items-center p-3 rounded-lg border transition-all duration-200 ${currentTheme.bg} ${currentTheme.border}`}
-            >
-              {editingItemId === item.id ? (
-                <input
-                  type="text"
-                  value={editText}
-                  onChange={e => setEditText(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && handleUpdateItem(item.id)}
-                  onBlur={() => setEditingItemId(null)}
-                  autoFocus
-                  className="w-full text-lg text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400"
-                />
-              ) : (
-                <div className="flex flex-col">
-                  <span className="text-lg text-white/90">{item.text}</span>
-                  <div className="flex gap-1 items-center mt-1 text-xs text-white/50">
-                    <FiClock size={12} />
-                    <span>Created: {formatDate(item.createdAt)}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 items-center">
+          list.map((item: ListItem) => {
+            const isUpdating = isUpdatingId === item.id;
+            return (
+              <li
+                key={item.id}
+                className={`flex justify-between items-center p-3 rounded-lg border transition-all duration-200 ${currentTheme.bg} ${currentTheme.border}`}
+              >
                 {editingItemId === item.id ? (
-                  <button
-                    onClick={() => handleUpdateItem(item.id)}
-                    className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10"
-                    aria-label="Save changes"
-                  >
-                    <FiSave />
-                  </button>
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    onKeyPress={e => e.key === 'Enter' && handleUpdateItem(item.id)}
+                    autoFocus
+                    disabled={isUpdating}
+                    className="w-full text-lg text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400 disabled:opacity-50"
+                  />
                 ) : (
-                  <button
-                    onClick={() => handleStartEditing(item)}
-                    className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
-                    aria-label="Edit item"
-                  >
-                    <FiEdit />
-                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-lg text-white/90">{item.text}</span>
+                    <div className="flex gap-1 items-center mt-1 text-xs text-white/50">
+                      <FiClock size={12} />
+                      <span>Created: {formatDate(item.createdAt)}</span>
+                    </div>
+                  </div>
                 )}
-                <button
-                  onClick={() => removeFromList(item.id)}
-                  className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                  aria-label="Delete item"
-                >
-                  <FiTrash2 />
-                </button>
-              </div>
-            </li>
-          ))
+
+                <div className="flex gap-2 items-center">
+                  {editingItemId === item.id ? (
+                    <button
+                      onClick={() => handleUpdateItem(item.id)}
+                      disabled={isUpdating}
+                      className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10 disabled:opacity-50"
+                      aria-label="Save changes"
+                    >
+                      {isUpdating ? <FiLoader className="animate-spin" /> : <FiSave />}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStartEditing(item)}
+                      className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                      aria-label="Edit item"
+                    >
+                      <FiEdit />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => removeFromList(item.id)}
+                    className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                    aria-label="Delete item"
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
+              </li>
+            );
+          })
         )}
       </ul>
     </>

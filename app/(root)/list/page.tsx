@@ -39,6 +39,7 @@ export default function ListsPage() {
 
   // State for loaders
   const [isAdding, setIsAdding] = useState({ notToDoList: false, contextList: false });
+  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
     listType: 'notToDoList' | 'contextList';
@@ -120,11 +121,7 @@ export default function ListsPage() {
 
     try {
       await firebaseService.removeItemFromList(currentUser.uid, listType, id);
-      if (listType === 'notToDoList') {
-        setNotToDoList(prev => prev.filter(item => item.id !== id));
-      } else {
-        setContextList(prev => prev.filter(item => item.id !== id));
-      }
+      await fetchUserData(currentUser.uid);
       showMessage('Item removed.', 'info');
     } catch {
       showMessage('Failed to remove item.', 'error');
@@ -132,7 +129,7 @@ export default function ListsPage() {
       setIsConfirmModalOpen(false);
       setItemToDelete(null);
     }
-  }, [currentUser, showMessage, itemToDelete]);
+  }, [currentUser, showMessage, itemToDelete, fetchUserData]);
 
   const updateItem = useCallback(
     async (listType: 'notToDoList' | 'contextList', id: string, text: string) => {
@@ -142,28 +139,22 @@ export default function ListsPage() {
       }
       if (!currentUser) return;
 
+      setIsUpdatingId(id);
       try {
         await firebaseService.updateItemInList(currentUser.uid, listType, id, {
           text: text.trim(),
         });
-        if (listType === 'notToDoList') {
-          setNotToDoList(prev =>
-            prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
-          );
-        } else {
-          setContextList(prev =>
-            prev.map(item => (item.id === id ? { ...item, text: text.trim() } : item))
-          );
-        }
+        await fetchUserData(currentUser.uid);
         showMessage('Item updated.', 'success');
       } catch {
         showMessage('Failed to update item.', 'error');
       } finally {
+        setIsUpdatingId(null);
         setEditingItemId(null);
         setEditText('');
       }
     },
-    [currentUser, showMessage]
+    [currentUser, showMessage, fetchUserData]
   );
 
   if (isLoading) {
@@ -219,6 +210,7 @@ export default function ListsPage() {
                 editText={editText}
                 setEditText={setEditText}
                 isAdding={isAdding.notToDoList}
+                isUpdatingId={isUpdatingId}
               />
             </div>
 
@@ -243,6 +235,7 @@ export default function ListsPage() {
                 editText={editText}
                 setEditText={setEditText}
                 isAdding={isAdding.contextList}
+                isUpdatingId={isUpdatingId}
               />
             </div>
           </div>
