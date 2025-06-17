@@ -1,300 +1,310 @@
 // app/components/stopwatch/SessionLog.tsx
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { AppState, StopwatchSession } from '@/types'; // Import DailyProgress and StopwatchSession
+import React, { useState, useMemo } from 'react';
+import { AppState, StopwatchSession } from '@/types';
 import {
   FiActivity,
   FiClock,
   FiTrash2,
-  FiCalendar,
+  FiEdit,
+  FiSave,
+  FiLoader,
   FiChevronLeft,
   FiChevronRight,
-  FiPlayCircle,
-  FiFlag,
 } from 'react-icons/fi';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
-import { isToday, isYesterday, format, addDays, subDays, startOfDay, parseISO } from 'date-fns'; // Import parseISO
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  subMonths,
+  startOfDay,
+  endOfDay,
+  isWithinInterval,
+  getDaysInMonth,
+} from 'date-fns';
 
 interface SessionLogProps {
   appState: AppState | null;
-  // Updated onDeleteSession to match firebaseService signature
   onDeleteSession: (
     dateKey: string,
     sessionStartTime: StopwatchSession['startTime']
   ) => Promise<void>;
+  onUpdateSession: (
+    dateKey: string,
+    sessionStartTime: StopwatchSession['startTime'],
+    newLabel: string
+  ) => Promise<void>;
+  isUpdatingId: string | null;
 }
 
-export default function SessionLog({ appState, onDeleteSession }: SessionLogProps) {
-  const [selectedDay, setSelectedDay] = useState<Date>(new Date()); // Initialize with Date object directly
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+export default function SessionLog({
+  appState,
+  onDeleteSession,
+  onUpdateSession,
+  isUpdatingId,
+}: SessionLogProps) {
+  const goalStartDate = appState?.goal?.startDate?.toDate();
+  const goalEndDate = appState?.goal?.endDate?.toDate();
 
-  const calendarRef = useRef<HTMLDivElement>(null);
+  const [currentMonth, setCurrentMonth] = useState(goalStartDate || new Date());
+  const [selectedDay, setSelectedDay] = useState(goalStartDate || new Date());
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
-  // Effect to determine the initial selected day based on the most recent logged session
-  useEffect(() => {
-    let mostRecentDate: Date | null = null;
-    if (appState?.dailyProgress) {
-      // Iterate through dailyProgress entries to find the latest date with sessions
-      for (const dateKey of Object.keys(appState.dailyProgress).sort().reverse()) {
-        const dailyProgressEntry = appState.dailyProgress[dateKey];
-        if (
-          dailyProgressEntry.stopwatchSessions &&
-          dailyProgressEntry.stopwatchSessions.length > 0
-        ) {
-          mostRecentDate = parseISO(dateKey); // Convert date string to Date object
-          break;
-        }
+  // Get days in current month that are within goal range
+  const daysInCurrentMonth = useMemo(() => {
+    if (!goalStartDate || !goalEndDate) return [];
+
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const validDays = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+
+      if (
+        isWithinInterval(currentDate, {
+          start: startOfDay(goalStartDate),
+          end: endOfDay(goalEndDate),
+        })
+      ) {
+        validDays.push(currentDate);
       }
     }
-    const initialDate = mostRecentDate || new Date();
-    setSelectedDay(initialDate);
-    setCalendarMonth(initialDate);
-  }, [appState?.dailyProgress]); // Depend on dailyProgress changes
 
-  // Effect to close the calendar when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-        setIsCalendarOpen(false);
+    return validDays;
+  }, [currentMonth, goalStartDate, goalEndDate]);
+
+  // Check which days have logged sessions
+  const daysWithLogs = useMemo(() => {
+    const loggedDays = new Set<string>();
+    if (!appState?.dailyProgress) return loggedDays;
+
+    daysInCurrentMonth.forEach(day => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+      const daySessions = appState.dailyProgress[dateKey]?.stopwatchSessions;
+      if (daySessions && daySessions.length > 0) {
+        loggedDays.add(dateKey);
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [calendarRef]);
+    });
 
-  // Helper function to format duration from milliseconds to a readable string
+    return loggedDays;
+  }, [appState?.dailyProgress, daysInCurrentMonth]);
+
+  const selectedDaySessions = useMemo(() => {
+    if (!selectedDay || !appState?.dailyProgress) return [];
+    const dateKey = format(selectedDay, 'yyyy-MM-dd');
+    return (
+      appState.dailyProgress[dateKey]?.stopwatchSessions.sort(
+        (a, b) => b.startTime.toMillis() - a.startTime.toMillis()
+      ) || []
+    );
+  }, [selectedDay, appState?.dailyProgress]);
+
+  // Check if we can navigate to previous/next month
+  const canGoPrevMonth = useMemo(() => {
+    if (!goalStartDate) return false;
+    const prevMonth = subMonths(currentMonth, 1);
+    const prevMonthEnd = endOfMonth(prevMonth);
+    return prevMonthEnd >= startOfDay(goalStartDate);
+  }, [currentMonth, goalStartDate]);
+
+  const canGoNextMonth = useMemo(() => {
+    if (!goalEndDate) return false;
+    const nextMonth = addMonths(currentMonth, 1);
+    const nextMonthStart = startOfMonth(nextMonth);
+    return nextMonthStart <= endOfDay(goalEndDate);
+  }, [currentMonth, goalEndDate]);
+
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    const newMonth = direction === 'prev' ? subMonths(currentMonth, 1) : addMonths(currentMonth, 1);
+    setCurrentMonth(newMonth);
+    // Don't change selectedDay - keep the current selection
+  };
+
   const formatDuration = (ms: number) => {
     if (ms === 0) return '0s';
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-
     const parts = [];
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
     if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
-
     return parts.join(' ');
   };
 
-  // Helper function to format the display date (Today, Yesterday, or full date)
-  const formatDisplayDate = (date: Date): string => {
-    // Changed type to Date (non-optional)
-    if (isToday(date)) return 'Today';
-    if (isYesterday(date)) return 'Yesterday';
-    return format(date, 'MMMM d, yyyy'); // Corrected format string for year
+  const handleStartEditing = (session: StopwatchSession) => {
+    setEditingSessionId(session.startTime.toMillis().toString());
+    setEditText(session.label);
   };
 
-  // Memoized list of days that have logged sessions, for calendar highlighting
-  const loggedDays = useMemo(() => {
-    const daysWithLogs = new Set<string>();
-    if (appState?.dailyProgress) {
-      for (const dateKey in appState.dailyProgress) {
-        if (Object.prototype.hasOwnProperty.call(appState.dailyProgress, dateKey)) {
-          const dailyProgressEntry = appState.dailyProgress[dateKey];
-          if (
-            dailyProgressEntry.stopwatchSessions &&
-            dailyProgressEntry.stopwatchSessions.length > 0
-          ) {
-            daysWithLogs.add(dateKey);
-          }
-        }
-      }
-    }
-    // Convert date strings back to Date objects for DayPicker modifiers
-    return Array.from(daysWithLogs).map(dateStr => parseISO(dateStr));
-  }, [appState?.dailyProgress]);
-
-  // Memoized list of stopwatch sessions for the currently selected day
-  const filteredSessions = useMemo(() => {
-    if (!selectedDay || !appState?.dailyProgress) return [];
-
-    const selectedDateStr = format(selectedDay, 'yyyy-MM-dd');
-    const dailyProgressEntry = appState.dailyProgress[selectedDateStr];
-
-    if (dailyProgressEntry && dailyProgressEntry.stopwatchSessions) {
-      // Sort sessions by startTime (descending)
-      return [...dailyProgressEntry.stopwatchSessions].sort(
-        (a, b) => b.startTime.toDate().getTime() - a.startTime.toDate().getTime()
-      );
-    }
-    return [];
-  }, [appState?.dailyProgress, selectedDay]);
-
-  // Memoized total time spent for the currently filtered sessions
-  const totalFilteredTime = useMemo(() => {
-    return filteredSessions.reduce((total, session) => total + session.durationMs, 0);
-  }, [filteredSessions]);
-
-  // Get goal start and end dates from appState.goal
-  const goalStartDate = appState?.goal?.createdAt?.toDate(); // Use createdAt
-  const goalEndDate = appState?.goal?.endDate?.toDate();
-
-  // Navigation for previous/next day in the calendar view
-  const navigateDay = (direction: 'prev' | 'next') => {
-    if (!selectedDay || !goalStartDate || !goalEndDate) return;
-
-    const newDay = direction === 'prev' ? subDays(selectedDay, 1) : addDays(selectedDay, 1);
-
-    // Ensure newDay is within the goal's start and end dates
-    if (
-      startOfDay(newDay) >= startOfDay(goalStartDate) &&
-      startOfDay(newDay) <= startOfDay(goalEndDate)
-    ) {
-      setSelectedDay(newDay);
-      setCalendarMonth(newDay);
-    }
+  const handleSaveUpdate = async (session: StopwatchSession) => {
+    if (!editText.trim()) return;
+    const dateKey = format(session.startTime.toDate(), 'yyyy-MM-dd');
+    await onUpdateSession(dateKey, session.startTime, editText);
+    setEditingSessionId(null);
+    setEditText('');
   };
 
   return (
-    <div className="mx-auto mt-12 max-w-3xl">
+    <div className="mx-auto mt-12 max-w-4xl">
       <div className="mb-8 text-center">
         <h3 className="flex gap-3 justify-center items-center text-2xl font-bold">
           <FiActivity />
           Focus Session Log
         </h3>
         <p className="mt-2 text-white/60">
-          Review your logged focus sessions. Days with logged entries are marked.
+          Navigate through months and select a day to view your logged focus sessions.
         </p>
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-sm">
-        <div className="flex justify-between items-center p-6 border-b border-white/20">
-          <h4 className="text-lg font-bold text-white">{formatDisplayDate(selectedDay)}</h4>
-          <div className="flex gap-2 items-center">
-            <div className="relative">
-              <button
-                onClick={() => setIsCalendarOpen(prev => !prev)}
-                className="p-2 rounded-lg transition-colors text-white/80 hover:bg-white/10 hover:text-white"
-                aria-label="Select date"
-              >
-                <FiCalendar size={20} />
-              </button>
-              {isCalendarOpen && (
-                <div ref={calendarRef} className="absolute right-0 top-full z-20 mt-2">
-                  <div className="p-4 rounded-2xl border shadow-lg border-white/20 bg-neutral-900">
-                    {appState?.goal ? (
-                      <DayPicker
-                        mode="single"
-                        selected={selectedDay}
-                        onSelect={day => {
-                          if (day) setSelectedDay(day);
-                          setIsCalendarOpen(false);
-                        }}
-                        month={calendarMonth}
-                        onMonthChange={setCalendarMonth}
-                        modifiers={{
-                          logged: loggedDays,
-                          disabled: date => {
-                            // Disable dates outside the goal range if goal exists
-                            if (!goalStartDate || !goalEndDate) return false;
-                            return (
-                              date < startOfDay(goalStartDate) || date > startOfDay(goalEndDate)
-                            );
-                          },
-                        }}
-                        modifiersClassNames={{ logged: 'day-with-log' }}
-                        className="text-white"
-                      />
-                    ) : (
-                      <div className="p-8 text-center text-white/50">
-                        Set a goal to enable the calendar.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mx-1 w-px h-6 bg-white/20"></div>
-
-            <div className="flex gap-2 items-center">
-              <button
-                onClick={() => navigateDay('prev')}
-                disabled={
-                  !selectedDay ||
-                  !goalStartDate ||
-                  startOfDay(selectedDay) <= startOfDay(goalStartDate)
-                }
-                className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <FiChevronLeft />
-              </button>
-              <button
-                onClick={() => navigateDay('next')}
-                disabled={
-                  !selectedDay || !goalEndDate || startOfDay(selectedDay) >= startOfDay(goalEndDate)
-                }
-                className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <FiChevronRight />
-              </button>
-            </div>
+        {/* Month Navigation */}
+        <div className="p-6 border-b border-white/20">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => handleMonthChange('prev')}
+              disabled={!canGoPrevMonth}
+              className="flex gap-2 items-center px-4 py-2 rounded-lg transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <FiChevronLeft />
+              Previous
+            </button>
+            <h4 className="text-xl font-bold">{format(currentMonth, 'MMMM yyyy')}</h4>
+            <button
+              onClick={() => handleMonthChange('next')}
+              disabled={!canGoNextMonth}
+              className="flex gap-2 items-center px-4 py-2 rounded-lg transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next
+              <FiChevronRight />
+            </button>
           </div>
         </div>
 
-        <div className="min-h-[240px] p-6">
-          {filteredSessions.length > 0 ? (
-            <ul className="space-y-3">
-              {filteredSessions.map(session => (
-                <li
-                  key={session.startTime.toMillis()} // Use toMillis for a unique key from Timestamp
-                  className="flex justify-between items-center p-3 rounded-lg transition-colors group bg-white/5 hover:bg-white/10"
-                >
-                  <div>
-                    <p className="font-semibold text-white">{session.label}</p>
-                    <p className="text-sm text-white/60">
-                      {session.startTime // Use startTime to display time
-                        .toDate()
-                        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex gap-4 items-center">
-                    <div className="flex gap-2 items-center px-3 py-1 font-mono text-sm text-cyan-300 rounded-full bg-cyan-500/10">
-                      <FiClock size={14} />
-                      {formatDuration(session.durationMs)}
-                    </div>
-                    <button
-                      onClick={() =>
-                        onDeleteSession(format(selectedDay, 'yyyy-MM-dd'), session.startTime)
-                      } // Pass dateKey and session.startTime
-                      className="p-2 opacity-0 transition-all text-red-400/70 hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
-                      aria-label="Delete session"
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+        {/* Days Grid */}
+        <div className="p-6 border-b border-white/20">
+          <h5 className="mb-4 text-lg font-semibold text-white/80">
+            Days in {format(currentMonth, 'MMMM yyyy')}
+          </h5>
+          {daysInCurrentMonth.length > 0 ? (
+            <div className="flex flex-wrap gap-3 justify-center">
+              {daysInCurrentMonth.map(day => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                const hasLog = daysWithLogs.has(dateKey);
+                const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd');
+
+                return (
+                  <button
+                    key={dateKey}
+                    onClick={() => setSelectedDay(day)}
+                    className={`relative flex items-center justify-center w-12 h-12 rounded-lg font-semibold transition-all
+                      hover:bg-white/10 hover:scale-105
+                      ${
+                        isSelected
+                          ? 'text-white bg-blue-500 ring-2 ring-blue-300 shadow-lg'
+                          : 'bg-white/5 text-white/90'
+                      }
+                      ${hasLog ? 'border-2 border-cyan-400/50' : 'border border-white/20'}
+                    `}
+                  >
+                    {format(day, 'd')}
+                    {hasLog && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full border-2 border-gray-900"></div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           ) : (
-            <div className="flex flex-col justify-center items-center pt-10 h-full text-center text-white/50">
-              <FiClock size={32} className="mb-4" />
-              <p>No focus sessions logged for this date.</p>
+            <div className="py-8 text-center text-white/50">
+              <p>No days in this month are within your goal period.</p>
             </div>
           )}
         </div>
 
-        <div className="flex justify-between items-center p-4 text-xs border-t border-white/20 bg-black/20 text-white/60">
-          <div className="flex gap-4 items-center">
-            <div className="flex items-center gap-1.5">
-              <FiPlayCircle className="text-green-400" />
-              <span>Start: {goalStartDate ? format(goalStartDate, 'd MMM yy') : '...'}</span>
+        {/* Session Logs */}
+        <div className="min-h-[300px] p-6">
+          <h4 className="mb-4 text-xl font-bold text-white/80">
+            Logs for {format(selectedDay, 'MMMM d, yyyy')}
+          </h4>
+          {selectedDaySessions.length > 0 ? (
+            <ul className="space-y-3">
+              {selectedDaySessions.map(session => {
+                const sessionId = session.startTime.toMillis().toString();
+                const isEditing = editingSessionId === sessionId;
+                const isUpdating = isUpdatingId === sessionId;
+                return (
+                  <li
+                    key={sessionId}
+                    className="flex justify-between items-center p-4 rounded-lg transition-colors bg-white/5 hover:bg-white/10"
+                  >
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={e => setEditText(e.target.value)}
+                        onKeyPress={e => e.key === 'Enter' && handleSaveUpdate(session)}
+                        autoFocus
+                        disabled={isUpdating}
+                        className="flex-1 text-base text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400 disabled:opacity-50"
+                      />
+                    ) : (
+                      <div>
+                        <p className="font-semibold text-white">{session.label}</p>
+                        <p className="text-sm text-white/60">
+                          {session.startTime
+                            .toDate()
+                            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-center">
+                      <div className="flex gap-2 items-center px-3 py-1 font-mono text-sm text-cyan-300 rounded-full bg-cyan-500/10">
+                        <FiClock size={14} />
+                        {formatDuration(session.durationMs)}
+                      </div>
+                      {isEditing ? (
+                        <button
+                          onClick={() => handleSaveUpdate(session)}
+                          disabled={isUpdating}
+                          className="p-2 text-green-400 rounded-full hover:bg-green-500/10 disabled:opacity-50"
+                          aria-label="Save changes"
+                        >
+                          {isUpdating ? <FiLoader className="animate-spin" /> : <FiSave />}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleStartEditing(session)}
+                          className="p-2 rounded-full text-white/60 hover:bg-white/10"
+                          aria-label="Edit session"
+                        >
+                          <FiEdit />
+                        </button>
+                      )}
+                      <button
+                        onClick={() =>
+                          onDeleteSession(format(selectedDay, 'yyyy-MM-dd'), session.startTime)
+                        }
+                        className="p-2 rounded-full text-red-400/70 hover:bg-red-500/10"
+                        aria-label="Delete session"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="flex flex-col justify-center items-center pt-10 h-full text-center text-white/50">
+              <FiClock size={32} className="mb-4" />
+              <p>No focus sessions logged for this day.</p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <FiFlag className="text-red-400" />
-              <span>End: {goalEndDate ? format(goalEndDate, 'd MMM yy') : '...'}</span>
-            </div>
-          </div>
-          <div className="px-3 py-1 text-sm font-semibold text-green-300 rounded-full bg-green-500/10">
-            Total: {formatDuration(totalFilteredTime)}
-          </div>
+          )}
         </div>
       </div>
     </div>

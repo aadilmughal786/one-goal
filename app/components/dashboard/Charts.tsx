@@ -132,9 +132,9 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
     if (!goal) return null;
 
     // Use goal.createdAt instead of goal.startDate
-    const totalDays = differenceInDays(goal.endDate.toDate(), goal.createdAt.toDate()) + 1;
+    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1;
     const daysPassed = Math.min(
-      differenceInDays(new Date(), goal.createdAt.toDate()) + 1,
+      differenceInDays(new Date(), goal.startDate.toDate()) + 1,
       totalDays
     );
     const daysLogged = dailyProgress.filter(
@@ -160,7 +160,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
     const weeks = [];
     // Use goal.createdAt instead of goal.startDate
-    let currentDate = goal.createdAt.toDate();
+    let currentDate = goal.startDate.toDate();
     const endDate = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
 
     while (currentDate.getTime() <= endDate) {
@@ -170,7 +170,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
       const weekProgress = weekDays
         // Use goal.createdAt instead of goal.startDate
-        .filter(day => day >= goal.createdAt.toDate() && day <= new Date())
+        .filter(day => day >= goal.startDate.toDate() && day <= new Date())
         .map(day => {
           const dayKey = format(day, 'yyyy-MM-dd'); // Format date string correctly
           return dailyProgress.find(p => p.date === dayKey); // Compare date strings

@@ -13,7 +13,6 @@ import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import SessionLog from '@/components/stopwatch/SessionLog';
 
-// Define a type for the session to be deleted, including its date key
 interface SessionToDeleteInfo {
   dateKey: string;
   sessionStartTime: Timestamp;
@@ -55,10 +54,11 @@ export default function StopwatchPage() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLabeling, setIsLabeling] = useState(false);
   const [sessionLabel, setSessionLabel] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  // Store info about the session to delete, not just its ID
   const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
 
   const animationFrameRef = useRef<number | null>(null);
@@ -66,23 +66,34 @@ export default function StopwatchPage() {
 
   const showMessage = useCallback((text: string, _: 'success' | 'error' | 'info') => {
     setToastMessage(text);
-    setTimeout(() => setToastMessage(null), 5000);
+    setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
+  const fetchUserData = useCallback(
+    async (uid: string) => {
+      try {
+        const data = await firebaseService.getUserData(uid);
+        setAppState(data);
+      } catch {
+        showMessage('Failed to load user data.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [showMessage]
+  );
+
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthChange(currentUser => {
-      if (currentUser) {
-        setUser(currentUser);
-        firebaseService.getUserData(currentUser.uid).then(data => {
-          setAppState(data);
-          setIsLoading(false);
-        });
+    const unsubscribe = firebaseService.onAuthChange(user => {
+      if (user) {
+        setUser(user);
+        fetchUserData(user.uid);
       } else {
         router.replace('/login');
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, fetchUserData]);
 
   const updateTimer = useCallback(() => {
     if (isRunning) {
@@ -126,35 +137,51 @@ export default function StopwatchPage() {
       showMessage('Please enter a label for your session.', 'error');
       return;
     }
-
-    const newSession: StopwatchSession = {
-      startTime: Timestamp.now(), // Automatically sets to current time
+    setIsSaving(true);
+    const newSession: Omit<StopwatchSession, 'startTime'> = {
       label: sessionLabel.trim(),
       durationMs: elapsedTime,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
     };
 
     try {
       await firebaseService.addStopwatchSession(currentUser.uid, newSession);
-      // After adding, refetch user data to ensure appState is fully synchronized
-      // as addStopwatchSession modifies a nested map (dailyProgress)
-      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
-      setAppState(updatedAppState);
+      await fetchUserData(currentUser.uid);
       showMessage('Focus session saved!', 'success');
-      handleReset(); // Reset stopwatch after successful save
+      handleReset();
     } catch (error) {
       console.error('Error saving session:', error);
       showMessage('Could not save session. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // This function now receives dateKey and sessionStartTime directly from SessionLog
   const handleDeleteSession = useCallback(async (dateKey: string, sessionStartTime: Timestamp) => {
-    // Made async
     setSessionToDeleteInfo({ dateKey, sessionStartTime });
     setIsConfirmModalOpen(true);
   }, []);
+
+  const handleUpdateSession = useCallback(
+    async (dateKey: string, sessionStartTime: Timestamp, newLabel: string) => {
+      if (!currentUser) return;
+      setIsUpdatingId(sessionStartTime.toMillis().toString());
+      try {
+        await firebaseService.updateStopwatchSession(
+          currentUser.uid,
+          dateKey,
+          sessionStartTime,
+          newLabel
+        );
+        await fetchUserData(currentUser.uid);
+        showMessage('Session updated!', 'success');
+      } catch {
+        showMessage('Failed to update session.', 'error');
+      } finally {
+        setIsUpdatingId(null);
+      }
+    },
+    [currentUser, fetchUserData, showMessage]
+  );
 
   const confirmDeleteSession = async () => {
     if (!currentUser || !sessionToDeleteInfo) return;
@@ -165,9 +192,7 @@ export default function StopwatchPage() {
         sessionToDeleteInfo.dateKey,
         sessionToDeleteInfo.sessionStartTime
       );
-      // After deletion, refetch user data to ensure appState is fully synchronized
-      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
-      setAppState(updatedAppState);
+      await fetchUserData(currentUser.uid);
       showMessage('Session deleted.', 'info');
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -194,7 +219,9 @@ export default function StopwatchPage() {
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
       <ToastMessage
         message={toastMessage}
-        type={toastMessage === 'Focus session saved!' ? 'success' : 'info'}
+        type={
+          toastMessage?.includes('saved') || toastMessage?.includes('updated') ? 'success' : 'info'
+        }
       />
       <div className="container flex-grow justify-center p-4 mx-auto max-w-4xl">
         <section className="py-8 w-full">
@@ -215,9 +242,15 @@ export default function StopwatchPage() {
             handlePause={handlePause}
             handleReset={handleReset}
             handleSave={handleSaveSession}
+            isSaving={isSaving}
           />
 
-          <SessionLog appState={appState} onDeleteSession={handleDeleteSession} />
+          <SessionLog
+            appState={appState}
+            onDeleteSession={handleDeleteSession}
+            onUpdateSession={handleUpdateSession}
+            isUpdatingId={isUpdatingId}
+          />
         </section>
       </div>
 

@@ -134,9 +134,8 @@ export default function DashboardPage() {
       const newGoal: Goal = {
         name: goalName,
         description: description, // Now directly uses description, which can be string | null
-        createdAt: isEditMode && appState?.goal ? appState.goal.createdAt : Timestamp.now(), // Use createdAt
+        startDate: isEditMode && appState?.goal ? appState.goal.startDate : Timestamp.now(), // Use createdAt
         endDate: Timestamp.fromDate(goalEndDate),
-        updatedAt: Timestamp.now(), // Add updatedAt as it's required
       };
       await firebaseService.updateGoal(currentUser.uid, newGoal);
       const updatedUserData = await firebaseService.getUserData(currentUser.uid);
@@ -295,7 +294,7 @@ export default function DashboardPage() {
     ? {
         name: appState.goal.name,
         description: appState.goal.description, // description is string | null
-        startDate: appState.goal.createdAt.toDate().toISOString(), // Use createdAt
+        startDate: appState.goal.startDate.toDate().toISOString(), // Use createdAt
         endDate: appState.goal.endDate.toDate().toISOString(),
       }
     : null;

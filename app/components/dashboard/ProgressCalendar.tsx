@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { Goal, DailyProgress, SatisfactionLevel } from '@/types';
+import { FiCheck, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
+import { Goal, DailyProgress, SatisfactionLevel, RoutineType } from '@/types';
 import {
   format,
   eachDayOfInterval,
@@ -15,6 +15,14 @@ import {
   isWithinInterval,
   isSameMonth,
 } from 'date-fns';
+import {
+  MdOutlineCleaningServices,
+  MdOutlineDirectionsRun,
+  MdOutlineNightlight,
+  MdOutlineRestaurant,
+  MdOutlineShower,
+  MdOutlineWaterDrop,
+} from 'react-icons/md';
 
 interface ProgressCalendarProps {
   goal: Goal;
@@ -22,11 +30,20 @@ interface ProgressCalendarProps {
   onDayClick: (date: Date) => void;
 }
 
+const routineIcons: Record<RoutineType, React.ElementType> = {
+  [RoutineType.SLEEP]: MdOutlineNightlight,
+  [RoutineType.WATER]: MdOutlineWaterDrop,
+  [RoutineType.EXERCISE]: MdOutlineDirectionsRun,
+  [RoutineType.MEALS]: MdOutlineRestaurant,
+  [RoutineType.TEETH]: MdOutlineCleaningServices,
+  [RoutineType.BATH]: MdOutlineShower,
+};
+
 const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress, onDayClick }) => {
   // Use the goal's createdAt date as the initial month to display
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(goal.createdAt.toDate()));
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(goal.startDate.toDate()));
 
-  const goalStartDate = goal.createdAt.toDate(); // Corrected to use createdAt
+  const goalStartDate = goal.startDate.toDate(); // Corrected to use createdAt
   const goalEndDate = goal.endDate.toDate();
 
   const progressMap = useMemo(() => {
@@ -115,26 +132,52 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                 <span className="text-xs text-white/50">{format(day, 'E')}</span>
                 <span className="z-10 text-xl font-bold sm:text-2xl">{format(day, 'd')}</span>
 
-                {/* Tooltip */}
                 {progress && (
                   <div className="absolute bottom-full invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
-                    <p className="p-3 pb-1 text-sm font-bold">
+                    <p className="p-3 pb-1 text-sm font-bold text-white">
                       {format(new Date(progress.date), 'MMMM d, yyyy')}
                     </p>
                     <hr className="my-1 border-white/10" />
-                    <div className="px-3 py-1">
+                    <div className="px-3 py-1 space-y-1">
                       <p className="text-xs">
                         <span className="font-semibold">Satisfaction:</span>{' '}
                         {getSatisfactionInfo(progress.satisfactionLevel).label}
                       </p>
                       <p className="text-xs">
                         <span className="font-semibold">Time Spent:</span>{' '}
-                        {progress.effortTimeMinutes} mins {/* Corrected to effortTimeMinutes */}
+                        {progress.effortTimeMinutes || 0} mins
                       </p>
-                      {progress.progressNote && ( // Corrected to progressNote
+                      {progress.progressNote && (
                         <p className="mt-1 text-xs italic text-white/70">{progress.progressNote}</p>
                       )}
                     </div>
+                    {progress.routineLog && (
+                      <>
+                        <hr className="my-1 border-white/10" />
+                        <div className="px-3 py-1">
+                          <p className="mb-2 text-sm font-bold text-white">Routine Status</p>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            {Object.entries(progress.routineLog).map(([key, value]) => {
+                              const Icon = routineIcons[key as RoutineType];
+                              return (
+                                <div
+                                  key={key}
+                                  className="flex items-center gap-1.5"
+                                  title={key.charAt(0).toUpperCase() + key.slice(1)}
+                                >
+                                  <Icon
+                                    className={`w-4 h-4 ${value ? 'text-green-400' : 'text-white/40'}`}
+                                  />
+                                  <span className={`${value ? 'text-green-400' : 'text-white/40'}`}>
+                                    {value ? <FiCheck /> : <FiX />}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                     <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-neutral-900 border-white/10"></div>
                   </div>
                 )}

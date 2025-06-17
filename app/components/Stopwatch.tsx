@@ -2,12 +2,12 @@
 'use client';
 
 import React from 'react';
-import { FiPlay, FiPause, FiSave } from 'react-icons/fi';
+import { FiPlay, FiPause, FiSave, FiLoader } from 'react-icons/fi';
 import { GrPowerReset } from 'react-icons/gr';
 
 interface StopwatchProps {
   isRunning: boolean;
-  elapsedTime: number; // This corresponds to durationMs in StopwatchSession
+  elapsedTime: number;
   isLabeling: boolean;
   sessionLabel: string;
   setSessionLabel: (label: string) => void;
@@ -15,6 +15,7 @@ interface StopwatchProps {
   handlePause: () => void;
   handleReset: () => void;
   handleSave: () => void;
+  isSaving: boolean;
 }
 
 const Stopwatch: React.FC<StopwatchProps> = ({
@@ -27,6 +28,7 @@ const Stopwatch: React.FC<StopwatchProps> = ({
   handlePause,
   handleReset,
   handleSave,
+  isSaving,
 }) => {
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -52,12 +54,14 @@ const Stopwatch: React.FC<StopwatchProps> = ({
               autoFocus
               className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-green-400/50"
               onKeyPress={e => e.key === 'Enter' && handleSave()}
+              disabled={isSaving}
             />
             <button
               onClick={handleSave}
-              className="p-3 font-semibold text-white bg-green-600 rounded-lg transition-all duration-200 cursor-pointer hover:bg-green-500 hover:scale-105 active:scale-95"
+              disabled={isSaving}
+              className="p-3 font-semibold text-white bg-green-600 rounded-lg transition-all duration-200 cursor-pointer hover:bg-green-500 hover:scale-105 active:scale-95 disabled:opacity-60"
             >
-              <FiSave size={24} />
+              {isSaving ? <FiLoader size={24} className="animate-spin" /> : <FiSave size={24} />}
             </button>
           </div>
         </div>

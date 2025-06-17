@@ -3,16 +3,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiX, FiEdit3, FiCheckCircle, FiLoader, FiChevronDown } from 'react-icons/fi';
-import { DailyProgress, SatisfactionLevel, StopwatchSession } from '@/types'; // Import StopwatchSession
-import { Timestamp } from 'firebase/firestore';
+import { DailyProgress, SatisfactionLevel } from '@/types';
 import { format } from 'date-fns';
 
 interface DailyProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
   date: Date;
-  initialProgress: DailyProgress | null; // Changed to non-optional as it's either data or null for new
-  onSave: (progressData: DailyProgress) => Promise<void>;
+  initialProgress: DailyProgress | null;
+  onSave: (progressData: Partial<DailyProgress>) => Promise<void>;
+  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const satisfactionOptions = [
@@ -29,72 +29,43 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   date,
   initialProgress,
   onSave,
+  showMessage,
 }) => {
-  const [satisfaction, setSatisfaction] = useState<SatisfactionLevel | null>(null);
+  const [satisfaction, setSatisfaction] = useState<SatisfactionLevel>(SatisfactionLevel.MEDIUM);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Initialize state based on initialProgress
   useEffect(() => {
     if (isOpen) {
-      setSatisfaction(initialProgress?.satisfactionLevel || null); // Ensure null default if not present
+      setSatisfaction(initialProgress?.satisfactionLevel || SatisfactionLevel.MEDIUM);
       setNotes(initialProgress?.progressNote || '');
-      setIsDropdownOpen(false);
     }
   }, [isOpen, initialProgress]);
 
-  // Prevent scrolling body when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
-  }, [isOpen]);
-
   const handleSubmit = async () => {
     if (satisfaction === null) {
-      // Replaced alert with a more user-friendly message or toast if available
-      // For now, let's log to console or use a temporary state for a message.
-      console.error('Please select a satisfaction level.');
-      // If you have a ToastMessage component available, you could use:
-      // showMessage('Please select a satisfaction level.', 'error');
+      showMessage('Please select a satisfaction level.', 'error');
       return;
     }
     setIsSubmitting(true);
 
-    // Prepare stopwatchSessions. If initialProgress exists, use its sessions; otherwise, an empty array.
-    const currentStopwatchSessions: StopwatchSession[] = initialProgress?.stopwatchSessions || [];
-
-    const progressData: DailyProgress = {
-      date: format(date, 'yyyy-MM-dd'), // Date string as per DailyProgress interface
+    const progressData: Partial<DailyProgress> = {
+      date: format(date, 'yyyy-MM-dd'),
       satisfactionLevel: satisfaction,
       progressNote: notes.trim(),
-      stopwatchSessions: currentStopwatchSessions, // Pass existing sessions
-      effortTimeMinutes: initialProgress?.effortTimeMinutes || 0, // Initial value, will be re-calculated by service
-      createdAt: initialProgress?.createdAt || Timestamp.now(), // Preserve existing creation time or set new
-      updatedAt: Timestamp.now(),
     };
 
     try {
       await onSave(progressData);
-      // Parent component is expected to handle success message and modal close.
-    } catch (error) {
-      console.error('Failed to save daily progress:', error);
-      // If you have a ToastMessage component available, you could use:
-      // showMessage('Failed to save daily progress.', 'error');
+      onClose();
+    } catch {
+      showMessage('Failed to save daily progress.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (!isOpen) return null;
-
-  const selectedOption = satisfactionOptions.find(opt => opt.level === satisfaction);
 
   return (
     <div
@@ -109,10 +80,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
           <h2 className="text-xl font-semibold text-white">
             Log Progress for {format(date, 'MMMM d, yyyy')}
           </h2>
-          <button
-            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
-            onClick={onClose}
-          >
+          <button className="p-1.5 text-white/60 rounded-full hover:bg-white/10" onClick={onClose}>
             <FiX />
           </button>
         </div>
@@ -123,42 +91,20 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
               Satisfaction Level
             </label>
             <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex justify-between items-center px-4 py-3 w-full text-lg text-left text-white rounded-md border cursor-pointer border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+              <select
+                value={satisfaction}
+                onChange={e => setSatisfaction(Number(e.target.value) as SatisfactionLevel)}
+                className="p-3 w-full text-base text-white rounded-md border appearance-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                {selectedOption ? (
-                  <span className="flex gap-3 items-center">
-                    <div className={`w-3 h-3 rounded-full ${selectedOption.color}`}></div>
-                    {selectedOption.label}
-                  </span>
-                ) : (
-                  <span className="text-white/50">Select a level...</span>
-                )}
-                <FiChevronDown
-                  className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {isDropdownOpen && (
-                <div className="absolute z-10 p-2 mt-2 w-full rounded-lg border shadow-lg bg-neutral-900 border-white/10">
-                  {satisfactionOptions.map(option => (
-                    <button
-                      key={option.level}
-                      onClick={() => {
-                        setSatisfaction(option.level);
-                        setIsDropdownOpen(false);
-                      }}
-                      className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer hover:bg-white/10"
-                    >
-                      <div className={`w-3 h-3 rounded-full ${option.color}`}></div>
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+                {satisfactionOptions.map(option => (
+                  <option key={option.level} value={option.level}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50" />
             </div>
           </div>
-          {/* Removed Time Spent (minutes) input as it's derived from stopwatch sessions */}
           <div>
             <label htmlFor="notes" className="block mb-2 text-sm font-medium text-white/70">
               Notes (Optional)
@@ -168,8 +114,8 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
               rows={3}
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Any thoughts or blockers?"
-              className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+              placeholder="Any thoughts, challenges, or wins from today?"
+              className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             />
           </div>
         </div>
@@ -179,8 +125,17 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
             disabled={isSubmitting}
             className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
           >
-            {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheckCircle />}
-            Save Progress
+            {isSubmitting ? (
+              <>
+                <FiLoader className="w-5 h-5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <FiCheckCircle />
+                <span>Save Progress</span>
+              </>
+            )}
           </button>
         </div>
       </div>
