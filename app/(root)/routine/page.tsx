@@ -6,9 +6,8 @@ import { User } from 'firebase/auth';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState } from '@/types';
 import ToastMessage from '@/components/ToastMessage';
-import { addMinutes } from 'date-fns';
-import { useRouter, useSearchParams } from 'next/navigation'; // Import useRouter and useSearchParams
-import Link from 'next/link'; // Import Link for navigation
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 // Import all routine components
 import SleepSchedule from '@/components/routine/SleepSchedule';
@@ -17,34 +16,25 @@ import BathSchedule from '@/components/routine/BathSchedule';
 import TeethCare from '@/components/routine/TeethCare';
 import WaterTracker from '@/components/routine/WaterTracker';
 import ExerciseTracker from '@/components/routine/ExerciseTracker';
-// SleepCalendar is now imported and used inside SleepSchedule.tsx
-// import SleepCalendar from '@/components/routine/SleepCalendar';
 
 // Import icons for sidebar/tabs
 import {
-  MdOutlineNightlight, // Sleep
-  MdOutlineWaterDrop, // Water
-  MdOutlineDirectionsRun, // Exercise
-  MdOutlineRestaurant, // Meals
-  MdOutlineCleaningServices, // Teeth
-  MdOutlineShower, // Bath
+  MdOutlineNightlight,
+  MdOutlineWaterDrop,
+  MdOutlineDirectionsRun,
+  MdOutlineRestaurant,
+  MdOutlineCleaningServices,
+  MdOutlineShower,
 } from 'react-icons/md';
-import { IconType } from 'react-icons'; // Type for React Icons
-import { FiTarget } from 'react-icons/fi'; // Import FiTarget icon
+import { IconType } from 'react-icons';
+import { FiTarget } from 'react-icons/fi';
 
-// Define a type for each sidebar item
 interface SidebarItem {
   id: string;
   label: string;
   icon: IconType;
-  component: React.ComponentType<{
-    currentUser: User | null;
-    appState: AppState | null;
-    showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
-    // For SleepSchedule specifically, we need to pass a way to update appState
-    // This is now REQUIRED as per SleepScheduleProps
-    onAppStateUpdate: (newAppState: AppState) => void;
-  }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: React.ComponentType<any>; // Use 'any' for simplicity as props vary slightly
 }
 
 const routineSidebarItems: SidebarItem[] = [
@@ -56,7 +46,6 @@ const routineSidebarItems: SidebarItem[] = [
   { id: 'bath', label: 'Bath', icon: MdOutlineShower, component: BathSchedule },
 ];
 
-// Skeleton Loader Component for a single Routine Section Card
 const RoutineCardSkeleton = () => (
   <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl animate-pulse">
     <div className="flex justify-between items-center mb-6">
@@ -67,31 +56,12 @@ const RoutineCardSkeleton = () => (
       <div className="mx-auto mb-2 w-24 h-10 rounded-md bg-white/10"></div>
       <div className="mx-auto w-32 h-4 rounded-md bg-white/10"></div>
     </div>
-    <div className="mb-8 h-3 rounded-full bg-white/20">
-      <div className="w-3/4 h-3 rounded-full bg-white/10"></div>
-    </div>
+    <div className="mb-8 h-3 rounded-full bg-white/20"></div>
     <div className="mb-8 space-y-4">
-      <div className="mb-3 w-1/2 h-6 rounded-md bg-white/10"></div>
-      {[...Array(2)].map((_, i) => (
-        <div
-          key={i}
-          className="flex justify-between items-center p-4 rounded-xl border bg-white/5 border-white/10"
-        >
-          <div className="flex gap-4 items-center">
-            <div className="w-10 h-10 rounded-full bg-white/10"></div>
-            <div>
-              <div className="mb-2 w-24 h-4 rounded-md bg-white/10"></div>
-              <div className="w-32 h-3 rounded-md bg-white/10"></div>
-            </div>
-          </div>
-          <div className="w-16 h-8 rounded-md bg-white/10"></div>
-        </div>
-      ))}
-      <div className="w-full h-12 rounded-lg bg-white/10"></div>
+      <div className="w-full h-16 rounded-lg bg-white/5"></div>
     </div>
-    <div className="bg-white/[0.02] rounded-xl p-6 shadow-lg border border-white/10">
+    <div className="p-6 rounded-xl border shadow-lg bg-black/20 border-white/10">
       <div className="mb-4 w-1/3 h-6 rounded-md bg-white/10"></div>
-      <div className="mb-4 w-full h-12 rounded-lg bg-white/10"></div>
       <div className="w-full h-12 rounded-lg bg-white/10"></div>
     </div>
   </div>
@@ -103,123 +73,90 @@ const RoutinePage = () => {
   const [appState, setAppState] = useState<AppState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use Next.js hooks for routing and search params
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Initialize activeTab from URL search params or default to the first item
   const [activeTab, setActiveTabInternal] = useState<string>(() => {
     const tabFromUrl = searchParams.get('tab');
-    const initialTab = routineSidebarItems.find(item => item.id === tabFromUrl);
-    return initialTab ? initialTab.id : routineSidebarItems[0].id;
+    return (
+      routineSidebarItems.find(item => item.id === tabFromUrl)?.id || routineSidebarItems[0].id
+    );
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  // Effect to update current time every second for header display
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Toast message handler
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 5000);
   }, []);
 
-  // Effect to load user data and routine settings
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(user => {
       if (user) {
         setCurrentUser(user);
-        firebaseService
-          .getUserData(user.uid)
-          .then(data => {
-            setAppState(data);
-            setIsLoading(false);
-          })
-          .catch(error => {
-            console.error('Failed to load app state:', error);
-            showMessage('Failed to load app data.', 'error');
-            setIsLoading(false);
-          });
+        firebaseService.getUserData(user.uid).then(data => {
+          setAppState(data);
+          setIsLoading(false);
+        });
       } else {
-        setCurrentUser(null);
-        setAppState(null);
-        setIsLoading(false);
-        showMessage('Please log in to manage routines.', 'info');
+        router.replace('/login');
       }
     });
     return () => unsubscribe();
-  }, [showMessage]);
+  }, [router]);
 
-  // Update activeTab state based on URL search params changes
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && activeTab !== tabFromUrl) {
-      const foundTab = routineSidebarItems.find(item => item.id === tabFromUrl);
-      if (foundTab) {
-        setActiveTabInternal(foundTab.id);
+      if (routineSidebarItems.some(item => item.id === tabFromUrl)) {
+        setActiveTabInternal(tabFromUrl);
       }
     }
-  }, [searchParams, activeTab]); // Depend on searchParams and activeTab
+  }, [searchParams, activeTab]);
 
-  // Function to update active tab and URL search param
   const handleTabChange = useCallback(
     (tabId: string) => {
       setActiveTabInternal(tabId);
-      // Update the URL query parameter using Next.js router
       const newSearchParams = new URLSearchParams(searchParams.toString());
       newSearchParams.set('tab', tabId);
-      router.replace(`?${newSearchParams.toString()}`, { scroll: false }); // Use replace to avoid history clutter
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
     [router, searchParams]
   );
 
-  // Determine the current day's phase (Morning, Afternoon, Evening, Night)
   const getDayPhase = useCallback(
     (hour: number): string => {
-      // Attempt to get sleep settings from appState for accurate phase calculation
       const sleepSettings = appState?.routineSettings?.sleep;
-      let bedtimeHour = 22; // Default for "night"
-      let sleepDurationMinutes = 8 * 60; // Default 8 hours in minutes
 
-      if (sleepSettings && sleepSettings.scheduledTime) {
-        const [bedH] = sleepSettings.scheduledTime.split(':').map(Number);
-        bedtimeHour = bedH;
-        sleepDurationMinutes = sleepSettings.durationMinutes;
-      }
+      if (sleepSettings && sleepSettings.bedtime && sleepSettings.wakeTime) {
+        const [bedH] = sleepSettings.bedtime.split(':').map(Number);
+        const [wakeH] = sleepSettings.wakeTime.split(':').map(Number);
 
-      // Calculate wake time based on bedtime and duration. Assumes sleep crosses midnight if wake is "earlier" than bed.
-      const bedtimeDateObj = new Date(currentTime);
-      bedtimeDateObj.setHours(bedtimeHour, 0, 0, 0);
-
-      const wakeTimeDateObj = addMinutes(bedtimeDateObj, sleepDurationMinutes);
-      // If wake time is on the next day, adjust current time comparison
-      if (wakeTimeDateObj.getDate() > bedtimeDateObj.getDate()) {
-        if (hour >= bedtimeDateObj.getHours() || hour < wakeTimeDateObj.getHours()) {
-          return 'night';
-        }
-      } else {
-        // Sleep and wake on the same day
-        if (hour >= bedtimeDateObj.getHours() && hour < wakeTimeDateObj.getHours()) {
-          return 'night';
+        if (bedH > wakeH) {
+          // Overnight sleep (e.g., 22:00 to 06:00)
+          if (hour >= bedH || hour < wakeH) {
+            return 'night';
+          }
+        } else {
+          // Day time sleep (less common, e.g., 01:00 to 09:00)
+          if (hour >= bedH && hour < wakeH) {
+            return 'night';
+          }
         }
       }
 
-      // Daytime phases
+      // Default phases if no sleep schedule is set
       if (hour >= 5 && hour < 12) return 'morning';
       if (hour >= 12 && hour < 18) return 'afternoon';
       return 'evening';
     },
-    [appState, currentTime]
+    [appState]
   );
 
   const currentHour = currentTime.getHours();
@@ -235,17 +172,16 @@ const RoutinePage = () => {
     <div className="flex min-h-screen text-white bg-black border-b font-poppins border-white/10">
       <ToastMessage message={toastMessage} type={toastType} />
 
-      {/* Left Sidebar for Routine Navigation */}
       <nav className="flex sticky top-0 flex-col flex-shrink-0 items-center py-4 w-20 h-screen border-r backdrop-blur-md sm:w-24 bg-black/50 border-white/10">
         <div className="overflow-y-auto flex-grow px-2 pb-4 space-y-4 w-full">
-          {isLoading // Sidebar skeleton when loading
+          {isLoading
             ? [...Array(routineSidebarItems.length)].map((_, i) => (
                 <div
                   key={i}
-                  className="flex flex-col justify-center items-center px-1 py-3 w-full h-16 rounded-lg animate-pulse bg-white/10"
+                  className="flex flex-col justify-center items-center px-1 py-3 w-full h-20 rounded-lg animate-pulse bg-white/10"
                 >
-                  {/* Visual representation of icon and label space */}
                   <div className="mb-1 w-8 h-8 rounded-full bg-white/10"></div>
+                  <div className="w-12 h-3 rounded-md bg-white/10"></div>
                 </div>
               ))
             : routineSidebarItems.map(item => {
@@ -268,28 +204,16 @@ const RoutinePage = () => {
         </div>
       </nav>
 
-      {/* Main Content Area */}
       <main className="overflow-y-auto flex-grow p-4 md:p-8">
-        {/* Page Header with Greeting and Motivation */}
-        {isLoading ? (
-          <div className="px-4 py-6 mx-auto max-w-4xl text-center animate-pulse">
-            <div className="mx-auto mb-2 w-64 h-8 rounded-md bg-white/10"></div>{' '}
-            {/* Skeleton for greeting */}
-            <div className="mx-auto w-3/4 h-5 rounded-md bg-white/10"></div>{' '}
-            {/* Skeleton for quote */}
-          </div>
-        ) : (
-          <div className="px-4 py-6 mx-auto max-w-4xl text-center">
-            <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">{greetingText}</h1>
-            <p className="text-lg italic text-white/80">{motivationQuote}</p>
-          </div>
-        )}
+        <div className="px-4 py-6 mx-auto max-w-4xl text-center">
+          <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">{greetingText}</h1>
+          <p className="text-lg italic text-white/80">{motivationQuote}</p>
+        </div>
 
-        {/* Conditionally rendered Routine Component or No Goal message */}
         <div className="mx-auto mt-8 space-y-8 max-w-4xl">
           {isLoading ? (
             <RoutineCardSkeleton />
-          ) : !appState?.goal ? ( // Check if goal is null after loading
+          ) : !appState?.goal ? (
             <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
               <FiTarget className="mx-auto mb-6 w-20 h-20 text-white/70" />
               <h2 className="mb-4 text-3xl font-bold text-white">No Goal Found</h2>
@@ -305,13 +229,12 @@ const RoutinePage = () => {
               </Link>
             </div>
           ) : (
-            // Render the selected routine component, passing onAppStateUpdate for SleepSchedule
             ActiveComponent && (
               <ActiveComponent
                 currentUser={currentUser}
                 appState={appState}
                 showMessage={showMessage}
-                onAppStateUpdate={setAppState} // Pass setAppState to the active component
+                onAppStateUpdate={setAppState}
               />
             )
           )}

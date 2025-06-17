@@ -1,19 +1,17 @@
-// app/components/common/RoutineSectionCard.tsx
+// app/components/routine/RoutineSectionCard.tsx
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   MdOutlineSettings,
-  MdOutlineKeyboardArrowDown,
-  MdOutlineKeyboardArrowUp,
-  MdOutlineNotificationsActive, // The ping icon
+  MdOutlineNotificationsActive,
   MdDeleteForever,
   MdCheckCircle,
-  // Add any other core icons used as fallbacks or main section icons
 } from 'react-icons/md';
 import { ScheduledRoutineBase } from '@/types';
-import { differenceInMinutes, isPast, isSameDay } from 'date-fns';
-import { FiLoader } from 'react-icons/fi'; // For the loading spinner
+import { differenceInMinutes, isPast, parse } from 'date-fns';
+import { FiEdit } from 'react-icons/fi'; // Added FiEdit for a potential edit button
+import ScheduleEditModal from './ScheduleEditModal'; // Import the new modal
 
 interface RoutineSectionCardProps {
   sectionTitle: string;
@@ -26,29 +24,12 @@ interface RoutineSectionCardProps {
   schedules: ScheduledRoutineBase[];
   onToggleCompletion: (index: number) => void;
   onRemoveSchedule: (index: number) => void;
-
-  // getTimeUntilSchedule is now internally calculated based on "isNext" logic
-  // and will not be passed as a prop from parent components for "time remaining" display
+  // This new prop will handle both adding and updating schedules
+  onSaveSchedule: (schedule: ScheduledRoutineBase, index: number | null) => Promise<void>;
 
   newInputLabelPlaceholder: string;
-  newInputValue: string;
-  onNewInputChange: (value: string) => void;
-
-  newTimeValue: string;
-  onNewTimeChange: (value: string) => void;
-
-  newDurationPlaceholder: string;
-  newDurationValue: number | string;
-  onNewDurationChange: (value: string) => void;
-  onNewDurationWheel: (e: React.WheelEvent<HTMLInputElement>) => void;
-
-  newCurrentIcon: string;
   newIconOptions: string[];
-  onNewSelectIcon: (iconName: string) => void;
   iconComponentsMap: { [key: string]: React.ElementType };
-
-  buttonLabel: string;
-  onAddSchedule: () => Promise<void>; // Changed to Promise<void> for async operations
 }
 
 const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
@@ -61,158 +42,93 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
   schedules,
   onToggleCompletion,
   onRemoveSchedule,
+  onSaveSchedule,
   newInputLabelPlaceholder,
-  newInputValue,
-  onNewInputChange,
-  newTimeValue,
-  onNewTimeChange,
-  newDurationPlaceholder,
-  newDurationValue,
-  onNewDurationChange,
-  onNewDurationWheel,
-  newCurrentIcon,
   newIconOptions,
-  onNewSelectIcon,
   iconComponentsMap,
-  buttonLabel,
-  onAddSchedule,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
-  const [isAdding, setIsAdding] = useState(false); // State for loading spinner on add button
-  const iconDropdownRef = useRef<HTMLDivElement>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [scheduleToEdit, setScheduleToEdit] = useState<ScheduledRoutineBase | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  // Effect to update current time every second for 'next' item calculation
+  // Effect to update current time every second for real-time updates
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (iconDropdownRef.current && !iconDropdownRef.current.contains(event.target as Node)) {
-        setIsIconDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  // --- REFACTORED LOGIC for sorting and annotating schedules ---
 
-  // Sort schedules by scheduledTime and identify the "next" item
-  const sortedAndAnnotatedSchedules = useMemo(() => {
-    const now = currentTime;
-    let nextUpcomingSchedule: ScheduledRoutineBase | null = null;
-    let minMinutesUntil = Infinity;
-
-    // Sort the schedules by time
-    const sorted = [...schedules].sort((a, b) => {
-      const [ah, am] = a.scheduledTime.split(':').map(Number);
-      const [bh, bm] = b.scheduledTime.split(':').map(Number);
-      return ah * 60 + am - (bh * 60 + bm);
+  // Sort schedules by time once. This is memoized for efficiency.
+  const sortedSchedules = useMemo(() => {
+    return [...schedules].sort((a, b) => {
+      const timeA = parse(a.scheduledTime, 'HH:mm', new Date());
+      const timeB = parse(b.scheduledTime, 'HH:mm', new Date());
+      return timeA.getTime() - timeB.getTime();
     });
+  }, [schedules]);
 
-    return sorted
-      .map(schedule => {
-        const [targetHour, targetMinute] = schedule.scheduledTime.split(':').map(Number);
-        let targetDateTime = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          targetHour,
-          targetMinute,
-          0,
-          0
-        );
+  // Find the next upcoming schedule. This is also memoized.
+  const nextUpcomingSchedule = useMemo(() => {
+    const now = currentTime;
+    return sortedSchedules.find(schedule => {
+      if (schedule.completed) return false;
+      const targetDateTime = parse(schedule.scheduledTime, 'HH:mm', now);
+      return !isPast(targetDateTime);
+    });
+  }, [sortedSchedules, currentTime]);
 
-        // If scheduled time has already passed today, consider it for tomorrow
-        if (isPast(targetDateTime) && !isSameDay(targetDateTime, now)) {
-          targetDateTime = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate() + 1,
-            targetHour,
-            targetMinute,
-            0,
-            0
-          );
-        } else if (isPast(targetDateTime) && isSameDay(targetDateTime, now)) {
-          // If it's passed TODAY, but we are still in today, it's 'past today'
-          // We might not want to mark this as "next" unless it's just passed or is current
-        }
+  // Annotate schedules with display information (timeLeftText, isNext).
+  // This logic is now cleaner and runs only when its dependencies change.
+  const annotatedSchedules = useMemo(() => {
+    const now = currentTime;
+    return sortedSchedules.map(schedule => {
+      const targetDateTime = parse(schedule.scheduledTime, 'HH:mm', now);
+      let timeLeftText = '';
 
-        const minutesUntil = differenceInMinutes(targetDateTime, now);
-
-        let timeLeftText = '';
-
-        if (!schedule.completed) {
-          if (minutesUntil > 0) {
-            // Future event
-            timeLeftText = `${Math.floor(minutesUntil / 60)}h ${minutesUntil % 60}m remaining`;
-            if (minutesUntil < minMinutesUntil) {
-              minMinutesUntil = minutesUntil;
-              nextUpcomingSchedule = schedule;
-            }
-          } else if (minutesUntil <= 0 && minutesUntil >= -schedule.durationMinutes) {
-            // Currently active or just passed
-            timeLeftText = 'In progress / Just passed';
-          } else {
-            // Past event for today or earlier
-            timeLeftText = 'Passed';
-          }
+      if (schedule.completed) {
+        timeLeftText = 'Completed Today';
+      } else if (isPast(targetDateTime)) {
+        const minutesAgo = differenceInMinutes(now, targetDateTime);
+        if (minutesAgo < schedule.durationMinutes) {
+          timeLeftText = 'In Progress';
         } else {
-          // Completed schedule
-          timeLeftText = 'Completed';
+          timeLeftText = 'Missed';
         }
+      } else {
+        const minutesUntil = differenceInMinutes(targetDateTime, now);
+        const hours = Math.floor(minutesUntil / 60);
+        const minutes = minutesUntil % 60;
+        timeLeftText = `${hours > 0 ? `${hours}h ` : ''}${minutes}m remaining`;
+      }
 
-        return {
-          ...schedule,
-          isNext: false, // Will be set to true for only one item after this loop
-          timeLeftText,
-        };
-      })
-      .map(schedule => {
-        // Second pass to mark the single next upcoming schedule
-        if (
-          nextUpcomingSchedule &&
-          schedule.label === nextUpcomingSchedule.label &&
-          schedule.scheduledTime === nextUpcomingSchedule.scheduledTime
-        ) {
-          return { ...schedule, isNext: true };
-        }
-        return schedule;
-      });
-  }, [schedules, currentTime]);
+      return {
+        ...schedule,
+        isNext: schedule === nextUpcomingSchedule,
+        timeLeftText,
+      };
+    });
+  }, [sortedSchedules, nextUpcomingSchedule, currentTime]);
 
-  // Get the React component for the main section icon (e.g., first icon in newIconOptions)
-  const MainIconComponent = iconComponentsMap[newIconOptions[0]] || MdOutlineSettings;
-  // Get the React component for the currently selected icon in the ADD form
-  const CurrentFormIconComponent =
-    iconComponentsMap[newCurrentIcon] || iconComponentsMap[newIconOptions[0]] || MdOutlineSettings;
+  // --- End of Refactored Logic ---
 
-  const handleAddScheduleLocal = async () => {
-    setIsAdding(true);
-    try {
-      await onAddSchedule();
-      // Parent handles showMessage and state reset
-    } finally {
-      setIsAdding(false);
-    }
+  const handleOpenModalForAdd = () => {
+    setScheduleToEdit(null);
+    setEditingIndex(null);
+    setIsEditModalOpen(true);
   };
+
+  const handleOpenModalForEdit = (schedule: ScheduledRoutineBase, index: number) => {
+    setScheduleToEdit(schedule);
+    setEditingIndex(index);
+    setIsEditModalOpen(true);
+  };
+
+  const MainIconComponent = iconComponentsMap[newIconOptions[0]] || MdOutlineSettings;
 
   return (
     <>
-      {/* Inline style to make time picker icon white (for webkit browsers) */}
-      <style>{`
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-        }
-      `}</style>
       <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         {/* Section Header */}
         <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-white">
@@ -225,7 +141,6 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
           <div className="text-4xl font-bold text-white">{summaryCount}</div>
           <div className="text-sm opacity-75 text-white/70">{summaryLabel}</div>
         </div>
-
         <div className="mb-8 h-3 rounded-full bg-white/20">
           <div
             className="h-3 bg-white rounded-full transition-all duration-500"
@@ -235,60 +150,73 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
 
         {/* List Display Section */}
         <div className="mb-8 space-y-4">
-          <h3 className="mb-3 font-semibold text-white">{listTitle}</h3>
-          {sortedAndAnnotatedSchedules.length === 0 ? (
-            <p className="mb-4 text-sm text-white/50">{listEmptyMessage}</p>
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-white">{listTitle}</h3>
+            <button
+              onClick={handleOpenModalForAdd}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors bg-white/10 hover:bg-white/20"
+            >
+              Add New
+            </button>
+          </div>
+          {annotatedSchedules.length === 0 ? (
+            <p className="py-8 text-center text-white/50">{listEmptyMessage}</p>
           ) : (
-            <div className="mb-4 space-y-3">
-              {sortedAndAnnotatedSchedules.map((schedule, index) => {
-                const ScheduleIconComponent = iconComponentsMap[schedule.icon] || MdOutlineSettings; // Fallback icon
-
+            <div className="space-y-3">
+              {annotatedSchedules.map((schedule, index) => {
+                const ScheduleIconComponent = iconComponentsMap[schedule.icon] || MdOutlineSettings;
                 return (
                   <div
-                    key={`${schedule.label}-${schedule.scheduledTime}-${index}`} // Unique key
-                    className={`bg-white/5 rounded-xl p-4 shadow-lg border-2 transition-all border-white/10 cursor-pointer
-                      ${schedule.isNext ? 'border-blue-400 ring-2 ring-blue-200' : ''}
+                    key={`${schedule.scheduledTime}-${index}`}
+                    className={`bg-white/5 rounded-xl p-4 shadow-lg border-2 transition-all border-white/10
+                      ${schedule.isNext ? 'border-blue-400' : ''}
                       ${schedule.completed ? 'bg-green-500/10 border-green-500/30' : ''}`}
-                    onClick={() => onToggleCompletion(index)}
                   >
                     <div className="flex justify-between items-center">
-                      <div className="flex gap-4 items-center">
-                        <div className="flex justify-center items-center w-10 h-10 text-xl text-white rounded-full bg-purple-500/20">
-                          <ScheduleIconComponent size={24} />
+                      <div className="flex flex-1 gap-4 items-center">
+                        <div
+                          className={`flex items-center justify-center w-12 h-12 rounded-lg transition-colors cursor-pointer ${
+                            schedule.completed
+                              ? 'bg-green-500/20 text-green-300'
+                              : 'bg-purple-500/20 text-purple-300'
+                          }`}
+                          onClick={() => onToggleCompletion(index)}
+                        >
+                          {schedule.completed ? (
+                            <MdCheckCircle size={28} />
+                          ) : (
+                            <ScheduleIconComponent size={28} />
+                          )}
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-medium text-white">{schedule.label}</h3>
                           <div className="text-sm text-white/70">
                             {schedule.scheduledTime} for {schedule.durationMinutes} min
                           </div>
-                          {schedule.timeLeftText && ( // Display time left text
-                            <div
-                              className={`text-sm ${schedule.isNext ? 'text-blue-300' : 'text-white/50'}`}
-                            >
-                              {schedule.timeLeftText}
-                            </div>
-                          )}
+                          <div
+                            className={`text-sm font-semibold ${schedule.isNext ? 'text-blue-300' : schedule.completed ? 'text-green-400' : 'text-white/50'}`}
+                          >
+                            {schedule.timeLeftText}
+                          </div>
                         </div>
                       </div>
-
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-1 items-center">
                         {schedule.isNext && !schedule.completed && (
-                          <div className="animate-pulse">
+                          <div className="animate-ping">
                             <MdOutlineNotificationsActive size={20} className="text-orange-400" />
                           </div>
                         )}
-                        {schedule.completed && (
-                          <MdCheckCircle size={24} className="text-green-400" />
-                        )}
                         <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            onRemoveSchedule(index);
-                          }}
-                          className="p-1 text-red-400 rounded-full cursor-pointer hover:bg-red-500/10"
-                          aria-label={`Remove ${schedule.label}`}
+                          onClick={() => handleOpenModalForEdit(schedule, index)}
+                          className="p-2 rounded-full transition-colors text-white/60 hover:bg-white/10"
                         >
-                          <MdDeleteForever size={20} />
+                          <FiEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => onRemoveSchedule(index)}
+                          className="p-2 rounded-full transition-colors text-red-400/70 hover:bg-red-500/10"
+                        >
+                          <MdDeleteForever size={18} />
                         </button>
                       </div>
                     </div>
@@ -298,95 +226,20 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
             </div>
           )}
         </div>
-
-        {/* Add New Schedule Form Section */}
-        <div className="bg-white/[0.02] rounded-xl p-6 shadow-lg border border-white/10">
-          <h3 className="mb-4 font-semibold text-white">
-            Add New{' '}
-            {sectionTitle.replace(' Plan', '').replace(' Routine', '').replace(' Tracker', '')}{' '}
-            Schedule
-          </h3>
-
-          {/* Combined input and button for Label & Icon Select */}
-          <div
-            className="flex relative justify-between items-center mb-4 rounded-lg border border-white/10 bg-black/20"
-            ref={iconDropdownRef}
-          >
-            <input
-              type="text"
-              placeholder={newInputLabelPlaceholder}
-              value={newInputValue}
-              onChange={e => onNewInputChange(e.target.value)}
-              className="p-3 pr-16 w-full text-white bg-transparent border-transparent"
-            />
-            <button
-              type="button"
-              onClick={() => setIsIconDropdownOpen(prev => !prev)}
-              className="flex absolute right-1 justify-center items-center text-white rounded-md cursor-pointer focus:outline-none"
-            >
-              {React.createElement(CurrentFormIconComponent, { size: 24 })}
-              {isIconDropdownOpen ? (
-                <MdOutlineKeyboardArrowUp size={20} />
-              ) : (
-                <MdOutlineKeyboardArrowDown size={20} />
-              )}
-            </button>
-            {isIconDropdownOpen && (
-              <div className="overflow-y-auto absolute left-0 top-full z-50 p-2 mt-2 w-full max-h-60 rounded-lg border shadow-lg bg-neutral-900 border-white/10">
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {newIconOptions.map(icon => (
-                    <button
-                      key={icon}
-                      onClick={() => {
-                        onNewSelectIcon(icon);
-                        setIsIconDropdownOpen(false);
-                      }}
-                      className="flex flex-shrink-0 justify-center items-center p-3 text-white rounded-md transition-colors cursor-pointer hover:bg-white/10"
-                    >
-                      {React.createElement(iconComponentsMap[icon], { size: 24 })}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Input Fields for time and duration */}
-          <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2">
-            <input
-              type="time"
-              value={newTimeValue}
-              onChange={e => onNewTimeChange(e.target.value)}
-              className="p-3 w-full text-white rounded-lg border cursor-pointer focus:ring-2 focus:ring-purple-500 bg-black/20 border-white/10"
-            />
-            <input
-              type="text" // Keep as text to allow empty string easier, but force number on change
-              placeholder={newDurationPlaceholder}
-              value={newDurationValue}
-              onChange={e => onNewDurationChange(e.target.value)}
-              onWheel={onNewDurationWheel}
-              className="p-3 w-full text-white rounded-lg border focus:ring-2 focus:ring-purple-500 bg-black/20 border-white/10"
-            />
-          </div>
-
-          <button
-            onClick={handleAddScheduleLocal}
-            disabled={isAdding} // Disable when adding
-            className="flex gap-2 justify-center items-center py-3 w-full font-medium text-white bg-black rounded-lg border transition-colors cursor-pointer border-white/20 hover:bg-white/10 disabled:opacity-60"
-          >
-            {isAdding ? (
-              <>
-                <FiLoader className="w-5 h-5 animate-spin" />
-                <span>Adding...</span>
-              </>
-            ) : (
-              <>
-                <MdOutlineSettings size={20} /> {buttonLabel}
-              </>
-            )}
-          </button>
-        </div>
       </div>
+
+      <ScheduleEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        scheduleToEdit={scheduleToEdit}
+        originalIndex={editingIndex}
+        onSave={onSaveSchedule}
+        showMessage={() => {}} // Pass a dummy function or handle toast messages here
+        newInputLabelPlaceholder={newInputLabelPlaceholder}
+        newIconOptions={newIconOptions}
+        iconComponentsMap={iconComponentsMap}
+        buttonLabel={scheduleToEdit ? 'Save Changes' : 'Add & Save Schedule'}
+      />
     </>
   );
 };

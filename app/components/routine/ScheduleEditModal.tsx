@@ -1,38 +1,34 @@
 // app/components/routine/ScheduleEditModal.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiX, FiLoader } from 'react-icons/fi'; // From Feather Icons
+import React, { useState, useEffect, useRef } from 'react';
+import { FiX, FiLoader, FiCheck } from 'react-icons/fi';
 import {
   MdOutlineSettings,
   MdOutlineKeyboardArrowDown,
   MdOutlineKeyboardArrowUp,
-} from 'react-icons/md'; // Corrected import for MdOutlineKeyboardArrow*
+} from 'react-icons/md';
 import { ScheduledRoutineBase } from '@/types';
 import { format } from 'date-fns';
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp
 
 interface ScheduleEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  scheduleToEdit: ScheduledRoutineBase | null; // Null for add mode, object for edit mode
-  originalIndex: number | null; // Pass original index separately for editing
-  // Callback when saving a new schedule or updating an existing one
+  scheduleToEdit: ScheduledRoutineBase | null;
+  originalIndex: number | null;
   onSave: (schedule: ScheduledRoutineBase, originalIndex: number | null) => Promise<void>;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
-
-  // Props from RoutineSectionCard for the form and icons
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
   iconComponentsMap: { [key: string]: React.ElementType };
-  buttonLabel: string; // e.g., "Add & Save Schedule" or "Save Changes"
+  buttonLabel: string;
 }
 
 const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   isOpen,
   onClose,
   scheduleToEdit,
-  originalIndex, // Destructure originalIndex
+  originalIndex,
   onSave,
   showMessage,
   newInputLabelPlaceholder,
@@ -42,14 +38,12 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 }) => {
   const [label, setLabel] = useState('');
   const [scheduledTime, setScheduledTime] = useState(format(new Date(), 'HH:mm'));
-  const [durationMinutes, setDurationMinutes] = useState<number | string>('');
+  const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
   const [icon, setIcon] = useState(newIconOptions[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
-
   const iconDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Populate form fields when modal opens or scheduleToEdit changes
   useEffect(() => {
     if (isOpen) {
       if (scheduleToEdit) {
@@ -58,29 +52,24 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
         setDurationMinutes(scheduleToEdit.durationMinutes);
         setIcon(scheduleToEdit.icon);
       } else {
-        // Reset for add mode
+        // Reset for "add" mode
         setLabel('');
         setScheduledTime(format(new Date(), 'HH:mm'));
-        setDurationMinutes('');
+        setDurationMinutes(30);
         setIcon(newIconOptions[0]);
       }
-      setIsSubmitting(false); // Reset submitting state
+      setIsSubmitting(false);
     }
   }, [isOpen, scheduleToEdit, newIconOptions]);
 
-  // Prevent scrolling body when modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'auto';
     return () => {
       document.body.style.overflow = 'auto';
     };
   }, [isOpen]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (iconDropdownRef.current && !iconDropdownRef.current.contains(event.target as Node)) {
@@ -88,26 +77,15 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleDurationChange = useCallback((value: string) => {
-    const val = parseInt(value);
-    setDurationMinutes(isNaN(val) ? '' : val);
-  }, []);
-
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLInputElement>) => {
-    if (e.currentTarget instanceof HTMLInputElement) {
-      e.currentTarget.blur();
-    }
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
+  const handleDurationChange = (value: string) => {
+    setDurationMinutes(value === '' ? '' : parseInt(value, 10));
+  };
 
   const handleSubmit = async () => {
-    const parsedDuration = parseInt(String(durationMinutes));
+    const parsedDuration = Number(durationMinutes);
     if (!label.trim() || !scheduledTime || isNaN(parsedDuration) || parsedDuration < 1) {
       showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
       return;
@@ -115,23 +93,18 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 
     setIsSubmitting(true);
     const newOrUpdatedSchedule: ScheduledRoutineBase = {
+      ...(scheduleToEdit || {}), // Preserve existing properties like 'completed' status
       label: label.trim(),
-      scheduledTime: scheduledTime,
+      scheduledTime,
       durationMinutes: parsedDuration,
-      icon: icon,
-      // For new schedules, completed is null. For edited, preserve original completed status.
-      completed: scheduleToEdit ? scheduleToEdit.completed : null,
-      // updatedAt is ALWAYS set to Timestamp.now() by the service, so we don't pass an old one.
-      // This property is required in ScheduledRoutineBase, so initialize it here.
-      updatedAt: Timestamp.now(),
+      icon,
+      completed: scheduleToEdit ? scheduleToEdit.completed : null, // Ensure 'completed' is set correctly
     };
 
     try {
-      // Pass originalIndex to onSave, which RoutineSectionCard will use for update logic
       await onSave(newOrUpdatedSchedule, originalIndex);
-      onClose(); // Close modal on success
-    } catch (error) {
-      console.error('Failed to save schedule:', error);
+      onClose();
+    } catch {
       showMessage('Failed to save schedule. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -140,12 +113,10 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 
   if (!isOpen) return null;
 
-  const CurrentFormIconComponent =
-    iconComponentsMap[icon] || iconComponentsMap[newIconOptions[0]] || MdOutlineSettings;
+  const CurrentFormIconComponent = iconComponentsMap[icon] || MdOutlineSettings;
 
   return (
     <>
-      {/* Inline style to make time picker icon white (for webkit browsers) */}
       <style>{`
         input[type="time"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
@@ -165,92 +136,96 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
               {scheduleToEdit ? 'Edit Schedule' : 'Add New Schedule'}
             </h2>
             <button
-              className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+              className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10"
               onClick={onClose}
               aria-label="Close modal"
             >
               <FiX />
             </button>
           </div>
+
           <div className="p-6 space-y-6">
-            {/* Label & Icon Select */}
-            <div
-              className="flex relative justify-between items-center rounded-lg border border-white/10 bg-black/20"
-              ref={iconDropdownRef}
-            >
-              <input
-                type="text"
-                placeholder={newInputLabelPlaceholder}
-                value={label}
-                onChange={e => setLabel(e.target.value)}
-                className="p-3 pr-16 w-full text-white bg-transparent border-transparent focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setIsIconDropdownOpen(prev => !prev)}
-                className="flex absolute right-1 justify-center items-center text-white rounded-md cursor-pointer focus:outline-none"
+            <div>
+              <label className="block mb-2 text-sm text-white/70">Label</label>
+              <div
+                className="flex relative items-center rounded-lg border border-white/10 bg-black/20"
+                ref={iconDropdownRef}
               >
-                {React.createElement(CurrentFormIconComponent, { size: 24 })}
-                {isIconDropdownOpen ? (
-                  <MdOutlineKeyboardArrowUp size={20} />
-                ) : (
-                  <MdOutlineKeyboardArrowDown size={20} />
-                )}
-              </button>
-              {isIconDropdownOpen && (
-                <div className="overflow-y-auto absolute left-0 top-full z-50 p-2 mt-2 w-full max-h-60 rounded-lg border shadow-lg bg-neutral-900 border-white/10">
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {newIconOptions.map(optionIconName => (
-                      <button
-                        key={optionIconName}
-                        onClick={() => {
-                          setIcon(optionIconName);
-                          setIsIconDropdownOpen(false);
-                        }}
-                        className="flex flex-shrink-0 justify-center items-center p-3 text-white rounded-md transition-colors cursor-pointer hover:bg-white/10"
-                      >
-                        {React.createElement(iconComponentsMap[optionIconName], { size: 24 })}
-                      </button>
-                    ))}
+                <button
+                  type="button"
+                  onClick={() => setIsIconDropdownOpen(prev => !prev)}
+                  className="flex items-center p-3 text-white rounded-l-lg cursor-pointer hover:bg-white/10"
+                >
+                  <CurrentFormIconComponent size={20} />
+                  {isIconDropdownOpen ? (
+                    <MdOutlineKeyboardArrowUp size={20} className="ml-1" />
+                  ) : (
+                    <MdOutlineKeyboardArrowDown size={20} className="ml-1" />
+                  )}
+                </button>
+                {isIconDropdownOpen && (
+                  <div className="overflow-y-auto absolute left-0 top-full z-50 p-2 mt-2 w-full max-h-48 rounded-lg border shadow-lg bg-neutral-900 border-white/10">
+                    <div className="grid grid-cols-5 gap-1">
+                      {newIconOptions.map(optionIconName => (
+                        <button
+                          key={optionIconName}
+                          onClick={() => {
+                            setIcon(optionIconName);
+                            setIsIconDropdownOpen(false);
+                          }}
+                          className="flex justify-center items-center p-3 text-white rounded-md transition-colors hover:bg-white/10"
+                        >
+                          {React.createElement(iconComponentsMap[optionIconName], { size: 24 })}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+                <input
+                  type="text"
+                  placeholder={newInputLabelPlaceholder}
+                  value={label}
+                  onChange={e => setLabel(e.target.value)}
+                  className="p-3 w-full text-white bg-transparent focus:outline-none"
+                />
+              </div>
             </div>
 
-            {/* Time and Duration Inputs */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={e => setScheduledTime(e.target.value)}
-                className="p-3 w-full text-white rounded-lg border cursor-pointer focus:ring-2 focus:ring-purple-500 bg-black/20 border-white/10"
-              />
-              <input
-                type="text" // Use text to allow empty string, parse to number on save
-                placeholder="Duration (min)"
-                value={durationMinutes}
-                onChange={e => handleDurationChange(e.target.value)}
-                onWheel={handleWheel}
-                className="p-3 w-full text-white rounded-lg border focus:ring-2 focus:ring-purple-500 bg-black/20 border-white/10"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm text-white/70">Start Time</label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={e => setScheduledTime(e.target.value)}
+                  className="p-3 w-full text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm text-white/70">Duration (min)</label>
+                <input
+                  type="number"
+                  placeholder="e.g., 30"
+                  value={durationMinutes}
+                  onChange={e => handleDurationChange(e.target.value)}
+                  className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
           </div>
+
           <div className="p-6 border-t border-white/10">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-60"
             >
               {isSubmitting ? (
-                <>
-                  <FiLoader className="w-5 h-5 animate-spin" />
-                  <span>Saving...</span>
-                </>
+                <FiLoader className="w-5 h-5 animate-spin" />
               ) : (
-                <>
-                  <MdOutlineSettings size={20} /> {buttonLabel}
-                </>
+                <FiCheck className="w-5 h-5" />
               )}
+              <span>{buttonLabel}</span>
             </button>
           </div>
         </div>

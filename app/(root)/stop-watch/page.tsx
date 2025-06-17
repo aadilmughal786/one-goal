@@ -148,8 +148,7 @@ export default function StopwatchPage() {
       await fetchUserData(currentUser.uid);
       showMessage('Focus session saved!', 'success');
       handleReset();
-    } catch (error) {
-      console.error('Error saving session:', error);
+    } catch {
       showMessage('Could not save session. Please try again.', 'error');
     } finally {
       setIsSaving(false);
@@ -194,8 +193,7 @@ export default function StopwatchPage() {
       );
       await fetchUserData(currentUser.uid);
       showMessage('Session deleted.', 'info');
-    } catch (error) {
-      console.error('Error deleting session:', error);
+    } catch {
       showMessage('Failed to delete session.', 'error');
     } finally {
       setIsConfirmModalOpen(false);

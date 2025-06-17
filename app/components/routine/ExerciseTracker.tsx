@@ -10,22 +10,21 @@ import {
   MdOutlineSportsBasketball,
   MdOutlineDirectionsBike,
 } from 'react-icons/md';
-import { format } from 'date-fns';
-import { AppState, ScheduledRoutineBase } from '@/types';
+import { AppState, RoutineType, ScheduledRoutineBase } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
-import { Timestamp } from 'firebase/firestore';
 
-// Import the reusable RoutineSectionCard
+// Import the reusable components
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import RoutineCalendar from '@/components/routine/RoutineCalendar';
 
 interface ExerciseTrackerProps {
   currentUser: User | null;
   appState: AppState | null;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  onAppStateUpdate: (newAppState: AppState) => void;
 }
 
-// Define the IconComponents map for ExerciseTracker
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineDirectionsRun,
   MdOutlineFitnessCenter,
@@ -48,23 +47,13 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
   currentUser,
   appState,
   showMessage,
+  onAppStateUpdate,
 }) => {
-  // `schedules` is guaranteed to be an array or null from AppState, init to empty array if null
   const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>(
     appState?.routineSettings?.exercise || []
   );
 
-  // States for new exercise input fields (passed to RoutineSectionCard)
-  const [newExerciseLabel, setNewExerciseLabel] = useState('');
-  const [newExerciseScheduledTime, setNewExerciseScheduledTime] = useState(
-    format(new Date(), 'HH:mm')
-  );
-  const [newExerciseDurationMinutes, setNewExerciseDurationMinutes] = useState(30);
-  const [newExerciseIcon, setNewExerciseIcon] = useState(exerciseIcons[0]);
-
-  // Sync local state with appState from Firebase
   useEffect(() => {
-    // `appState.routineSettings.exercise` is guaranteed to be an array or null
     setSchedules(appState?.routineSettings?.exercise || []);
   }, [appState]);
 
@@ -74,144 +63,99 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
         showMessage('You must be logged in to update schedules.', 'error');
         return;
       }
-      // Create a new array to ensure immutability before updating Firestore
-      const updatedSchedules = schedules.map((schedule, i) => {
-        if (i === index) {
-          return { ...schedule, completed: !schedule.completed, updatedAt: Timestamp.now() };
-        }
-        return schedule;
-      });
-      setSchedules(updatedSchedules); // Update local state immediately
+      const updatedSchedules = schedules.map((schedule, i) =>
+        i === index ? { ...schedule, completed: !schedule.completed } : schedule
+      );
+      setSchedules(updatedSchedules);
 
       try {
-        // Use the dedicated update function for exercise schedules
         await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
         showMessage('Exercise schedule updated!', 'success');
-      } catch (error: unknown) {
-        console.error('Failed to save exercise settings:', error);
+      } catch {
         showMessage('Failed to save exercise settings.', 'error');
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, schedules, showMessage]
+    [currentUser, schedules, showMessage, onAppStateUpdate]
   );
 
-  const addExerciseSchedule = useCallback(async () => {
-    const sessionDuration = parseInt(String(newExerciseDurationMinutes));
-    if (
-      !newExerciseLabel.trim() ||
-      !newExerciseScheduledTime ||
-      isNaN(sessionDuration) ||
-      sessionDuration < 1
-    ) {
-      // Min 1 minute
-      showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
-      return;
-    }
-    if (!currentUser) {
-      showMessage('You must be logged in to add schedules.', 'error');
-      return;
-    }
-
-    const newSchedule: ScheduledRoutineBase = {
-      scheduledTime: newExerciseScheduledTime,
-      durationMinutes: sessionDuration,
-      label: newExerciseLabel.trim(),
-      icon: newExerciseIcon,
-      completed: null, // New schedule starts as not completed (null)
-      updatedAt: Timestamp.now(),
-    };
-
-    const updatedSchedules = [...schedules, newSchedule];
-    setSchedules(updatedSchedules); // Update local state immediately
-
-    try {
-      // Use the dedicated update function for exercise schedules
-      await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
-      showMessage('Exercise schedule added!', 'success');
-      // Reset form fields
-      setNewExerciseLabel('');
-      setNewExerciseScheduledTime(format(new Date(), 'HH:mm'));
-      setNewExerciseDurationMinutes(30);
-      setNewExerciseIcon(exerciseIcons[0]); // Reset to first icon
-    } catch (error: unknown) {
-      console.error('Failed to add exercise schedule:', error);
-      showMessage('Failed to add exercise schedule.', 'error');
-    }
-  }, [
-    currentUser,
-    schedules,
-    newExerciseLabel,
-    newExerciseScheduledTime,
-    newExerciseDurationMinutes,
-    newExerciseIcon,
-    showMessage,
-  ]);
-
-  const removeExerciseSchedule = useCallback(
-    async (indexToRemove: number) => {
-      if (!currentUser) {
-        showMessage('You must be logged in to remove schedules.', 'error');
-        return;
-      }
-      const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
-      setSchedules(updatedSchedules); // Update local state immediately
+  const handleSaveSchedule = useCallback(
+    async (schedule: ScheduledRoutineBase, index: number | null) => {
+      if (!currentUser) return;
+      const updatedSchedules =
+        index !== null
+          ? schedules.map((s, i) => (i === index ? schedule : s))
+          : [...schedules, schedule];
+      setSchedules(updatedSchedules);
 
       try {
-        // Use the dedicated update function for exercise schedules
         await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
-        showMessage('Exercise schedule removed!', 'info');
-      } catch (error: unknown) {
-        console.error('Failed to remove exercise schedule:', error);
-        showMessage('Failed to remove exercise schedule.', 'error');
+        showMessage(index !== null ? 'Workout updated!' : 'Workout added!', 'success');
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
+      } catch {
+        showMessage('Failed to save workout schedule.', 'error');
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, schedules, showMessage]
+    [currentUser, schedules, showMessage, onAppStateUpdate]
+  );
+
+  const handleRemoveSchedule = useCallback(
+    async (indexToRemove: number) => {
+      if (!currentUser) return;
+      const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
+      setSchedules(updatedSchedules);
+
+      try {
+        await firebaseService.updateExerciseRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Workout schedule removed.', 'info');
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
+      } catch {
+        showMessage('Failed to remove workout schedule.', 'error');
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
+      }
+    },
+    [currentUser, schedules, showMessage, onAppStateUpdate]
   );
 
   const completedSchedulesCount = schedules.filter(s => s.completed).length;
 
-  // Prevent scroll for number inputs
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLInputElement>) => {
-    if (e.currentTarget instanceof HTMLInputElement) {
-      e.currentTarget.blur();
-    }
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
   return (
-    <RoutineSectionCard
-      sectionTitle="Exercise Routine"
-      summaryCount={`${completedSchedulesCount}/${schedules.length}`}
-      summaryLabel="Sessions Completed Today"
-      progressPercentage={
-        schedules.length > 0 ? (completedSchedulesCount / schedules.length) * 100 : 0
-      }
-      listTitle="Your Exercise Schedules"
-      listEmptyMessage="No exercise times scheduled. Add one below!"
-      schedules={schedules}
-      onToggleCompletion={toggleExerciseCompletion}
-      onRemoveSchedule={removeExerciseSchedule}
-      // Removed getTimeUntilSchedule prop as it's now internal to RoutineSectionCard
-      newInputLabelPlaceholder="Workout Label"
-      newInputValue={newExerciseLabel}
-      onNewInputChange={setNewExerciseLabel}
-      newTimeValue={newExerciseScheduledTime}
-      onNewTimeChange={setNewExerciseScheduledTime}
-      newDurationPlaceholder="Duration (min)"
-      newDurationValue={newExerciseDurationMinutes === 0 ? '' : String(newExerciseDurationMinutes)}
-      onNewDurationChange={value => {
-        const val = parseInt(value);
-        setNewExerciseDurationMinutes(isNaN(val) ? 0 : val);
-      }}
-      onNewDurationWheel={handleWheel}
-      newCurrentIcon={newExerciseIcon}
-      newIconOptions={exerciseIcons}
-      onNewSelectIcon={setNewExerciseIcon}
-      iconComponentsMap={IconComponents} // Pass the IconComponents map
-      buttonLabel="Add & Save Workout"
-      onAddSchedule={addExerciseSchedule}
-    />
+    <div className="space-y-8">
+      <RoutineSectionCard
+        sectionTitle="Exercise Routine"
+        summaryCount={`${completedSchedulesCount}/${schedules.length}`}
+        summaryLabel="Workouts Completed Today"
+        progressPercentage={
+          schedules.length > 0 ? (completedSchedulesCount / schedules.length) * 100 : 0
+        }
+        listTitle="Your Exercise Schedules"
+        listEmptyMessage="No workouts scheduled. Add one to get started!"
+        schedules={schedules}
+        onToggleCompletion={toggleExerciseCompletion}
+        onRemoveSchedule={handleRemoveSchedule}
+        onSaveSchedule={handleSaveSchedule}
+        newInputLabelPlaceholder="e.g., Morning Run"
+        newIconOptions={exerciseIcons}
+        iconComponentsMap={IconComponents}
+      />
+      <RoutineCalendar
+        appState={appState}
+        currentUser={currentUser}
+        showMessage={showMessage}
+        onAppStateUpdate={onAppStateUpdate}
+        routineType={RoutineType.EXERCISE}
+        title="Exercise Log"
+        icon={MdOutlineDirectionsRun}
+      />
+    </div>
   );
 };
 

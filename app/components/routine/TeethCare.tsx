@@ -7,21 +7,22 @@ import {
   MdOutlineHealthAndSafety,
   MdOutlineSentimentSatisfied,
 } from 'react-icons/md';
-import { format } from 'date-fns';
-import { AppState, ScheduledRoutineBase } from '@/types';
-import { firebaseService } from '@/services/firebaseService';
-import { User } from 'firebase/auth';
-import { Timestamp } from 'firebase/firestore';
-
-// Import the reusable RoutineSectionCard
-import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 import { FaTeeth, FaTooth } from 'react-icons/fa6';
 import { PiToothFill } from 'react-icons/pi';
+import { AppState, RoutineType, ScheduledRoutineBase } from '@/types';
+import { firebaseService } from '@/services/firebaseService';
+import { User } from 'firebase/auth';
+
+// Import the reusable components
+import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import RoutineCalendar from '@/components/routine/RoutineCalendar'; // Import the calendar
 
 interface TeethCareProps {
   currentUser: User | null;
   appState: AppState | null;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // This prop is now required to update the parent's state when the calendar logs an event
+  onAppStateUpdate: (newAppState: AppState) => void;
 }
 
 // Define the IconComponents map for TeethCare
@@ -43,168 +44,131 @@ const teethIcons: string[] = [
   'PiToothFill',
 ];
 
-const TeethCare: React.FC<TeethCareProps> = ({ currentUser, appState, showMessage }) => {
-  // `sessions` is guaranteed to be an array or null from AppState, init to empty array if null
+const TeethCare: React.FC<TeethCareProps> = ({
+  currentUser,
+  appState,
+  showMessage,
+  onAppStateUpdate, // Destructure the new prop
+}) => {
+  // Local state for the list of schedules, synced from appState
   const [sessions, setSessions] = useState<ScheduledRoutineBase[]>(
     appState?.routineSettings?.teeth || []
   );
 
-  // States for new session input fields (passed to RoutineSectionCard)
-  const [newTeethLabel, setNewTeethLabel] = useState('');
-  const [newTeethScheduledTime, setNewTeethScheduledTime] = useState(format(new Date(), 'HH:mm'));
-  const [newTeethDurationMinutes, setNewTeethDurationMinutes] = useState(2);
-  const [newTeethIcon, setNewTeethIcon] = useState(teethIcons[0]);
-
-  // Sync local state with appState from Firebase
+  // Effect to keep local state in sync with the main appState prop
   useEffect(() => {
-    // `appState.routineSettings.teeth` is guaranteed to be an array or null
     setSessions(appState?.routineSettings?.teeth || []);
   }, [appState]);
 
+  // Callback to handle toggling the completion status of a session in the card view
   const toggleTeethCompletion = useCallback(
     async (index: number) => {
       if (!currentUser) {
         showMessage('You must be logged in to update schedules.', 'error');
         return;
       }
-      // Create a new array to ensure immutability before updating Firestore
-      const updatedSessions = sessions.map((session, i) => {
-        if (i === index) {
-          return { ...session, completed: !session.completed, updatedAt: Timestamp.now() };
-        }
-        return session;
-      });
-      setSessions(updatedSessions); // Update local state immediately
+      const updatedSessions = sessions.map((session, i) =>
+        i === index ? { ...session, completed: !session.completed } : session
+      );
+      setSessions(updatedSessions); // Optimistic UI update for the card
 
       try {
-        // Use the dedicated update function for teeth care schedules
         await firebaseService.updateTeethRoutineSchedules(currentUser.uid, updatedSessions);
+        // Refetch the entire app state to ensure UI consistency everywhere
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
         showMessage('Dental care schedule updated!', 'success');
-      } catch (error: unknown) {
-        console.error('Failed to save dental care settings:', error);
+      } catch {
         showMessage('Failed to save dental care settings.', 'error');
+        // Optional: Revert UI on error by refetching old state
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, sessions, showMessage]
+    [currentUser, sessions, showMessage, onAppStateUpdate]
   );
 
-  const addTeethSchedule = useCallback(async () => {
-    const sessionDuration = parseInt(String(newTeethDurationMinutes));
-    if (
-      !newTeethLabel.trim() ||
-      !newTeethScheduledTime ||
-      isNaN(sessionDuration) ||
-      sessionDuration < 1
-    ) {
-      // Min 1 minute
-      showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
-      return;
-    }
-    if (!currentUser) {
-      showMessage('You must be logged in to add schedules.', 'error');
-      return;
-    }
-
-    const newSchedule: ScheduledRoutineBase = {
-      scheduledTime: newTeethScheduledTime,
-      durationMinutes: sessionDuration,
-      label: newTeethLabel.trim(),
-      icon: newTeethIcon,
-      completed: null, // New schedule starts as not completed (null)
-      updatedAt: Timestamp.now(),
-    };
-
-    const updatedSchedules = [...sessions, newSchedule];
-    setSessions(updatedSchedules); // Update local state immediately
-
-    try {
-      // Use the dedicated update function for teeth care schedules
-      await firebaseService.updateTeethRoutineSchedules(currentUser.uid, updatedSchedules);
-      showMessage('Dental care schedule added!', 'success');
-      // Reset form fields
-      setNewTeethLabel('');
-      setNewTeethScheduledTime(format(new Date(), 'HH:mm'));
-      setNewTeethDurationMinutes(2);
-      setNewTeethIcon(teethIcons[0]); // Reset to first icon
-    } catch (error: unknown) {
-      console.error('Failed to add dental care schedule:', error);
-      showMessage('Failed to add dental care schedule.', 'error');
-    }
-  }, [
-    currentUser,
-    sessions,
-    newTeethLabel,
-    newTeethScheduledTime,
-    newTeethDurationMinutes,
-    newTeethIcon,
-    showMessage,
-  ]);
-
-  const removeTeethSchedule = useCallback(
-    async (indexToRemove: number) => {
-      if (!currentUser) {
-        showMessage('You must be logged in to remove schedules.', 'error');
-        return;
+  // Callback to handle adding a new schedule or saving an edited one
+  const handleSaveSchedule = useCallback(
+    async (schedule: ScheduledRoutineBase, index: number | null) => {
+      if (!currentUser) return;
+      let updatedSchedules: ScheduledRoutineBase[];
+      if (index !== null) {
+        updatedSchedules = sessions.map((s, i) => (i === index ? schedule : s));
+      } else {
+        updatedSchedules = [...sessions, schedule];
       }
-      const updatedSchedules = sessions.filter((_, index) => index !== indexToRemove);
-      setSessions(updatedSchedules); // Update local state immediately
+      setSessions(updatedSchedules); // Optimistic update
 
       try {
-        // Use the dedicated update function for teeth care schedules
         await firebaseService.updateTeethRoutineSchedules(currentUser.uid, updatedSchedules);
-        showMessage('Dental care schedule removed!', 'info');
-      } catch (error: unknown) {
-        console.error('Failed to remove dental care schedule:', error);
-        showMessage('Failed to remove dental care schedule.', 'error');
+        showMessage(index !== null ? 'Schedule updated!' : 'Schedule added!', 'success');
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
+      } catch {
+        showMessage('Failed to save schedule.', 'error');
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, sessions, showMessage]
+    [currentUser, sessions, showMessage, onAppStateUpdate]
+  );
+
+  // Callback to handle removing a schedule from the list
+  const handleRemoveSchedule = useCallback(
+    async (indexToRemove: number) => {
+      if (!currentUser) return;
+      const updatedSchedules = sessions.filter((_, index) => index !== indexToRemove);
+      setSessions(updatedSchedules); // Optimistic update
+
+      try {
+        await firebaseService.updateTeethRoutineSchedules(currentUser.uid, updatedSchedules);
+        showMessage('Schedule removed.', 'info');
+        const newAppState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(newAppState);
+      } catch {
+        showMessage('Failed to remove schedule.', 'error');
+        const oldState = await firebaseService.getUserData(currentUser.uid);
+        onAppStateUpdate(oldState);
+      }
+    },
+    [currentUser, sessions, showMessage, onAppStateUpdate]
   );
 
   const completedSchedulesCount = sessions.filter(s => s.completed).length;
 
-  // Prevent scroll for number inputs
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLInputElement>) => {
-    if (e.currentTarget instanceof HTMLInputElement) {
-      e.currentTarget.blur();
-    }
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
   return (
-    <RoutineSectionCard
-      sectionTitle="Dental Care Routine"
-      summaryCount={`${completedSchedulesCount}/${sessions.length}`}
-      summaryLabel="Sessions Completed Today"
-      progressPercentage={
-        sessions.length > 0 ? (completedSchedulesCount / sessions.length) * 100 : 0
-      }
-      listTitle="Your Dental Care Sessions"
-      listEmptyMessage="No sessions scheduled. Add one below!"
-      schedules={sessions}
-      onToggleCompletion={toggleTeethCompletion}
-      onRemoveSchedule={removeTeethSchedule}
-      // Removed getTimeUntilSchedule prop as it's now internal to RoutineSectionCard
-      newInputLabelPlaceholder="Session Label"
-      newInputValue={newTeethLabel}
-      onNewInputChange={setNewTeethLabel}
-      newTimeValue={newTeethScheduledTime}
-      onNewTimeChange={setNewTeethScheduledTime}
-      newDurationPlaceholder="Duration (min)"
-      newDurationValue={newTeethDurationMinutes === 0 ? '' : String(newTeethDurationMinutes)}
-      onNewDurationChange={value => {
-        const val = parseInt(value);
-        setNewTeethDurationMinutes(isNaN(val) ? 0 : val);
-      }}
-      onNewDurationWheel={handleWheel}
-      newCurrentIcon={newTeethIcon}
-      newIconOptions={teethIcons}
-      onNewSelectIcon={setNewTeethIcon}
-      iconComponentsMap={IconComponents} // Pass the IconComponents map
-      buttonLabel="Add & Save Session"
-      onAddSchedule={addTeethSchedule}
-    />
+    <div className="space-y-8">
+      {/* The existing card for managing today's dental care schedules */}
+      <RoutineSectionCard
+        sectionTitle="Dental Care Routine"
+        summaryCount={`${completedSchedulesCount}/${sessions.length}`}
+        summaryLabel="Sessions Completed Today"
+        progressPercentage={
+          sessions.length > 0 ? (completedSchedulesCount / sessions.length) * 100 : 0
+        }
+        listTitle="Your Dental Care Sessions"
+        listEmptyMessage="No sessions scheduled. Add one below!"
+        schedules={sessions}
+        onToggleCompletion={toggleTeethCompletion}
+        onRemoveSchedule={handleRemoveSchedule}
+        onSaveSchedule={handleSaveSchedule}
+        newInputLabelPlaceholder="e.g., Morning Brush"
+        newIconOptions={teethIcons}
+        iconComponentsMap={IconComponents}
+      />
+
+      {/* The new calendar for tracking historical dental care completion */}
+      <RoutineCalendar
+        appState={appState}
+        currentUser={currentUser}
+        showMessage={showMessage}
+        onAppStateUpdate={onAppStateUpdate}
+        routineType={RoutineType.TEETH}
+        title="Dental Care Log"
+        icon={MdOutlineCleaningServices}
+      />
+    </div>
   );
 };
 
