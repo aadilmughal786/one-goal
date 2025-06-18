@@ -1,2 +1,31 @@
 @import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* === Custom Scrollbar Styles === */
+
+/* For Webkit-based browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a; /* A very dark grey, slightly lighter than pure black */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #4b5563; /* A medium grey for the scrollbar handle */
+  border-radius: 10px;
+  border: 3px solid #1a1a1a; /* Creates a padding effect around the thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280; /* Lighter grey on hover for better visibility */
+}
+
+/* For Firefox */
+html {
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: #4b5563 #1a1a1a; /* thumb and track color */
+}
