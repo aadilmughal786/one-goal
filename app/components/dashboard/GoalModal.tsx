@@ -1,13 +1,15 @@
-// app/components/GoalModal.tsx
+// app/components/dashboard/GoalModal.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { FiTarget, FiCalendar, FiX, FiLoader } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
+import { format } from 'date-fns';
+import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the new component
 
 interface ModalGoalData {
   name: string;
-  description: string | null; // Changed to string | null
+  description: string | null;
   startDate: string;
   endDate: string;
 }
@@ -15,9 +17,9 @@ interface ModalGoalData {
 interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSetGoal: (goalName: string, endDate: string, description: string | null) => Promise<void>; // Changed description to string | null
+  onSetGoal: (goalName: string, endDate: Date, description: string | null) => Promise<void>;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
-  initialGoalData: ModalGoalData | null; // Changed from optional to explicit null
+  initialGoalData: ModalGoalData | null;
   isEditMode?: boolean;
 }
 
@@ -30,23 +32,23 @@ const GoalModal: React.FC<GoalModalProps> = ({
   isEditMode = false,
 }) => {
   const [goalName, setGoalName] = useState('');
-  const [goalDescription, setGoalDescription] = useState<string | null>(''); // State can be string or null
-  const [endDate, setEndDate] = useState('');
+  const [goalDescription, setGoalDescription] = useState<string | null>('');
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && initialGoalData) {
         setGoalName(initialGoalData.name);
-        setGoalDescription(initialGoalData.description); // Directly assign null/string
-        setEndDate(initialGoalData.endDate.slice(0, 16));
+        setGoalDescription(initialGoalData.description);
+        setEndDate(new Date(initialGoalData.endDate));
       } else {
         setGoalName('');
-        setGoalDescription(null); // Default to null for new goal
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        now.setDate(now.getDate() + 1);
-        setEndDate(now.toISOString().slice(0, 16));
+        setGoalDescription(null);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setEndDate(tomorrow);
       }
     }
   }, [isOpen, isEditMode, initialGoalData]);
@@ -60,16 +62,14 @@ const GoalModal: React.FC<GoalModalProps> = ({
       showMessage('Please select a target date and time.', 'error');
       return;
     }
-    if (new Date(endDate) <= new Date()) {
+    if (endDate <= new Date()) {
       showMessage('Target date and time must be in the future.', 'error');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Pass goalDescription directly, it's already string | null
       await onSetGoal(goalName, endDate, goalDescription);
-      // The parent component handles closing the modal and success message
     } catch (error) {
       showMessage((error as Error).message || 'An unknown error occurred.', 'error');
     } finally {
@@ -79,19 +79,10 @@ const GoalModal: React.FC<GoalModalProps> = ({
 
   if (!isOpen) return null;
 
-  const minDate = new Date();
-  minDate.setMinutes(minDate.getMinutes() - minDate.getTimezoneOffset());
-
   return (
     <>
-      <style>{`
-        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-        }
-      `}</style>
       <div
-        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+        className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
         onClick={onClose}
       >
         <div
@@ -140,7 +131,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   placeholder="Describe what success looks like..."
                   rows={3}
                   className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  value={goalDescription || ''} // Handle null for textarea value
+                  value={goalDescription || ''}
                   onChange={e => setGoalDescription(e.target.value === '' ? null : e.target.value)}
                 />
               </div>
@@ -149,14 +140,16 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   <FiCalendar className="inline -mt-1 mr-1" /> Target Date & Time{' '}
                   <span className="text-red-400">*</span>
                 </label>
-                <input
-                  id="endDate"
-                  type="datetime-local"
-                  className="p-3 w-full text-base text-white rounded-md border cursor-pointer border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30 accent-white"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  min={minDate.toISOString().slice(0, 16)}
-                />
+                <button
+                  onClick={() => setIsPickerOpen(true)}
+                  className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  {endDate ? (
+                    format(endDate, "MMMM d,yyyy 'at' h:mm a")
+                  ) : (
+                    <span className="text-white/50">Set a deadline</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -182,6 +175,13 @@ const GoalModal: React.FC<GoalModalProps> = ({
           </div>
         </div>
       </div>
+      <DateTimePicker
+        isOpen={isPickerOpen}
+        value={endDate}
+        onChange={setEndDate}
+        onClose={() => setIsPickerOpen(false)}
+        mode="datetime"
+      />
     </>
   );
 };

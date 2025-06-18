@@ -1,7 +1,7 @@
 // app/components/dashboard/DailyProgressModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiX, FiEdit3, FiCheckCircle, FiLoader, FiChevronDown } from 'react-icons/fi';
 import { DailyProgress, SatisfactionLevel } from '@/types';
 import { format } from 'date-fns';
@@ -34,13 +34,29 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   const [satisfaction, setSatisfaction] = useState<SatisfactionLevel>(SatisfactionLevel.MEDIUM);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSatisfaction(initialProgress?.satisfactionLevel || SatisfactionLevel.MEDIUM);
       setNotes(initialProgress?.progressNote || '');
+      setIsDropdownOpen(false); // Reset dropdown state when modal opens
     }
   }, [isOpen, initialProgress]);
+
+  // Effect to handle clicks outside the dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (satisfaction === null) {
@@ -67,9 +83,11 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
 
   if (!isOpen) return null;
 
+  const selectedOption = satisfactionOptions.find(opt => opt.level === satisfaction);
+
   return (
     <div
-      className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+      className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
       onClick={onClose}
     >
       <div
@@ -78,7 +96,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
       >
         <div className="flex justify-between items-center p-6 border-b border-white/10">
           <h2 className="text-xl font-semibold text-white">
-            Log Progress for {format(date, 'MMMM d, yyyy')}
+            Log Progress for {format(date, 'MMMM d,yyyy')}
           </h2>
           <button className="p-1.5 text-white/60 rounded-full hover:bg-white/10" onClick={onClose}>
             <FiX />
@@ -90,19 +108,42 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
               <FiEdit3 className="inline -mt-1 mr-1" />
               Satisfaction Level
             </label>
-            <div className="relative">
-              <select
-                value={satisfaction}
-                onChange={e => setSatisfaction(Number(e.target.value) as SatisfactionLevel)}
-                className="p-3 w-full text-base text-white rounded-md border appearance-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex justify-between items-center px-4 py-3 w-full text-lg text-left text-white rounded-md border cursor-pointer border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                {satisfactionOptions.map(option => (
-                  <option key={option.level} value={option.level}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50" />
+                {selectedOption ? (
+                  <span className="flex gap-3 items-center">
+                    <div className={`w-3 h-3 rounded-full ${selectedOption.color}`}></div>
+                    {selectedOption.label}
+                  </span>
+                ) : (
+                  <span className="text-white/50">Select a level...</span>
+                )}
+                <FiChevronDown
+                  className={`transition-transform duration-200 ${
+                    isDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute z-10 p-2 mt-2 w-full rounded-lg border shadow-lg bg-neutral-900 border-white/10">
+                  {satisfactionOptions.map(option => (
+                    <button
+                      key={option.level}
+                      onClick={() => {
+                        setSatisfaction(option.level);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer hover:bg-white/10"
+                    >
+                      <div className={`w-3 h-3 rounded-full ${option.color}`}></div>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div>

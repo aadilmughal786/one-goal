@@ -5,6 +5,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FiX, FiSave, FiCalendar, FiLoader, FiTrash2, FiEdit } from 'react-icons/fi';
 import { TodoItem } from '@/types';
 import { Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
+import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the component
 
 interface TodoEditModalProps {
   isOpen: boolean;
@@ -23,19 +25,21 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 }) => {
   const [editText, setEditText] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editDeadline, setEditDeadline] = useState<string>('');
+  // State now holds a Date object or null
+  const [editDeadline, setEditDeadline] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false); // State for picker visibility
 
   useEffect(() => {
     if (isOpen && todoItem) {
       setEditText(todoItem.text);
       setEditDescription(todoItem.description || '');
-      setEditDeadline(
-        todoItem.deadline ? todoItem.deadline.toDate().toISOString().slice(0, 16) : ''
-      );
+      // Convert Timestamp to Date for the picker
+      setEditDeadline(todoItem.deadline ? todoItem.deadline.toDate() : null);
     }
   }, [isOpen, todoItem]);
 
+  // Close the modal on 'Escape' key press
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -47,7 +51,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   }, [onClose]);
 
   const handleClearDeadline = useCallback(() => {
-    setEditDeadline('');
+    setEditDeadline(null);
   }, []);
 
   const handleSubmit = async () => {
@@ -61,7 +65,8 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
     const updates: Partial<TodoItem> = {
       text: editText.trim(),
       description: editDescription.trim() ? editDescription.trim() : null,
-      deadline: editDeadline ? Timestamp.fromDate(new Date(editDeadline)) : null,
+      // Convert Date back to Timestamp before saving
+      deadline: editDeadline ? Timestamp.fromDate(editDeadline) : null,
     };
 
     try {
@@ -79,14 +84,8 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
   return (
     <>
-      <style>{`
-        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-        }
-      `}</style>
       <div
-        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+        className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
         onClick={onClose}
       >
         <div
@@ -141,14 +140,19 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
               <label htmlFor="deadline" className="block mb-2 text-sm font-medium text-white/70">
                 <FiCalendar className="inline mr-1 -mt-0.5" /> Deadline (Optional)
               </label>
-              <div className="flex gap-2 items-center">
-                <input
-                  id="deadline"
-                  type="datetime-local"
-                  value={editDeadline}
-                  onChange={e => setEditDeadline(e.target.value)}
-                  className="p-3 w-full text-base text-white rounded-md border cursor-pointer bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
+              <div className="flex relative gap-2 items-center">
+                {/* Button to open the custom picker */}
+                <button
+                  onClick={() => setIsPickerOpen(true)}
+                  className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  {editDeadline ? (
+                    format(editDeadline, "MMMM d,yyyy 'at' h:mm a")
+                  ) : (
+                    <span className="text-white/50">Set a deadline</span>
+                  )}
+                </button>
+                {/* Clear deadline button */}
                 {editDeadline && (
                   <button
                     onClick={handleClearDeadline}
@@ -183,6 +187,15 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* The custom DateTimePicker component, now rendered as a modal */}
+      <DateTimePicker
+        isOpen={isPickerOpen}
+        value={editDeadline}
+        onChange={setEditDeadline}
+        onClose={() => setIsPickerOpen(false)}
+        mode="datetime"
+      />
     </>
   );
 };

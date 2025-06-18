@@ -9,7 +9,8 @@ import {
   MdOutlineKeyboardArrowUp,
 } from 'react-icons/md';
 import { ScheduledRoutineBase } from '@/types';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
+import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the new component
 
 interface ScheduleEditModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   const [icon, setIcon] = useState(newIconOptions[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false); // State for the time picker
   const iconDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +54,6 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
         setDurationMinutes(scheduleToEdit.durationMinutes);
         setIcon(scheduleToEdit.icon);
       } else {
-        // Reset for "add" mode
         setLabel('');
         setScheduledTime(format(new Date(), 'HH:mm'));
         setDurationMinutes(30);
@@ -93,12 +94,12 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 
     setIsSubmitting(true);
     const newOrUpdatedSchedule: ScheduledRoutineBase = {
-      ...(scheduleToEdit || {}), // Preserve existing properties like 'completed' status
+      ...(scheduleToEdit || {}),
       label: label.trim(),
       scheduledTime,
       durationMinutes: parsedDuration,
       icon,
-      completed: scheduleToEdit ? scheduleToEdit.completed : null, // Ensure 'completed' is set correctly
+      completed: scheduleToEdit ? scheduleToEdit.completed : null,
     };
 
     try {
@@ -117,14 +118,8 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 
   return (
     <>
-      <style>{`
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-        }
-      `}</style>
       <div
-        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm cursor-pointer bg-black/60"
+        className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
         onClick={onClose}
       >
         <div
@@ -194,17 +189,19 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-2 text-sm text-white/70">Start Time</label>
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={e => setScheduledTime(e.target.value)}
-                  className="p-3 w-full text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
-                />
+                <button
+                  onClick={() => setIsTimePickerOpen(true)}
+                  className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
+                >
+                  {format(parse(scheduledTime, 'HH:mm', new Date()), 'h:mm a')}
+                </button>
               </div>
               <div>
                 <label className="block mb-2 text-sm text-white/70">Duration (min)</label>
                 <input
                   type="number"
+                  min={10}
+                  max={150}
                   placeholder="e.g., 30"
                   value={durationMinutes}
                   onChange={e => handleDurationChange(e.target.value)}
@@ -230,6 +227,15 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
           </div>
         </div>
       </div>
+      <DateTimePicker
+        isOpen={isTimePickerOpen}
+        value={parse(scheduledTime, 'HH:mm', new Date())}
+        onChange={date => {
+          if (date) setScheduledTime(format(date, 'HH:mm'));
+        }}
+        onClose={() => setIsTimePickerOpen(false)}
+        mode="time"
+      />
     </>
   );
 };
