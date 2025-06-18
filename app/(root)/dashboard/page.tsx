@@ -5,14 +5,15 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IconType } from 'react-icons';
-import { FiGrid, FiBarChart2, FiSettings, FiFeather } from 'react-icons/fi'; // <-- Import an icon
+import { FiGrid, FiBarChart2, FiSettings, FiFeather, FiBookOpen } from 'react-icons/fi'; // <-- Import FiBookOpen
 import { AppState } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
 import ToastMessage from '@/components/ToastMessage';
 import DashboardMain from './DashboardMain';
 import DashboardAnalytics from './DashboardAnalytics';
 import DashboardSettings from './DashboardSettings';
-import DashboardQuotes from './DashboardQuotes'; // <-- Import the new component
+import DashboardQuotes from './DashboardQuotes';
+import DashboardLessons from './DashboardLessons'; // <-- Import the new component
 
 interface SidebarItem {
   id: string;
@@ -25,7 +26,8 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
-  { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes }, // <-- ADDED THIS LINE
+  { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
+  { id: 'lessons', label: 'Lessons', icon: FiBookOpen, component: DashboardLessons }, // <-- ADDED THIS LINE
   { id: 'settings', label: 'Manage', icon: FiSettings, component: DashboardSettings },
 ];
 
