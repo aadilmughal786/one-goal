@@ -16,14 +16,16 @@ import {
   FiHash,
   FiLogIn,
   FiChevronsRight,
+  FiEdit, // Import the edit icon
 } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
 import { User } from 'firebase/auth';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState } from '@/types';
-import { differenceInDays, formatDate } from 'date-fns';
+import { differenceInDays, format as formatDate } from 'date-fns';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import ToastMessage from '@/components/ToastMessage';
+import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal'; // Import the new modal
 
 const ProfilePageSkeleton = () => (
   <div className="space-y-8 animate-pulse">
@@ -85,6 +87,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false); // State for the new modal
   const [confirmationProps, setConfirmationProps] = useState({
     title: '',
     message: '',
@@ -100,24 +103,31 @@ export default function ProfilePage() {
     setToastType(type);
   }, []);
 
+  const fetchUserAndData = useCallback(
+    async (user: User) => {
+      try {
+        const userData = await firebaseService.getUserData(user.uid);
+        setAppState(userData);
+      } catch {
+        showMessage('Failed to load user data.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showMessage]
+  );
+
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(async user => {
       if (user) {
         setCurrentUser(user);
-        try {
-          const userData = await firebaseService.getUserData(user.uid);
-          setAppState(userData);
-        } catch {
-          showMessage('Failed to load user data.', 'error');
-        } finally {
-          setLoading(false);
-        }
+        fetchUserAndData(user);
       } else {
         router.push('/login');
       }
     });
     return () => unsubscribe();
-  }, [router, showMessage]);
+  }, [router, fetchUserAndData]);
 
   const handleImportData = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,6 +211,25 @@ export default function ProfilePage() {
     setIsConfirmModalOpen(true);
   }, [currentUser, showMessage]);
 
+  const handleAvatarSelect = async (avatarUrl: string) => {
+    if (!currentUser) return;
+    try {
+      await firebaseService.updateUserProfile(currentUser, { photoURL: avatarUrl });
+      // Manually update the user object in state to trigger re-render instantly
+      setCurrentUser(prevUser => {
+        if (!prevUser) return null;
+        // Create a new object to ensure React detects the change
+        const updatedUser = Object.assign(Object.create(Object.getPrototypeOf(prevUser)), prevUser);
+        updatedUser.photoURL = avatarUrl;
+        return updatedUser;
+      });
+      showMessage('Avatar updated successfully!', 'success');
+      setIsAvatarModalOpen(false);
+    } catch {
+      showMessage('Failed to update avatar. Please try again.', 'error');
+    }
+  };
+
   const goalStats = useMemo(() => {
     if (!appState?.goal) return null;
     const { goal, dailyProgress } = appState;
@@ -231,7 +260,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="relative z-10 px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
+      <main className="px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
         <ProfilePageSkeleton />
       </main>
     );
@@ -240,7 +269,8 @@ export default function ProfilePage() {
   if (!currentUser) return null;
 
   return (
-    <main className="relative z-10 px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
+    // FIX: Removed the `z-10` class from the main element.
+    <main className="relative px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
       <ToastMessage message={toastMessage} type={toastType} />
       <input
         type="file"
@@ -252,13 +282,22 @@ export default function ProfilePage() {
 
       <div className="p-8 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
         <div className="flex flex-col gap-6 items-center md:flex-row md:items-start">
-          <Image
-            src={currentUser.photoURL || `https://i.pravatar.cc/150?u=${currentUser.uid}`}
-            alt="Profile picture"
-            width={120}
-            height={120}
-            className="rounded-full border-2 border-white/20"
-          />
+          <div className="relative group">
+            <Image
+              src={currentUser.photoURL || `https://placehold.co/120x120/1a1a1a/ffffff?text=User`}
+              alt="Profile picture"
+              width={120}
+              height={120}
+              className="rounded-full border-2 border-white/20"
+            />
+            <button
+              onClick={() => setIsAvatarModalOpen(true)}
+              className="flex absolute inset-0 justify-center items-center text-white rounded-full opacity-0 transition-opacity duration-300 cursor-pointer bg-black/50 group-hover:opacity-100"
+              aria-label="Change profile picture"
+            >
+              <FiEdit size={32} />
+            </button>
+          </div>
           <div className="flex-grow text-center md:text-left">
             <h1 className="text-2xl font-bold text-white md:text-3xl">
               {currentUser.displayName || 'Anonymous User'}
@@ -272,7 +311,7 @@ export default function ProfilePage() {
                 <span>
                   Member since{' '}
                   {currentUser.metadata.creationTime
-                    ? formatDate(currentUser.metadata.creationTime, 'MMM d,yyyy')
+                    ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy')
                     : 'N/A'}
                 </span>
               </div>
@@ -385,7 +424,7 @@ export default function ProfilePage() {
               <span className="text-white/60">Account Created</span>
               <span className="text-white/80">
                 {currentUser.metadata.creationTime
-                  ? formatDate(currentUser.metadata.creationTime, 'MMM d,yyyy')
+                  ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy')
                   : 'Unknown'}
               </span>
             </div>
@@ -393,7 +432,7 @@ export default function ProfilePage() {
               <span className="text-white/60">Last Sign In</span>
               <span className="text-white/80">
                 {currentUser.metadata.lastSignInTime
-                  ? formatDate(currentUser.metadata.lastSignInTime, 'MMM d,yyyy')
+                  ? formatDate(new Date(currentUser.metadata.lastSignInTime), 'MMM d, yyyy')
                   : 'Unknown'}
               </span>
             </div>
@@ -406,6 +445,15 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {isAvatarModalOpen && (
+        <AvatarSelectionModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          onAvatarSelect={handleAvatarSelect}
+          currentUser={currentUser}
+        />
+      )}
 
       <ConfirmationModal
         isOpen={isConfirmModalOpen}

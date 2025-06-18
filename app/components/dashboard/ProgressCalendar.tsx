@@ -26,7 +26,7 @@ import {
 
 interface ProgressCalendarProps {
   goal: Goal;
-  dailyProgress: Record<string, DailyProgress>; // Changed to Record<string, DailyProgress> as per AppState
+  dailyProgress: Record<string, DailyProgress>;
   onDayClick: (date: Date) => void;
 }
 
@@ -40,15 +40,12 @@ const routineIcons: Record<RoutineType, React.ElementType> = {
 };
 
 const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress, onDayClick }) => {
-  // Use the goal's createdAt date as the initial month to display
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(goal.startDate.toDate()));
 
-  const goalStartDate = goal.startDate.toDate(); // Corrected to use createdAt
+  const goalStartDate = goal.startDate.toDate();
   const goalEndDate = goal.endDate.toDate();
 
   const progressMap = useMemo(() => {
-    // Since dailyProgress is already a Record<string, DailyProgress>, we just use it directly
-    // No need to create a new Map from an array
     return dailyProgress;
   }, [dailyProgress]);
 
@@ -61,7 +58,6 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
     return goalDays.filter(day => isWithinInterval(day, monthInterval));
   }, [currentMonth, goalDays]);
 
-  // Disable navigation if the next/prev month is outside the goal's range
   const canGoToPrevMonth = !isSameMonth(currentMonth, goalStartDate);
   const canGoToNextMonth = !isSameMonth(currentMonth, goalEndDate);
 
@@ -109,7 +105,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
         {daysInView.length > 0 ? (
           daysInView.map(day => {
             const dateKey = format(day, 'yyyy-MM-dd');
-            const progress = progressMap[dateKey]; // Access directly from the record
+            const progress = progressMap[dateKey];
             const isClickable = isToday(day);
 
             let dayClasses =
@@ -133,7 +129,8 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                 <span className="z-10 text-xl font-bold sm:text-2xl">{format(day, 'd')}</span>
 
                 {progress && (
-                  <div className="absolute bottom-full invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
+                  // FIX: Increased z-index from z-20 to z-50
+                  <div className="absolute bottom-full invisible z-50 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
                     <p className="p-3 pb-1 text-sm font-bold text-white">
                       {format(new Date(progress.date), 'MMMM d, yyyy')}
                     </p>

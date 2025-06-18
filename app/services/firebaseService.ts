@@ -9,6 +9,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  updateProfile, // <-- Import updateProfile
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -114,6 +115,18 @@ class FirebaseService {
 
   onAuthChange(callback: (user: User | null) => void): () => void {
     return onAuthStateChanged(this.auth, callback);
+  }
+
+  // --- NEW: Function to update user profile ---
+  async updateUserProfile(
+    user: User,
+    updates: { displayName?: string; photoURL?: string }
+  ): Promise<void> {
+    try {
+      await updateProfile(user, updates);
+    } catch (error: unknown) {
+      throw new FirebaseServiceError('Failed to update user profile.', error);
+    }
   }
 
   async signInWithGoogle(): Promise<User | null> {

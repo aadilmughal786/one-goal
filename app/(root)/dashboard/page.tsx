@@ -125,7 +125,7 @@ const DashboardPageContent = () => {
               })}
         </div>
       </nav>
-      <main className="overflow-y-auto flex-grow p-4 mx-auto max-w-4xl md:p-8">
+      <main className="flex-grow p-4 mx-auto max-w-4xl  md:p-8">
         {isLoading ? (
           <div className="w-full  h-full rounded-2xl animate-pulse bg-white/[0.02]"></div>
         ) : (
