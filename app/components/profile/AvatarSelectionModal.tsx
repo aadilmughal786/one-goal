@@ -11,6 +11,7 @@ interface AvatarSelectionModalProps {
   onClose: () => void;
   onAvatarSelect: (avatarUrl: string) => Promise<void>;
   currentUser: User;
+  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const basePath = '/one-goal';
@@ -39,6 +40,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
   onClose,
   onAvatarSelect,
   currentUser,
+  showMessage,
 }) => {
   const [selectedAvatar, setSelectedAvatar] = useState<string>(currentUser.photoURL || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +79,8 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
     setIsSaving(true);
     try {
       await onAvatarSelect(selectedAvatar);
+      showMessage('Profile image updated successfully. Refreshing...', 'success');
+      setTimeout(() => window.location.reload(), 2000);
     } finally {
       setIsSaving(false);
     }

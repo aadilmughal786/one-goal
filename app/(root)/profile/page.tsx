@@ -452,6 +452,7 @@ export default function ProfilePage() {
           onClose={() => setIsAvatarModalOpen(false)}
           onAvatarSelect={handleAvatarSelect}
           currentUser={currentUser}
+          showMessage={showMessage}
         />
       )}
 
