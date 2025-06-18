@@ -9,7 +9,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
-  updateProfile, // <-- Import updateProfile
+  updateProfile,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -35,6 +35,7 @@ import {
   ScheduledRoutineBase,
   RoutineType,
   RoutineLog,
+  Quote, // <-- Import Quote type
 } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 import { format, isSameDay } from 'date-fns';
@@ -91,6 +92,7 @@ interface SerializableAppState {
     teeth: SerializableScheduledRoutineBase[];
     lastRoutineResetDate: string | null;
   } | null;
+  starredQuotes: Quote[]; // <-- ADDED FOR EXPORT
 }
 
 class FirebaseService {
@@ -117,7 +119,6 @@ class FirebaseService {
     return onAuthStateChanged(this.auth, callback);
   }
 
-  // --- NEW: Function to update user profile ---
   async updateUserProfile(
     user: User,
     updates: { displayName?: string; photoURL?: string }
@@ -171,6 +172,7 @@ class FirebaseService {
         teeth: [],
         lastRoutineResetDate: null,
       },
+      starredQuotes: [], // <-- Initialize starredQuotes
     };
   }
 
@@ -188,11 +190,12 @@ class FirebaseService {
       const data = docSnap.data() as Partial<AppState>;
       const appState: AppState = { ...this._initializeDefaultState(), ...data };
 
-      // Ensure all nested objects and arrays are initialized to prevent runtime errors
       appState.dailyProgress = appState.dailyProgress || {};
       appState.toDoList = appState.toDoList || [];
       appState.notToDoList = appState.notToDoList || [];
       appState.contextList = appState.contextList || [];
+      appState.starredQuotes = appState.starredQuotes || []; // Ensure starredQuotes is initialized
+
       if (!appState.routineSettings) {
         appState.routineSettings = this._initializeDefaultState().routineSettings!;
       } else {
@@ -206,21 +209,14 @@ class FirebaseService {
         }
       }
 
-      // --- Daily Routine Completion Status Reset ---
       const lastReset = appState.routineSettings.lastRoutineResetDate?.toDate();
       const now = new Date();
       if (!lastReset || !isSameDay(lastReset, now)) {
         let needsUpdate = false;
-
-        const resetSchedules = (schedules: ScheduledRoutineBase[]) => {
-          return schedules.map(s => {
-            if (s.completed) {
-              needsUpdate = true;
-              return { ...s, completed: false };
-            }
-            return s;
-          });
-        };
+        const resetSchedules = (schedules: ScheduledRoutineBase[]) =>
+          schedules.map(s =>
+            s.completed ? ((needsUpdate = true), { ...s, completed: false }) : s
+          );
 
         appState.routineSettings.bath = resetSchedules(appState.routineSettings.bath);
         appState.routineSettings.exercise = resetSchedules(appState.routineSettings.exercise);
@@ -244,6 +240,19 @@ class FirebaseService {
       return appState;
     } catch (error) {
       throw new FirebaseServiceError(`Failed to load user data for ID: ${userId}.`, error);
+    }
+  }
+
+  // --- NEW: Function to update starred quotes ---
+  async updateStarredQuotes(userId: string, newQuotes: Quote[]): Promise<void> {
+    const userDocRef = doc(this.db, 'users', userId);
+    try {
+      await updateDoc(userDocRef, { starredQuotes: newQuotes });
+    } catch (error: unknown) {
+      throw new FirebaseServiceError(
+        `Failed to update starred quotes for user ID: ${userId}.`,
+        error
+      );
     }
   }
 
@@ -310,6 +319,7 @@ class FirebaseService {
             ),
           }
         : null,
+      starredQuotes: appState.starredQuotes || [], // <-- ADDED FOR EXPORT
     };
   }
 
@@ -357,9 +367,11 @@ class FirebaseService {
             ),
           }
         : defaultState.routineSettings,
+      starredQuotes: importedData.starredQuotes || [], // <-- ADDED FOR IMPORT
     };
   }
 
+  // ... (rest of the existing methods)
   async updateGoal(userId: string, goal: Goal | null): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -626,7 +638,7 @@ class FirebaseService {
         completed: false,
         completedAt: null,
         deadline: null,
-        createdAt: Timestamp.now(), // Set createdAt on creation
+        createdAt: Timestamp.now(),
       };
 
       const updatedTodoList = [newItem, ...reorderedList];

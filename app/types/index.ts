@@ -65,6 +65,15 @@ export interface ListItem {
 }
 
 /**
+ * Represents a single quote.
+ */
+export interface Quote {
+  id: number;
+  text: string;
+  author: string;
+}
+
+/**
  * Defines a single logged session from the stopwatch feature.
  */
 export interface StopwatchSession {
@@ -140,4 +149,5 @@ export interface AppState {
   notToDoList: ListItem[];
   contextList: ListItem[];
   routineSettings: UserRoutineSettings | null;
+  starredQuotes: Quote[];
 }

@@ -5,13 +5,14 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IconType } from 'react-icons';
-import { FiGrid, FiBarChart2, FiSettings } from 'react-icons/fi';
+import { FiGrid, FiBarChart2, FiSettings, FiFeather } from 'react-icons/fi'; // <-- Import an icon
 import { AppState } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
 import ToastMessage from '@/components/ToastMessage';
 import DashboardMain from './DashboardMain';
 import DashboardAnalytics from './DashboardAnalytics';
 import DashboardSettings from './DashboardSettings';
+import DashboardQuotes from './DashboardQuotes'; // <-- Import the new component
 
 interface SidebarItem {
   id: string;
@@ -24,6 +25,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
+  { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes }, // <-- ADDED THIS LINE
   { id: 'settings', label: 'Manage', icon: FiSettings, component: DashboardSettings },
 ];
 
@@ -125,7 +127,7 @@ const DashboardPageContent = () => {
               })}
         </div>
       </nav>
-      <main className="flex-grow p-4 mx-auto max-w-4xl  md:p-8">
+      <main className="flex-grow p-4 mx-auto max-w-4xl md:p-8">
         {isLoading ? (
           <div className="w-full  h-full rounded-2xl animate-pulse bg-white/[0.02]"></div>
         ) : (
