@@ -1,104 +1,43 @@
 // app/(root)/dashboard/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
-import { Timestamp } from 'firebase/firestore';
-import { isToday, format } from 'date-fns';
-
+import { useRouter, useSearchParams } from 'next/navigation';
+import { IconType } from 'react-icons';
+import { FiGrid, FiBarChart2, FiSettings } from 'react-icons/fi';
+import { AppState } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
-import { AppState, Goal, DailyProgress } from '@/types';
-
-import GoalModal from '@/components/dashboard/GoalModal';
 import ToastMessage from '@/components/ToastMessage';
-import CountdownCard from '@/components/dashboard/CountdownCard';
-import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
-import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
-import Charts from '@/components/dashboard/Charts';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import DashboardMain from './DashboardMain';
+import DashboardAnalytics from './DashboardAnalytics';
+import DashboardSettings from './DashboardSettings';
 
-import { MdRocketLaunch } from 'react-icons/md';
-import { FiTarget, FiUpload, FiDownload, FiPlusCircle, FiEdit } from 'react-icons/fi';
+interface SidebarItem {
+  id: string;
+  label: string;
+  icon: IconType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: React.ComponentType<any>;
+}
 
-const DashboardSkeletonLoader = () => (
-  <div className="space-y-8 animate-pulse">
-    <div className="text-center">
-      <div className="mx-auto mb-2 w-1/2 h-8 rounded-lg bg-white/10"></div>
-      <div className="mx-auto w-3/4 h-5 rounded-lg bg-white/10"></div>
-    </div>
-    <div className="p-8 bg-white/[0.02] border border-white/10 rounded-3xl shadow-lg">
-      <div className="mb-2 w-3/4 h-8 rounded-lg bg-white/10"></div>
-      <div className="mb-8 w-full h-4 rounded-lg bg-white/10"></div>
-      <div className="flex flex-col gap-8 items-center md:flex-row">
-        <div className="flex-shrink-0 w-48 h-48 rounded-full sm:w-56 sm:h-56 bg-white/10"></div>
-        <div className="flex-1 space-y-4 w-full">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="h-24 rounded-lg bg-white/5"></div>
-            <div className="h-24 rounded-lg bg-white/5"></div>
-            <div className="h-24 rounded-lg bg-white/5"></div>
-            <div className="h-24 rounded-lg bg-white/5"></div>
-          </div>
-          <div className="p-4 space-y-3 rounded-lg bg-white/5">
-            <div className="w-3/4 h-4 rounded-full bg-white/10"></div>
-            <div className="w-5/6 h-4 rounded-full bg-white/10"></div>
-          </div>
-        </div>
-      </div>
-    </div>
+const sidebarItems: SidebarItem[] = [
+  { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
+  { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
+  { id: 'settings', label: 'Manage', icon: FiSettings, component: DashboardSettings },
+];
 
-    <div className="p-6 bg-white/[0.02] border border-white/10 rounded-3xl shadow-lg">
-      <div className="flex justify-between items-center mb-4">
-        <div className="w-1/3 h-7 rounded-lg bg-white/10"></div>
-        <div className="flex gap-2">
-          <div className="w-8 h-8 rounded-full bg-white/10"></div>
-          <div className="w-8 h-8 rounded-full bg-white/10"></div>
-        </div>
-      </div>
-      <div className="grid grid-cols-7 gap-2">
-        {Array.from({ length: 28 }).map((_, i) => (
-          <div key={i} className="w-full h-16 rounded-lg sm:h-20 bg-white/5"></div>
-        ))}
-      </div>
-    </div>
-    <div className="space-y-8">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="p-6 bg-white/[0.02] border border-white/10 rounded-3xl shadow-lg">
-          <div className="mx-auto mb-6 w-1/2 h-7 rounded-lg bg-white/10"></div>
-          <div className="h-64 rounded-lg bg-white/5"></div>
-        </div>
-      ))}
-    </div>
-
-    <div className="p-8 text-center bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
-      <div className="mx-auto mb-6 w-1/2 h-8 rounded-lg bg-white/10"></div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-        <div className="h-24 rounded-lg bg-white/10"></div>
-        <div className="h-24 rounded-lg bg-white/10"></div>
-        <div className="h-24 rounded-lg bg-white/10"></div>
-        <div className="h-24 rounded-lg bg-white/10"></div>
-      </div>
-    </div>
-  </div>
-);
-
-type ModalType = 'goal' | 'dailyProgress' | 'confirmation' | null;
-
-export default function DashboardPage() {
+const DashboardPageContent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-  const [confirmationProps, setConfirmationProps] = useState({
-    title: '',
-    message: '',
-    action: () => {},
-    actionDelayMs: 0,
+  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return sidebarItems.find(item => item.id === tabFromUrl)?.id || sidebarItems[0].id;
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -127,331 +66,87 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const handleSetGoal = useCallback(
-    async (goalName: string, endDate: Date, description: string | null) => {
-      if (!currentUser) return;
-      const newGoal: Goal = {
-        name: goalName,
-        description: description,
-        startDate: isEditMode && appState?.goal ? appState.goal.startDate : Timestamp.now(),
-        endDate: Timestamp.fromDate(endDate),
-      };
-      await firebaseService.updateGoal(currentUser.uid, newGoal);
-      const updatedUserData = await firebaseService.getUserData(currentUser.uid);
-      setAppState(updatedUserData);
-      setActiveModal(null);
-      showMessage(isEditMode ? 'Goal updated successfully!' : 'Goal set successfully!', 'success');
+  const handleAppStateUpdate = (newAppState: AppState) => {
+    setAppState(newAppState);
+  };
+
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTabInternal(tabId);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('tab', tabId);
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
-    [currentUser, appState, isEditMode, showMessage]
+    [router, searchParams]
   );
 
-  const handleOpenGoalModal = (isEditing = false) => {
-    setIsEditMode(isEditing);
-    setActiveModal('goal');
-  };
-
-  const handleDayClick = (date: Date) => {
-    if (isToday(date)) {
-      setSelectedDate(date);
-      setActiveModal('dailyProgress');
-    }
-  };
-
-  const handleSaveProgress = async (progressData: Partial<DailyProgress>) => {
-    if (!currentUser) return;
-    await firebaseService.saveDailyProgress(currentUser.uid, progressData as DailyProgress);
-    setAppState(prev => {
-      if (!prev || !progressData.date) return null;
-      const dateKey = progressData.date;
-      const existingProgress = prev.dailyProgress[dateKey] || {};
-      return {
-        ...prev,
-        dailyProgress: {
-          ...prev.dailyProgress,
-          [dateKey]: { ...existingProgress, ...progressData },
-        },
-      };
-    });
-    setActiveModal(null);
-    showMessage('Progress saved successfully!', 'success');
-  };
-
-  const promptForNewGoal = () => {
-    if (appState?.goal) {
-      setConfirmationProps({
-        title: 'Create New Goal?',
-        message:
-          'This will erase your current goal and all associated data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-        action: () => {
-          if (!currentUser) return;
-          firebaseService.resetUserData(currentUser.uid).then(newAppState => {
-            setAppState(newAppState);
-            handleOpenGoalModal(false);
-          });
-        },
-        actionDelayMs: 10000,
-      });
-      setActiveModal('confirmation');
-    } else {
-      handleOpenGoalModal(false);
-    }
-  };
-
-  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !currentUser) return;
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage('File is too large (max 5MB).', 'error');
-      return;
-    }
-    event.target.value = '';
-
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const importedRawData = JSON.parse(e.target?.result as string);
-        const importedState = firebaseService.deserializeForImport(importedRawData);
-
-        if (appState?.goal) {
-          const confirmImport = () => {
-            handleConfirmImport(importedState);
-          };
-
-          setConfirmationProps({
-            title: 'Overwrite All Data?',
-            message:
-              'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-            action: confirmImport,
-            actionDelayMs: 10000,
-          });
-          setActiveModal('confirmation');
-        } else {
-          handleConfirmImport(importedState);
-        }
-      } catch {
-        showMessage('Import failed: Invalid file format.', 'error');
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && activeTab !== tabFromUrl) {
+      if (sidebarItems.some(item => item.id === tabFromUrl)) {
+        setActiveTabInternal(tabFromUrl);
       }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleConfirmImport = async (importedState: AppState) => {
-    if (!currentUser) return;
-    try {
-      await firebaseService.setUserData(currentUser.uid, importedState);
-      showMessage('Data imported successfully. Refreshing...', 'success');
-      setActiveModal(null);
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (error) {
-      showMessage(`Failed to save imported data: ${(error as Error).message}`, 'error');
-      setActiveModal(null);
     }
-  };
+  }, [searchParams, activeTab]);
 
-  const handleExport = async () => {
-    if (!currentUser || !appState) return;
-    try {
-      const serializableData = firebaseService.serializeForExport(appState);
-      const dataStr = JSON.stringify(serializableData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      showMessage('Data exported successfully.', 'success');
-    } catch (error) {
-      showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
-    }
-  };
-
-  if (isLoading || !appState) {
-    return (
-      <div className="container p-4 mx-auto max-w-4xl">
-        <section className="py-8">
-          <DashboardSkeletonLoader />
-        </section>
-      </div>
-    );
-  }
-
-  const initialProgress = selectedDate
-    ? appState.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
-    : null;
-
-  const transformedGoalForModal = appState.goal
-    ? {
-        name: appState.goal.name,
-        description: appState.goal.description,
-        startDate: appState.goal.startDate.toDate().toISOString(),
-        endDate: appState.goal.endDate.toDate().toISOString(),
-      }
-    : null;
+  const ActiveComponent = sidebarItems.find(item => item.id === activeTab)?.component;
 
   return (
-    <div className="container p-4 mx-auto max-w-4xl">
+    <div className="flex min-h-screen text-white bg-black border-b border-white/10 font-poppins">
       <ToastMessage message={toastMessage} type={toastType} />
-      <input
-        type="file"
-        id="dashboardImportFile"
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={handleImportChange}
-      />
-
-      <section className="py-8">
-        {appState.goal ? (
-          <div className="space-y-12">
-            <div className="text-center">
-              <h2 className="text-4xl font-bold text-white sm:text-5xl">
-                <span className="text-white/70">Welcome back,</span>{' '}
-                {currentUser?.displayName?.split(' ')[0] || 'Explorer'}.
-              </h2>
-            </div>
-
-            <section>
-              <div className="mb-8 text-center">
-                <h3 className="mb-2 text-2xl font-bold">Your Mission Control</h3>
-                <p className="mx-auto max-w-2xl text-white/60">
-                  This is your command center. Monitor your progress, track your time, and stay
-                  focused on the one thing that matters most right now.
-                </p>
-              </div>
-              <CountdownCard goal={appState.goal} />
-            </section>
-
-            <section>
-              <div className="mb-8 text-center">
-                <h3 className="mb-2 text-2xl font-bold">Progress Calendar</h3>
-                <p className="mx-auto max-w-2xl text-white/60">
-                  Visualize your daily satisfaction and log today&apos;s progress with a single
-                  click.
-                </p>
-              </div>
-              <ProgressCalendar
-                goal={appState.goal}
-                dailyProgress={appState.dailyProgress}
-                onDayClick={handleDayClick}
-              />
-            </section>
-
-            <section>
-              <div className="mb-8 text-center">
-                <h3 className="mb-2 text-2xl font-bold">Performance Insights</h3>
-                <p className="mx-auto max-w-2xl text-white/60">
-                  Analyze trends in your effort and satisfaction to understand what works best for
-                  you.
-                </p>
-              </div>
-              <Charts dailyProgress={Object.values(appState.dailyProgress)} goal={appState.goal} />
-            </section>
-
-            <section>
-              <div className="p-8 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-                <h3 className="mb-2 text-2xl font-bold">Manage Your Goal</h3>
-                <p className="mx-auto mb-6 max-w-2xl text-white/60">
-                  Need to make changes? You can update your goal, start fresh, or manage your data
-                  backups here.
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                  <div
-                    onClick={() => handleOpenGoalModal(true)}
-                    className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-blue-400/30 hover:bg-blue-400/10 hover:border-blue-400/50"
-                  >
-                    <FiEdit size={24} className="mb-2 text-blue-400" />
-                    <span className="font-semibold">Update Goal</span>
-                  </div>
-                  <div
-                    onClick={promptForNewGoal}
-                    className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50"
-                  >
-                    <FiPlusCircle size={24} className="mb-2 text-red-400" />
-                    <span className="font-semibold">New Goal</span>
-                  </div>
-                  <label
-                    htmlFor="dashboardImportFile"
-                    className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10"
-                  >
-                    <FiUpload size={24} className="mb-2 text-green-400" />
-                    <span className="font-semibold">Import Data</span>
-                  </label>
-                  <div
-                    onClick={handleExport}
-                    className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10"
-                  >
-                    <FiDownload size={24} className="mb-2 text-purple-400" />
-                    <span className="font-semibold">Export Data</span>
-                  </div>
+      <nav className="sticky top-0 flex-col flex-shrink-0 items-center py-4 w-20 h-screen border-r backdrop-blur-md sm:w-24 bg-black/50 border-white/10">
+        <div className="overflow-y-auto flex-grow px-2 pb-4 space-y-4 w-full">
+          {isLoading
+            ? [...Array(sidebarItems.length)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col justify-center items-center px-1 py-3 w-full h-20 rounded-lg animate-pulse bg-white/10"
+                >
+                  <div className="mb-1 w-8 h-8 rounded-full bg-white/10"></div>
+                  <div className="w-12 h-3 rounded-md bg-white/10"></div>
                 </div>
-              </div>
-            </section>
-          </div>
+              ))
+            : sidebarItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`flex flex-col items-center justify-center w-full py-3 px-1 rounded-md transition-all duration-200 focus:outline-none cursor-pointer
+                    ${isActive ? 'text-white shadow-md bg-blue-500/70' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                    aria-label={item.label}
+                    title={item.label}
+                  >
+                    <Icon size={24} className="sm:text-2xl lg:text-3xl" />
+                    <span className="hidden mt-1 text-xs font-medium sm:block">{item.label}</span>
+                  </button>
+                );
+              })}
+        </div>
+      </nav>
+      <main className="overflow-y-auto flex-grow p-4 mx-auto max-w-4xl md:p-8">
+        {isLoading ? (
+          <div className="w-full  h-full rounded-2xl animate-pulse bg-white/[0.02]"></div>
         ) : (
-          <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-            <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
-            <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
-            <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-              Define your primary objective or import existing data to begin.
-            </p>
-            <div className="flex flex-col gap-4 justify-center sm:flex-row">
-              <button
-                onClick={() => handleOpenGoalModal(false)}
-                className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-              >
-                <FiTarget size={20} />
-                Set Your First Goal
-              </button>
-              <label
-                htmlFor="dashboardImportFile"
-                className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-white rounded-full transition-all duration-200 cursor-pointer bg-white/10 group hover:bg-white/20 hover:scale-105"
-              >
-                <FiUpload size={20} />
-                Import Data
-              </label>
-            </div>
-          </div>
+          ActiveComponent && (
+            <ActiveComponent
+              currentUser={currentUser}
+              appState={appState}
+              showMessage={showMessage}
+              onAppStateUpdate={handleAppStateUpdate}
+            />
+          )
         )}
-      </section>
-
-      <GoalModal
-        isOpen={activeModal === 'goal'}
-        onClose={() => setActiveModal(null)}
-        onSetGoal={handleSetGoal}
-        showMessage={showMessage}
-        initialGoalData={isEditMode ? transformedGoalForModal : null}
-        isEditMode={isEditMode}
-      />
-
-      {selectedDate && (
-        <DailyProgressModal
-          isOpen={activeModal === 'dailyProgress'}
-          onClose={() => setActiveModal(null)}
-          date={selectedDate}
-          initialProgress={initialProgress}
-          onSave={handleSaveProgress}
-          showMessage={showMessage}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={activeModal === 'confirmation'}
-        onClose={() => setActiveModal(null)}
-        title={confirmationProps.title}
-        message={confirmationProps.message}
-        confirmButton={{
-          text: 'Confirm',
-          onClick: () => {
-            confirmationProps.action();
-            setActiveModal(null);
-          },
-          className: 'bg-red-600 text-white hover:bg-red-700',
-        }}
-        cancelButton={{ text: 'Cancel', onClick: () => setActiveModal(null) }}
-        actionDelayMs={confirmationProps.actionDelayMs}
-      />
+      </main>
     </div>
+  );
+};
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }
