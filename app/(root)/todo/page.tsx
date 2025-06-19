@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { IconType } from 'react-icons';
 import { FiBookOpen, FiCheckSquare } from 'react-icons/fi';
 import { RiAlarmWarningLine } from 'react-icons/ri';
-import { FaChalkboardTeacher } from 'react-icons/fa';
 
 import { firebaseService } from '@/services/firebaseService';
 import { ListItem, TodoItem, AppState, DistractionItem } from '@/types';
@@ -16,7 +15,6 @@ import TodoList from '@/components/todo/TodoList';
 import TodoEditModal from '@/components/todo/TodoEditModal';
 import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import DashboardLessons from '../dashboard/DashboardLessons'; // Re-using the component
 
 const ListsPageSkeletonLoader = () => (
   <div className="space-y-8 animate-pulse">
@@ -40,7 +38,6 @@ const tabItems: TabItem[] = [
   { id: 'todo', label: 'To-Do List', icon: FiCheckSquare },
   { id: 'not-to-do', label: 'What Not To Do', icon: RiAlarmWarningLine },
   { id: 'notes', label: 'Contextual Notes', icon: FiBookOpen },
-  { id: 'lessons', label: 'Review Lessons', icon: FaChalkboardTeacher },
 ];
 
 const ConsolidatedListPageContent = () => {
@@ -49,7 +46,7 @@ const ConsolidatedListPageContent = () => {
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [appState, setAppState] = useState<AppState | null>(null);
+  const [, setAppState] = useState<AppState | null>(null);
 
   // States for all lists
   const [toDoList, setToDoList] = useState<TodoItem[]>([]);
@@ -293,8 +290,6 @@ const ConsolidatedListPageContent = () => {
             isUpdatingId={isUpdatingId}
           />
         );
-      case 'lessons':
-        return <DashboardLessons appState={appState} />;
       default:
         return null;
     }

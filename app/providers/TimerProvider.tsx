@@ -22,8 +22,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const stopwatchFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Initialize Tone.js synth on client side
-
     const unsubscribe = firebaseService.onAuthChange(user => {
       setUser(user);
     });
@@ -46,6 +44,23 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
   }, [updateStopwatchTimer]);
+
+  // --- RELOAD WARNING LOGIC ---
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (stopwatchIsRunning) {
+        // Calling preventDefault is the modern way to trigger the confirmation prompt.
+        // The custom message in `returnValue` is ignored by most browsers.
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [stopwatchIsRunning]);
 
   const handleStopwatchStart = () => {
     setStopwatchIsRunning(true);
