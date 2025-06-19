@@ -11,6 +11,7 @@ import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import { firebaseService } from '@/services/firebaseService';
 import DashboardSettings from './DashboardSettings'; // Import settings component
+import RoutineTimeline from './RoutineTimeline'; // Import the new component
 
 interface DashboardMainProps {
   currentUser: User | null;
@@ -104,6 +105,11 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
           </p>
         </div>
         <CountdownCard goal={appState.goal} />
+      </section>
+
+      {/* Routine Timeline Section */}
+      <section>
+        <RoutineTimeline appState={appState} />
       </section>
 
       <section>
