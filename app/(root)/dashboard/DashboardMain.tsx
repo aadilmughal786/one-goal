@@ -6,13 +6,11 @@ import { User } from 'firebase/auth';
 import { AppState, DailyProgress } from '@/types';
 import { isToday, format } from 'date-fns';
 import { MdRocketLaunch } from 'react-icons/md';
-import { FiTarget } from 'react-icons/fi';
-import Link from 'next/link';
-
 import CountdownCard from '@/components/dashboard/CountdownCard';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import { firebaseService } from '@/services/firebaseService';
+import DashboardSettings from './DashboardSettings'; // Import settings component
 
 interface DashboardMainProps {
   currentUser: User | null;
@@ -66,27 +64,35 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
       ? appState.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
       : null;
 
+  // Handle the case where no goal is set yet.
   if (!appState?.goal) {
     return (
-      <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-        <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
-        <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
-        <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-          Define your primary objective or import existing data to begin.
-        </p>
-        <div className="flex flex-col gap-4 justify-center sm:flex-row">
-          <Link
-            href="/dashboard?tab=settings"
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-          >
-            <FiTarget size={20} />
-            Set Your First Goal
-          </Link>
-        </div>
+      <div className="space-y-12">
+        <section>
+          <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+            <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
+            <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
+            <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
+              Define your primary objective or import existing data using the management options
+              below.
+            </p>
+          </div>
+        </section>
+
+        {/* Render settings so the user can create a new goal */}
+        <section>
+          <DashboardSettings
+            currentUser={currentUser}
+            appState={appState}
+            showMessage={showMessage}
+            onAppStateUpdate={onAppStateUpdate}
+          />
+        </section>
       </div>
     );
   }
 
+  // Normal view when a goal exists
   return (
     <div className="space-y-12">
       <section>
@@ -111,6 +117,16 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
           goal={appState.goal}
           dailyProgress={appState.dailyProgress}
           onDayClick={handleDayClick}
+        />
+      </section>
+
+      {/* Add the settings component at the end of the main dashboard view */}
+      <section>
+        <DashboardSettings
+          currentUser={currentUser}
+          appState={appState}
+          showMessage={showMessage}
+          onAppStateUpdate={onAppStateUpdate}
         />
       </section>
 

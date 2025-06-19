@@ -5,17 +5,16 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IconType } from 'react-icons';
-import { FiGrid, FiBarChart2, FiSettings, FiFeather, FiBookOpen } from 'react-icons/fi'; // <-- Import FiBookOpen
+import { FiGrid, FiBarChart2, FiFeather, FiBookOpen } from 'react-icons/fi';
 import { AppState } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
 import ToastMessage from '@/components/ToastMessage';
 import DashboardMain from './DashboardMain';
 import DashboardAnalytics from './DashboardAnalytics';
-import DashboardSettings from './DashboardSettings';
 import DashboardQuotes from './DashboardQuotes';
-import DashboardLessons from './DashboardLessons'; // <-- Import the new component
+import DashboardLessons from './DashboardLessons';
 
-interface SidebarItem {
+interface TabItem {
   id: string;
   label: string;
   icon: IconType;
@@ -23,12 +22,12 @@ interface SidebarItem {
   component: React.ComponentType<any>;
 }
 
-const sidebarItems: SidebarItem[] = [
+// Updated tab items, removing "Manage"
+const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
-  { id: 'lessons', label: 'Lessons', icon: FiBookOpen, component: DashboardLessons }, // <-- ADDED THIS LINE
-  { id: 'settings', label: 'Manage', icon: FiSettings, component: DashboardSettings },
+  { id: 'lessons', label: 'Lessons', icon: FiBookOpen, component: DashboardLessons },
 ];
 
 const DashboardPageContent = () => {
@@ -41,7 +40,7 @@ const DashboardPageContent = () => {
 
   const [activeTab, setActiveTabInternal] = useState<string>(() => {
     const tabFromUrl = searchParams.get('tab');
-    return sidebarItems.find(item => item.id === tabFromUrl)?.id || sidebarItems[0].id;
+    return tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -87,51 +86,50 @@ const DashboardPageContent = () => {
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && activeTab !== tabFromUrl) {
-      if (sidebarItems.some(item => item.id === tabFromUrl)) {
+      if (tabItems.some(item => item.id === tabFromUrl)) {
         setActiveTabInternal(tabFromUrl);
       }
     }
   }, [searchParams, activeTab]);
 
-  const ActiveComponent = sidebarItems.find(item => item.id === activeTab)?.component;
+  const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
 
   return (
-    <div className="flex min-h-screen text-white bg-black border-b border-white/10 font-poppins">
+    <div className="flex flex-col min-h-screen text-white bg-black font-poppins">
       <ToastMessage message={toastMessage} type={toastType} />
-      <nav className="sticky top-0 flex-col flex-shrink-0 items-center py-4 w-20 h-screen border-r backdrop-blur-md sm:w-24 bg-black/50 border-white/10">
-        <div className="overflow-y-auto flex-grow px-2 pb-4 space-y-4 w-full">
+
+      {/* Horizontal Tab Navigation */}
+      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+        <div className="flex space-x-2">
           {isLoading
-            ? [...Array(sidebarItems.length)].map((_, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col justify-center items-center px-1 py-3 w-full h-20 rounded-lg animate-pulse bg-white/10"
-                >
-                  <div className="mb-1 w-8 h-8 rounded-full bg-white/10"></div>
-                  <div className="w-12 h-3 rounded-md bg-white/10"></div>
+            ? [...Array(tabItems.length)].map((_, i) => (
+                <div key={i} className="px-4 py-4 animate-pulse">
+                  <div className="w-24 h-6 rounded-md bg-white/10"></div>
                 </div>
               ))
-            : sidebarItems.map(item => {
+            : tabItems.map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`flex flex-col items-center justify-center w-full py-3 px-1 rounded-md transition-all duration-200 focus:outline-none cursor-pointer
-                    ${isActive ? 'text-white shadow-md bg-blue-500/70' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                    ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
                     aria-label={item.label}
-                    title={item.label}
                   >
-                    <Icon size={24} className="sm:text-2xl lg:text-3xl" />
-                    <span className="hidden mt-1 text-xs font-medium sm:block">{item.label}</span>
+                    <Icon size={18} />
+                    <span>{item.label}</span>
                   </button>
                 );
               })}
         </div>
       </nav>
-      <main className="flex-grow p-4 mx-auto max-w-4xl md:p-8">
+
+      {/* Main Content Area */}
+      <main className="flex-grow p-4 mx-auto w-full max-w-4xl md:p-8">
         {isLoading ? (
-          <div className="w-full  h-full rounded-2xl animate-pulse bg-white/[0.02]"></div>
+          <div className="w-full h-96 rounded-2xl animate-pulse bg-white/[0.02]"></div>
         ) : (
           ActiveComponent && (
             <ActiveComponent

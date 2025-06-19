@@ -72,11 +72,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   return (
     <>
       <ToastMessage message={toastMessage} type="error" />
-      <div className="absolute right-0 z-30 mt-1 w-64 animate-fade-in-down">
-        {/* --- MODIFIED: A new, better-styled tooltip arrow --- */}
-        <div className="absolute -top-[6px] right-2 w-3 h-3 border-t border-l transform rotate-45 bg-neutral-900 border-white/10"></div>
+      {/* The main container is now relative, positioned by the parent NavBar */}
+      <div className="relative w-64 animate-fade-in-right">
+        {/* The arrow is now positioned near the bottom of the dropdown. */}
+        <div className="absolute -left-1.5 bottom-3 w-3 h-3 transform rotate-45 bg-neutral-900 border-b border-l border-white/10"></div>
 
-        <div className="overflow-hidden rounded-xl rounded-tr-sm border shadow-2xl bg-neutral-900 border-white/10">
+        <div className="overflow-hidden rounded-xl border shadow-2xl bg-neutral-900 border-white/10">
           <div className="flex gap-3 items-center px-4 py-3 border-b border-white/10">
             <Image
               src={user.photoURL!}

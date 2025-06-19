@@ -6,10 +6,10 @@ import { User } from 'firebase/auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { FiHome, FiList, FiCheckSquare, FiMenu, FiX, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiList, FiCheckSquare } from 'react-icons/fi';
 import { firebaseService } from '@/services/firebaseService';
 import ProfileDropdown from './nav/ProfileDropdown';
-import { MdRocketLaunch, MdOutlineRepeat } from 'react-icons/md'; // Import MdOutlineRepeat for Routine
+import { MdRocketLaunch, MdOutlineRepeat } from 'react-icons/md';
 import { GoStopwatch } from 'react-icons/go';
 
 // Navigation links are defined in an array for easier management and mapping.
@@ -17,7 +17,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
   { href: '/todo', label: 'To-Do', icon: <FiCheckSquare /> },
   { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
-  { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> }, // Added Routine link
+  { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> },
   { href: '/list', label: 'Lists', icon: <FiList /> },
 ];
 
@@ -25,10 +25,7 @@ export default function NavBar() {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Effect to close dropdowns when clicking outside of them.
@@ -45,11 +42,6 @@ export default function NavBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Effect to close the mobile menu automatically on route changes.
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
   // Effect to listen for changes in Firebase authentication state.
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(user => {
@@ -62,8 +54,8 @@ export default function NavBar() {
   // Helper function to dynamically apply CSS classes for active navigation links.
   const getNavLinkClasses = (navPath: string) => {
     const baseClasses =
-      'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-200 cursor-pointer';
-    const activeClasses = 'bg-white/10 text-white font-semibold';
+      'flex items-center justify-center w-full h-14 rounded-lg transition-colors duration-200 cursor-pointer';
+    const activeClasses = 'bg-blue-500/80 text-white';
     const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
 
     // Special handling for '/routine' to match all sub-paths under it
@@ -74,158 +66,79 @@ export default function NavBar() {
     return `${baseClasses} ${pathname === navPath ? activeClasses : inactiveClasses}`;
   };
 
-  // Handler for signing the user out.
-  const handleSignOut = async () => {
-    await firebaseService.signOutUser();
-    // The onAuthChange listener will handle redirects automatically.
-  };
-
   return (
-    <>
-      <nav className="flex sticky top-0 z-40 justify-between items-center px-4 py-3 border-b shadow-lg backdrop-blur-md md:px-6 bg-black/50 border-white/10">
-        {/* App Icon and Logo Skeleton */}
+    // Main container is now narrower (w-16).
+    <nav className="flex fixed top-0 left-0 z-40 flex-col justify-between items-center px-2 py-5 w-16 h-screen border-r shadow-lg backdrop-blur-md bg-black/50 border-white/10">
+      {/* Top Section: App Icon/Logo (Icon only) */}
+      <div className="flex justify-center">
         {authLoading ? (
-          <div className="flex gap-2 items-center">
-            <div className="w-8 h-8 rounded-full animate-pulse bg-white/10"></div>
-            <div className="hidden w-20 h-6 rounded-md animate-pulse bg-white/10 sm:inline"></div>
-          </div>
+          <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
         ) : (
-          <Link href="/dashboard" className="flex gap-2 items-center cursor-pointer">
-            <MdRocketLaunch size={30} className="text-white" />
-            <span className="hidden text-xl font-bold sm:inline">One Goal</span>
+          <Link
+            href="/dashboard"
+            className="p-2 rounded-full group hover:bg-white/10"
+            title="One Goal Home"
+          >
+            <MdRocketLaunch
+              size={28}
+              className="text-white transition-transform duration-300 group-hover:scale-110"
+            />
           </Link>
         )}
+      </div>
 
-        {/* --- Desktop Navigation --- */}
+      {/* Middle Section: Navigation Links (Icon only) */}
+      <div className="flex flex-col gap-2 w-full">
         {authLoading ? (
-          <div className="hidden gap-3 items-center md:flex">
-            {/* Skeletons for desktop nav links */}
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="w-20 h-8 rounded-lg animate-pulse bg-white/10"></div>
+          <div className="flex flex-col gap-4 items-center">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="w-14 h-14 rounded-lg animate-pulse bg-white/10"></div>
             ))}
           </div>
         ) : (
-          <div className="hidden gap-1 text-sm md:flex">
-            {navLinks.map(link => (
-              <Link key={link.href} href={link.href} className={getNavLinkClasses(link.href)}>
-                {React.cloneElement(link.icon, { size: 20 })}
-                <span className="hidden lg:inline">{link.label}</span>
-              </Link>
-            ))}
-          </div>
+          navLinks.map(link => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={getNavLinkClasses(link.href)}
+              title={link.label}
+            >
+              {React.cloneElement(link.icon, { size: 24 })}
+            </Link>
+          ))
         )}
+      </div>
 
-        <div className="flex gap-3 items-center">
-          <div className="relative w-7 h-7" ref={profileDropdownRef}>
-            <button
-              onClick={() => setIsProfileDropdownOpen(prev => !prev)}
-              disabled={authLoading}
-              className="rounded-full transition-opacity duration-200 cursor-pointer"
-            >
-              {authLoading ? (
-                <div className="w-7 h-7 rounded-full animate-pulse bg-white/10"></div>
-              ) : currentUser?.photoURL ? (
-                <Image
-                  src={currentUser.photoURL}
-                  alt="User Avatar"
-                  width={28}
-                  height={28}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
-                  {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-            </button>
-            {isProfileDropdownOpen && currentUser && (
-              <ProfileDropdown user={currentUser} onClose={() => setIsProfileDropdownOpen(false)} />
-            )}
-          </div>
-
-          {/* --- NEW: Separator for mobile view --- */}
-          <div className="w-px h-6 bg-white/20 md:hidden"></div>
-
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 cursor-pointer text-white/80 hover:text-white"
-            >
-              <FiMenu size={24} />
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* --- Mobile Menu Overlay --- */}
-      <div
-        className={`fixed inset-0 z-50 transition-transform duration-300 ease-in-out md:hidden ${
-          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div
-          className="absolute inset-0 backdrop-blur-md cursor-pointer bg-black/60"
-          onClick={() => setIsMobileMenuOpen(false)}
-        ></div>
-        <div className="flex absolute top-0 right-0 z-10 flex-col justify-between p-6 w-full max-w-xs h-full shadow-2xl bg-neutral-900">
-          <div>
-            <div className="flex justify-between items-center mb-10">
-              <span className="text-xl font-bold">Menu</span>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 rounded-full cursor-pointer hover:bg-white/20 text-white/80 hover:text-white"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {/* Mobile nav links skeleton */}
-              {authLoading
-                ? [...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="my-1 w-full h-12 bg-gray-700 rounded-lg animate-pulse"
-                    ></div>
-                  ))
-                : navLinks.map(link => (
-                    <Link
-                      key={`mobile-${link.href}`}
-                      href={link.href}
-                      className={`${getNavLinkClasses(link.href)} text-lg py-3`}
-                    >
-                      {React.cloneElement(link.icon, { size: 22 })}
-                      <span>{link.label}</span>
-                    </Link>
-                  ))}
-            </div>
-          </div>
-
-          {currentUser && (
-            <div className="py-4 border-t border-white/10">
-              <div className="flex gap-3 items-center mb-4">
-                <Image
-                  src={currentUser.photoURL!}
-                  alt="User Avatar"
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                />
-                <div className="text-sm">
-                  <p className="font-semibold text-white">{currentUser.displayName}</p>
-                  <p className="text-white/60">{currentUser.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="flex gap-2 justify-center items-center px-4 py-3 w-full text-base font-semibold text-red-400 rounded-lg transition-colors cursor-pointer bg-red-500/10 hover:bg-red-500/20"
-              >
-                <FiLogOut />
-                <span>Sign Out</span>
-              </button>
+      {/* Bottom Section: User Profile */}
+      <div className="flex relative justify-center" ref={profileDropdownRef}>
+        <button
+          onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+          disabled={authLoading}
+          className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
+        >
+          {authLoading ? (
+            <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
+          ) : currentUser?.photoURL ? (
+            <Image
+              src={currentUser.photoURL}
+              alt="User Avatar"
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+          ) : (
+            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
+              {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
             </div>
           )}
-        </div>
+        </button>
+        {isProfileDropdownOpen && currentUser && (
+          // Position the dropdown to the right of the navbar
+          <div className="absolute bottom-0 left-full z-50 ml-3">
+            <ProfileDropdown user={currentUser} onClose={() => setIsProfileDropdownOpen(false)} />
+          </div>
+        )}
       </div>
-    </>
+    </nav>
   );
 }

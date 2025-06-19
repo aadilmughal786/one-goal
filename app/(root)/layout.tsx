@@ -10,9 +10,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
+    <div className="flex flex-row text-white bg-black">
       <NavBar />
-      {children}
-    </>
+      {/* The main content area now has less padding (pl-16) to match the new, narrower sidebar. */}
+      <main className="flex-grow pl-16">{children}</main>
+    </div>
   );
 }
