@@ -232,7 +232,7 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
 
   return (
     <>
-      <div className="space-y-8">
+      <div className="mt-8 space-y-16">
         {/* Main Sleep Settings Card */}
         <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
           <h2 className="flex gap-3 items-center p-6 pb-0 text-2xl font-bold text-white">

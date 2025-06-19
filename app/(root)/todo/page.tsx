@@ -1,48 +1,84 @@
 // app/(root)/todo/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { IconType } from 'react-icons';
+import { FiBookOpen, FiCheckSquare } from 'react-icons/fi';
+import { RiAlarmWarningLine } from 'react-icons/ri';
+import { FaChalkboardTeacher } from 'react-icons/fa';
 
 import { firebaseService } from '@/services/firebaseService';
-import { AppState, TodoItem } from '@/types';
-import ToastMessage from '@/components/ToastMessage';
+import { ListItem, TodoItem, AppState } from '@/types';
+import ListComponent from '@/components/List';
 import TodoList from '@/components/todo/TodoList';
 import TodoEditModal from '@/components/todo/TodoEditModal';
+import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import DashboardLessons from '../dashboard/DashboardLessons'; // Re-using the component
 
-const TodoPageSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="mx-auto mb-8 w-3/4 h-10 rounded-lg bg-white/10"></div>
+const ListsPageSkeletonLoader = () => (
+  <div className="space-y-8 animate-pulse">
     <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
-      <div className="flex flex-col gap-2 mb-6 sm:flex-row">
-        <div className="flex-1 h-12 rounded-lg bg-white/10"></div>
-        <div className="w-full h-12 rounded-lg sm:w-24 bg-white/10"></div>
-      </div>
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center p-4 h-16 rounded-lg bg-white/5" />
-        ))}
+      <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
+      <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
+      <div className="space-y-3">
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
       </div>
     </div>
   </div>
 );
 
-export default function TodoPage() {
-  const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [appState, setAppState] = useState<AppState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false); // State for Add button loader
+interface TabItem {
+  id: string;
+  label: string;
+  icon: IconType;
+}
 
+const tabItems: TabItem[] = [
+  { id: 'todo', label: 'To-Do List', icon: FiCheckSquare },
+  { id: 'not-to-do', label: 'What Not To Do', icon: RiAlarmWarningLine },
+  { id: 'notes', label: 'Contextual Notes', icon: FiBookOpen },
+  { id: 'lessons', label: 'Review Lessons', icon: FaChalkboardTeacher },
+];
+
+const ConsolidatedListPageContent = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [appState, setAppState] = useState<AppState | null>(null);
+
+  // States for all lists
+  const [toDoList, setToDoList] = useState<TodoItem[]>([]);
+  const [notToDoList, setNotToDoList] = useState<ListItem[]>([]);
+  const [contextList, setContextList] = useState<ListItem[]>([]);
+
+  // States for UI feedback and modals
+  const [isAdding, setIsAdding] = useState({ todo: false, notToDoList: false, contextList: false });
+  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    listType: 'toDoList' | 'notToDoList' | 'contextList';
+    id: string;
+  } | null>(null);
+
+  // States for editing
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [selectedTodoItem, setSelectedTodoItem] = useState<TodoItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // General UI states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [todoToDelete, setTodoToDelete] = useState<string | null>(null);
-  const [selectedTodoItem, setSelectedTodoItem] = useState<TodoItem | null>(null);
+  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+  });
 
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
@@ -54,8 +90,11 @@ export default function TodoPage() {
       try {
         const data = await firebaseService.getUserData(uid);
         setAppState(data);
+        setToDoList(data.toDoList || []);
+        setNotToDoList(data.notToDoList || []);
+        setContextList(data.contextList || []);
       } catch {
-        showMessage('Failed to load tasks.', 'error');
+        showMessage('Failed to load lists.', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -75,64 +114,117 @@ export default function TodoPage() {
     return () => unsubscribe();
   }, [router, fetchUserData]);
 
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTabInternal(tabId);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('tab', tabId);
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && activeTab !== tabFromUrl) {
+      if (tabItems.some(item => item.id === tabFromUrl)) {
+        setActiveTabInternal(tabFromUrl);
+      }
+    }
+  }, [searchParams, activeTab]);
+
+  // --- Handlers for all list types ---
+
+  const handleAddToList = useCallback(
+    async (listType: 'notToDoList' | 'contextList', text: string) => {
+      if (!text.trim()) {
+        showMessage('Item cannot be empty.', 'error');
+        return;
+      }
+      if (!currentUser) return;
+      setIsAdding(prev => ({ ...prev, [listType]: true }));
+      try {
+        await firebaseService.addItemToList(currentUser.uid, listType, text.trim());
+        await fetchUserData(currentUser.uid);
+        showMessage('Item added!', 'success');
+      } catch {
+        showMessage('Failed to add item.', 'error');
+      } finally {
+        setIsAdding(prev => ({ ...prev, [listType]: false }));
+      }
+    },
+    [currentUser, fetchUserData, showMessage]
+  );
+
   const handleAddTodo = async (text: string) => {
     if (!currentUser) return;
-    setIsAdding(true);
+    setIsAdding(prev => ({ ...prev, todo: true }));
     try {
       await firebaseService.addTodoItem(currentUser.uid, text);
-      await fetchUserData(currentUser.uid); // Refetch to get the new list with correct order
+      await fetchUserData(currentUser.uid);
       showMessage('Task added!', 'success');
     } catch {
       showMessage('Failed to add task.', 'error');
     } finally {
-      setIsAdding(false);
+      setIsAdding(prev => ({ ...prev, todo: false }));
     }
   };
 
-  const handleUpdateTodo = async (id: string, updates: Partial<TodoItem>) => {
-    if (!currentUser) return;
-    try {
-      await firebaseService.updateItemInList(currentUser.uid, 'toDoList', id, updates);
-      // Optimistic UI update
-      setAppState(prev => {
-        if (!prev) return null;
-        const updatedList = prev.toDoList.map(item =>
-          item.id === id ? { ...item, ...updates } : item
-        );
-        return { ...prev, toDoList: updatedList };
-      });
-      showMessage(updates.completed ? 'Task completed!' : 'Task updated!', 'success');
-    } catch {
-      showMessage('Failed to update task.', 'error');
-    }
-  };
+  const handleUpdateItem = useCallback(
+    async (
+      listType: 'toDoList' | 'notToDoList' | 'contextList',
+      id: string,
+      updates: Partial<TodoItem | ListItem>
+    ) => {
+      if (!currentUser) return;
+      setIsUpdatingId(id);
+      try {
+        await firebaseService.updateItemInList(currentUser.uid, listType, id, updates);
+        await fetchUserData(currentUser.uid);
+        // Type guard to check if 'completed' property exists
+        if ('completed' in updates && updates.completed !== undefined) {
+          showMessage(updates.completed ? 'Task completed!' : 'Task updated!', 'success');
+        } else {
+          showMessage('Item updated.', 'success');
+        }
+      } catch {
+        showMessage('Failed to update item.', 'error');
+      } finally {
+        setIsUpdatingId(null);
+        setEditingItemId(null);
+        setIsEditModalOpen(false);
+      }
+    },
+    [currentUser, fetchUserData, showMessage]
+  );
 
-  const handleDeleteConfirmation = async (id: string) => {
-    setTodoToDelete(id);
+  const handleDeleteConfirmation = (
+    listType: 'toDoList' | 'notToDoList' | 'contextList',
+    id: string
+  ) => {
+    setItemToDelete({ listType, id });
     setIsConfirmModalOpen(true);
   };
 
-  const handleDeleteTodo = async () => {
-    if (!currentUser || !todoToDelete) return;
+  const removeFromList = useCallback(async () => {
+    if (!currentUser || !itemToDelete) return;
+    const { listType, id } = itemToDelete;
     try {
-      await firebaseService.removeItemFromList(currentUser.uid, 'toDoList', todoToDelete);
-      setAppState(prev =>
-        prev ? { ...prev, toDoList: prev.toDoList.filter(item => item.id !== todoToDelete) } : null
-      );
-      showMessage('Task deleted.', 'info');
+      await firebaseService.removeItemFromList(currentUser.uid, listType, id);
+      await fetchUserData(currentUser.uid);
+      showMessage('Item removed.', 'info');
     } catch {
-      showMessage('Failed to delete task.', 'error');
+      showMessage('Failed to remove item.', 'error');
     } finally {
       setIsConfirmModalOpen(false);
-      setTodoToDelete(null);
+      setItemToDelete(null);
     }
-  };
+  }, [currentUser, showMessage, itemToDelete, fetchUserData]);
 
   const handleReorderTodos = async (reorderedList: TodoItem[]) => {
     if (!currentUser) return;
     try {
-      // Optimistic update
-      setAppState(prev => (prev ? { ...prev, toDoList: reorderedList } : null));
+      setToDoList(reorderedList); // Optimistic update
       await firebaseService.updateTodoListOrder(currentUser.uid, reorderedList);
     } catch {
       showMessage('Failed to reorder tasks.', 'error');
@@ -145,43 +237,96 @@ export default function TodoPage() {
     setIsEditModalOpen(true);
   };
 
-  const sortedToDoList = appState?.toDoList
-    ? [...appState.toDoList].sort((a, b) => a.order - b.order)
-    : [];
+  const sortedToDoList = [...toDoList].sort((a, b) => a.order - b.order);
 
-  if (isLoading) {
-    return (
-      <main className="container p-4 mx-auto max-w-4xl">
-        <section className="py-8">
-          <TodoPageSkeleton />
-        </section>
-      </main>
-    );
-  }
+  const renderActiveTabContent = () => {
+    if (isLoading) {
+      return <ListsPageSkeletonLoader />;
+    }
 
-  return (
-    <main className="flex flex-col min-h-screen text-white bg-black">
-      <ToastMessage message={toastMessage} type={toastType} duration={3000} />
-      <div className="container flex-grow p-4 mx-auto max-w-4xl">
-        <section className="py-8">
-          <div className="mb-8 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">Actionable Tasks</h2>
-            <p className="mx-auto max-w-2xl text-lg text-white/70">
-              The steps to your goal. Drag to prioritize, add details, and conquer your objective.
-            </p>
-          </div>
-
+    switch (activeTab) {
+      case 'todo':
+        return (
           <TodoList
             toDoList={sortedToDoList}
             onAddTodo={handleAddTodo}
-            onUpdateTodo={handleUpdateTodo}
-            onDeleteTodo={handleDeleteConfirmation}
+            onUpdateTodo={(id, updates) => handleUpdateItem('toDoList', id, updates)}
+            // Corrected to be an async lambda to match expected type
+            onDeleteTodo={async id => handleDeleteConfirmation('toDoList', id)}
             onReorderTodos={handleReorderTodos}
             onEditTodo={handleOpenEditModal}
             showMessage={showMessage}
-            isAdding={isAdding}
+            isAdding={isAdding.todo}
           />
-        </section>
+        );
+      case 'not-to-do':
+        return (
+          <ListComponent
+            list={notToDoList}
+            addToList={text => handleAddToList('notToDoList', text)}
+            removeFromList={id => handleDeleteConfirmation('notToDoList', id)}
+            updateItem={(id, text) => handleUpdateItem('notToDoList', id, { text })}
+            placeholder="Add a distraction to avoid..."
+            themeColor="red"
+            editingItemId={editingItemId}
+            setEditingItemId={setEditingItemId}
+            editText={editText}
+            setEditText={setEditText}
+            isAdding={isAdding.notToDoList}
+            isUpdatingId={isUpdatingId}
+          />
+        );
+      case 'notes':
+        return (
+          <ListComponent
+            list={contextList}
+            addToList={text => handleAddToList('contextList', text)}
+            removeFromList={id => handleDeleteConfirmation('contextList', id)}
+            updateItem={(id, text) => handleUpdateItem('contextList', id, { text })}
+            placeholder="Add a note or learning..."
+            themeColor="blue"
+            editingItemId={editingItemId}
+            setEditingItemId={setEditingItemId}
+            editText={editText}
+            setEditText={setEditText}
+            isAdding={isAdding.contextList}
+            isUpdatingId={isUpdatingId}
+          />
+        );
+      case 'lessons':
+        return <DashboardLessons appState={appState} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <main className="flex flex-col min-h-screen text-white bg-black">
+      <ToastMessage message={toastMessage} type={toastType} />
+
+      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+        <div className="flex flex-wrap justify-center space-x-2">
+          {tabItems.map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                    ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
+                aria-label={item.label}
+              >
+                <Icon size={18} />
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <div className="container flex-grow p-4 mx-auto max-w-4xl">
+        <section className="py-8">{renderActiveTabContent()}</section>
       </div>
 
       {isEditModalOpen && (
@@ -189,7 +334,7 @@ export default function TodoPage() {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           todoItem={selectedTodoItem}
-          onSave={handleUpdateTodo}
+          onSave={(id, updates) => handleUpdateItem('toDoList', id, updates)}
           showMessage={showMessage}
         />
       )}
@@ -197,15 +342,23 @@ export default function TodoPage() {
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
-        title="Delete Task?"
-        message="Are you sure you want to delete this task? This action cannot be undone."
+        title="Delete Item?"
+        message="Are you sure you want to delete this item? This action cannot be undone."
         confirmButton={{
           text: 'Delete',
-          onClick: handleDeleteTodo,
+          onClick: removeFromList,
           className: 'bg-red-600 text-white hover:bg-red-700',
         }}
         cancelButton={{ text: 'Cancel', onClick: () => setIsConfirmModalOpen(false) }}
       />
     </main>
+  );
+};
+
+export default function TodoPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ConsolidatedListPageContent />
+    </Suspense>
   );
 }

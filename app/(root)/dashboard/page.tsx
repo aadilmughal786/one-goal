@@ -5,29 +5,34 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IconType } from 'react-icons';
-import { FiGrid, FiBarChart2, FiFeather, FiBookOpen } from 'react-icons/fi';
+import { FiGrid, FiBarChart2, FiFeather } from 'react-icons/fi'; // Removed FiSettings
 import { AppState } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
 import ToastMessage from '@/components/ToastMessage';
 import DashboardMain from './DashboardMain';
 import DashboardAnalytics from './DashboardAnalytics';
 import DashboardQuotes from './DashboardQuotes';
-import DashboardLessons from './DashboardLessons';
+
+// Define a specific interface for the props passed to each dashboard tab component
+interface DashboardTabProps {
+  currentUser: User | null;
+  appState: AppState | null;
+  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  onAppStateUpdate: (newAppState: AppState) => void;
+}
 
 interface TabItem {
   id: string;
   label: string;
   icon: IconType;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  component: React.ComponentType<any>;
+  component: React.ComponentType<DashboardTabProps>; // Use the specific props interface
 }
 
-// Updated tab items, removing "Manage"
+// "Lessons" tab has been removed from here.
 const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
-  { id: 'lessons', label: 'Lessons', icon: FiBookOpen, component: DashboardLessons },
 ];
 
 const DashboardPageContent = () => {
