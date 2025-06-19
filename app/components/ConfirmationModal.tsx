@@ -1,9 +1,8 @@
 // app/components/ConfirmationModal.tsx
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiAlertTriangle, FiX, FiLoader } from 'react-icons/fi';
-import * as Tone from 'tone';
 
 // Define a type for a single button in the modal
 interface ModalButton {
@@ -39,23 +38,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const [countdown, setCountdown] = useState(actionDelayMs / 1000);
   const [actionsEnabled, setActionsEnabled] = useState(actionDelayMs === 0);
   const [isConfirming, setIsConfirming] = useState(false);
-  const synth = useRef<Tone.Synth | null>(null);
-
-  useEffect(() => {
-    // Initialize synth on client-side
-    if (!synth.current) {
-      synth.current = new Tone.Synth().toDestination();
-    }
-  }, []);
 
   // Effect to manage the countdown timer and play sound on open
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isOpen) {
-      // Play a sound to alert the user
-      Tone.start();
-      synth.current?.triggerAttackRelease('C4', '0.2');
-
       if (actionDelayMs > 0) {
         setActionsEnabled(false); // Disable actions initially
         setCountdown(Math.max(0, actionDelayMs / 1000)); // Reset countdown

@@ -1,9 +1,8 @@
 // app/components/ToastMessage.tsx
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiCheckCircle, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
-import * as Tone from 'tone';
 
 interface ToastMessageProps {
   message: string | null;
@@ -14,27 +13,11 @@ interface ToastMessageProps {
 // An inner component to manage the lifecycle of a single toast notification.
 const SingleToast: React.FC<ToastMessageProps> = ({ message, type = 'info', duration = 5000 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const synth = useRef<Tone.Synth | null>(null);
-
-  useEffect(() => {
-    // Initialize synth on client-side
-    if (!synth.current) {
-      synth.current = new Tone.Synth().toDestination();
-    }
-  }, []);
 
   useEffect(() => {
     // When the component mounts, make it visible and play a sound.
     const showTimeout = setTimeout(() => {
       setIsVisible(true);
-      Tone.start();
-      if (type === 'success') {
-        synth.current?.triggerAttackRelease('C5', '0.2');
-      } else if (type === 'error') {
-        synth.current?.triggerAttackRelease('G2', '0.2');
-      } else {
-        synth.current?.triggerAttackRelease('E4', '0.2');
-      }
     }, 50);
 
     // Set a timer to hide it after the specified duration.

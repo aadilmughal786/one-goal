@@ -3,17 +3,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
-import * as Tone from 'tone';
 import { TimerContext, TimerContextType } from '@/contexts/TimerContext';
 import { firebaseService } from '@/services/firebaseService';
 import { StopwatchSession } from '@/types';
-import type { TimerMode } from '@/components/stopwatch/PomodoroTimer';
-
-const timeSettings: Record<TimerMode, number> = {
-  pomodoro: 25 * 60,
-  shortBreak: 5 * 60,
-  longBreak: 15 * 60,
-};
 
 export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setUser] = useState<User | null>(null);
@@ -25,21 +17,12 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [stopwatchSessionLabel, setStopwatchSessionLabel] = useState('');
   const [isSavingStopwatch, setIsSavingStopwatch] = useState(false);
 
-  // Pomodoro State
-  const [pomodoroMode, setPomodoroMode] = useState<TimerMode>('pomodoro');
-  const [pomodoroTimeLeft, setPomodoroTimeLeft] = useState(timeSettings.pomodoro);
-  const [pomodoroIsActive, setPomodoroIsActive] = useState(false);
-  const [pomodoroCount, setPomodoroCount] = useState(0);
-
   // Refs for timers
   const stopwatchStartTimeRef = useRef<number>(0);
-  const pomodoroIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopwatchFrameRef = useRef<number | null>(null);
-  const synth = useRef<Tone.Synth | null>(null);
 
   useEffect(() => {
     // Initialize Tone.js synth on client side
-    synth.current = new Tone.Synth().toDestination();
 
     const unsubscribe = firebaseService.onAuthChange(user => {
       setUser(user);
@@ -102,54 +85,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // --- POMODORO LOGIC ---
-  const playSound = useCallback(() => {
-    Tone.start();
-    synth.current?.triggerAttackRelease('C5', '0.5');
-  }, []);
-
-  const handlePomodoroSwitchMode = useCallback((newMode: TimerMode) => {
-    setPomodoroIsActive(false);
-    setPomodoroMode(newMode);
-    setPomodoroTimeLeft(timeSettings[newMode]);
-  }, []);
-
-  useEffect(() => {
-    if (pomodoroIsActive && pomodoroTimeLeft > 0) {
-      pomodoroIntervalRef.current = setInterval(() => {
-        setPomodoroTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (pomodoroTimeLeft === 0) {
-      playSound();
-      if (pomodoroMode === 'pomodoro') {
-        const newPomodoroCount = pomodoroCount + 1;
-        setPomodoroCount(newPomodoroCount);
-        handlePomodoroSwitchMode(newPomodoroCount % 4 === 0 ? 'longBreak' : 'shortBreak');
-      } else {
-        handlePomodoroSwitchMode('pomodoro');
-      }
-    }
-    return () => {
-      if (pomodoroIntervalRef.current) clearInterval(pomodoroIntervalRef.current);
-    };
-  }, [
-    pomodoroIsActive,
-    pomodoroTimeLeft,
-    pomodoroMode,
-    pomodoroCount,
-    handlePomodoroSwitchMode,
-    playSound,
-  ]);
-
-  const handlePomodoroToggle = () => {
-    setPomodoroIsActive(!pomodoroIsActive);
-  };
-
-  const handlePomodoroReset = () => {
-    setPomodoroIsActive(false);
-    setPomodoroTimeLeft(timeSettings[pomodoroMode]);
-  };
-
   const contextValue: TimerContextType = {
     stopwatchIsRunning,
     stopwatchElapsedTime,
@@ -161,13 +96,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     handleStopwatchReset,
     handleStopwatchSave,
     isSavingStopwatch,
-    pomodoroMode,
-    pomodoroTimeLeft,
-    pomodoroIsActive,
-    pomodoroCount,
-    handlePomodoroToggle,
-    handlePomodoroReset,
-    handlePomodoroSwitchMode,
   };
 
   return <TimerContext.Provider value={contextValue}>{children}</TimerContext.Provider>;

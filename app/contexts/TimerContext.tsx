@@ -2,7 +2,6 @@
 'use client';
 
 import React from 'react';
-import { TimerMode } from '@/components/stopwatch/PomodoroTimer';
 
 // Define the shape of the context's state and functions
 export interface TimerContextType {
@@ -18,16 +17,6 @@ export interface TimerContextType {
   handleStopwatchReset: () => void;
   handleStopwatchSave: () => Promise<void>;
   isSavingStopwatch: boolean;
-
-  // Pomodoro State
-  pomodoroMode: TimerMode;
-  pomodoroTimeLeft: number;
-  pomodoroIsActive: boolean;
-  pomodoroCount: number;
-  // Pomodoro Controls
-  handlePomodoroToggle: () => void;
-  handlePomodoroReset: () => void;
-  handlePomodoroSwitchMode: (mode: TimerMode) => void;
 }
 
 // Create the context with a default value (it will be overridden by the provider)

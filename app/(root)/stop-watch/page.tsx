@@ -9,12 +9,10 @@ import { User } from 'firebase/auth';
 import { AppState } from '@/types';
 import { FiTrash2, FiX, FiCalendar } from 'react-icons/fi';
 import { GoStopwatch } from 'react-icons/go';
-import { CgScreen } from 'react-icons/cg';
 import { Timestamp } from 'firebase/firestore';
 import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import SessionLog from '@/components/stopwatch/SessionLog';
-import PomodoroTimer from '@/components/stopwatch/PomodoroTimer';
 import { IconType } from 'react-icons';
 
 interface SessionToDeleteInfo {
@@ -137,7 +135,6 @@ const StopwatchPageContent = () => {
 
   const tabItems: TabItem[] = [
     { id: 'stopwatch', label: 'Stopwatch', icon: GoStopwatch },
-    { id: 'pomodoro', label: 'Pomodoro', icon: CgScreen },
     { id: 'log', label: 'Session Log', icon: FiCalendar },
   ];
 
@@ -145,8 +142,6 @@ const StopwatchPageContent = () => {
     switch (activeTab) {
       case 'stopwatch':
         return <Stopwatch />;
-      case 'pomodoro':
-        return <PomodoroTimer />;
       case 'log':
         return (
           <SessionLog
