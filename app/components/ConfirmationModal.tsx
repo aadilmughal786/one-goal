@@ -1,8 +1,9 @@
 // app/components/ConfirmationModal.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FiAlertTriangle, FiX, FiLoader } from 'react-icons/fi';
+import * as Tone from 'tone';
 
 // Define a type for a single button in the modal
 interface ModalButton {
@@ -38,25 +39,39 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const [countdown, setCountdown] = useState(actionDelayMs / 1000);
   const [actionsEnabled, setActionsEnabled] = useState(actionDelayMs === 0);
   const [isConfirming, setIsConfirming] = useState(false);
+  const synth = useRef<Tone.Synth | null>(null);
 
-  // Effect to manage the countdown timer for the confirm button
+  useEffect(() => {
+    // Initialize synth on client-side
+    if (!synth.current) {
+      synth.current = new Tone.Synth().toDestination();
+    }
+  }, []);
+
+  // Effect to manage the countdown timer and play sound on open
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (isOpen && actionDelayMs > 0) {
-      setActionsEnabled(false); // Disable actions initially
-      setCountdown(Math.max(0, actionDelayMs / 1000)); // Reset countdown, ensure non-negative
-      timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setActionsEnabled(true); // Enable actions when countdown finishes
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (actionDelayMs === 0) {
-      setActionsEnabled(true); // Enable actions immediately if no delay
+    if (isOpen) {
+      // Play a sound to alert the user
+      Tone.start();
+      synth.current?.triggerAttackRelease('C4', '0.2');
+
+      if (actionDelayMs > 0) {
+        setActionsEnabled(false); // Disable actions initially
+        setCountdown(Math.max(0, actionDelayMs / 1000)); // Reset countdown
+        timer = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              setActionsEnabled(true); // Enable actions when countdown finishes
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setActionsEnabled(true); // Enable actions immediately if no delay
+      }
     }
 
     // Cleanup interval on unmount or modal close
@@ -91,7 +106,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/50"
       onClick={handleOutsideClick}
       role="dialog" // ARIA role for dialog
-      aria-modal="true" // ARIA attribute to indicate it's a modal dialog
+      aria-modal="true" // ARIA attribute to indicate it's a modal
       aria-labelledby="modal-title" // ARIA attribute to link to the title
       aria-describedby="modal-message" // ARIA attribute to link to the message
     >
