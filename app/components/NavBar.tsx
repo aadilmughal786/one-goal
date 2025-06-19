@@ -6,18 +6,19 @@ import { User } from 'firebase/auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { FiHome, FiCheckSquare } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiArchive } from 'react-icons/fi';
 import { firebaseService } from '@/services/firebaseService';
 import ProfileDropdown from './nav/ProfileDropdown';
 import { MdRocketLaunch, MdOutlineRepeat } from 'react-icons/md';
 import { GoStopwatch } from 'react-icons/go';
 
-// Navigation links updated: '/list' is removed, and '/todo' is relabeled.
+// Navigation links updated to include Archive
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
   { href: '/todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> },
+  { href: '/archive', label: 'Archive', icon: <FiArchive /> },
 ];
 
 export default function NavBar() {
@@ -57,12 +58,8 @@ export default function NavBar() {
     const activeClasses = 'bg-blue-500/80 text-white';
     const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
 
-    // Make the main nav item active if the current path starts with its href.
     const currentMainPath = pathname.split('?')[0];
-    if (
-      currentMainPath === navPath ||
-      (navPath === '/todo' && currentMainPath.startsWith('/list'))
-    ) {
+    if (currentMainPath === navPath) {
       return `${baseClasses} ${activeClasses}`;
     }
 
@@ -94,7 +91,7 @@ export default function NavBar() {
       <div className="flex flex-col gap-2 w-full">
         {authLoading ? (
           <div className="flex flex-col gap-4 items-center">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
               <div key={i} className="w-14 h-14 rounded-lg animate-pulse bg-white/10"></div>
             ))}
           </div>

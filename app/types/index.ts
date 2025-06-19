@@ -150,4 +150,12 @@ export interface AppState {
   contextList: ListItem[];
   routineSettings: UserRoutineSettings | null;
   starredQuotes: Quote[];
+  goalArchive?: ArchivedGoal[]; // New: Array to store past goals
+}
+
+/**
+ * Represents a snapshot of the AppState for an archived goal.
+ */
+export interface ArchivedGoal extends AppState {
+  archivedAt: Timestamp;
 }

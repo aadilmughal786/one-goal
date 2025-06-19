@@ -20,6 +20,7 @@ import {
   updateDoc,
   Timestamp,
   deleteField,
+  arrayUnion,
 } from 'firebase/firestore';
 import {
   AppState,
@@ -35,7 +36,8 @@ import {
   ScheduledRoutineBase,
   RoutineType,
   RoutineLog,
-  Quote, // <-- Import Quote type
+  Quote,
+  ArchivedGoal, // Import the new type
 } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 import { format, isSameDay } from 'date-fns';
@@ -92,7 +94,8 @@ interface SerializableAppState {
     teeth: SerializableScheduledRoutineBase[];
     lastRoutineResetDate: string | null;
   } | null;
-  starredQuotes: Quote[]; // <-- ADDED FOR EXPORT
+  starredQuotes: Quote[];
+  goalArchive?: ArchivedGoal[]; // Include in serialization
 }
 
 class FirebaseService {
@@ -172,8 +175,39 @@ class FirebaseService {
         teeth: [],
         lastRoutineResetDate: null,
       },
-      starredQuotes: [], // <-- Initialize starredQuotes
+      starredQuotes: [],
+      goalArchive: [], // Initialize archive
     };
+  }
+
+  // NEW: Function to archive the current goal and reset the state
+  async archiveCurrentGoal(userId: string): Promise<AppState> {
+    const userDocRef = doc(this.db, 'users', userId);
+    const docSnap = await getDoc(userDocRef);
+
+    if (!docSnap.exists() || !docSnap.data().goal) {
+      throw new FirebaseServiceError('No active goal to archive.');
+    }
+
+    const currentData = docSnap.data() as AppState;
+
+    const archivedGoal: ArchivedGoal = {
+      ...currentData,
+      archivedAt: Timestamp.now(),
+    };
+
+    // We can't use arrayUnion with setDoc, so we need to update.
+    // Let's reset the document first, then update the archive.
+    const initialData = this._initializeDefaultState();
+    initialData.goalArchive = currentData.goalArchive || [];
+    await setDoc(userDocRef, initialData);
+
+    // Now, add the new item to the archive array
+    await updateDoc(userDocRef, {
+      goalArchive: arrayUnion(archivedGoal),
+    });
+
+    return this.getUserData(userId);
   }
 
   async getUserData(userId: string): Promise<AppState> {
@@ -194,7 +228,8 @@ class FirebaseService {
       appState.toDoList = appState.toDoList || [];
       appState.notToDoList = appState.notToDoList || [];
       appState.contextList = appState.contextList || [];
-      appState.starredQuotes = appState.starredQuotes || []; // Ensure starredQuotes is initialized
+      appState.starredQuotes = appState.starredQuotes || [];
+      appState.goalArchive = appState.goalArchive || []; // Ensure archive exists
 
       if (!appState.routineSettings) {
         appState.routineSettings = this._initializeDefaultState().routineSettings!;
@@ -319,7 +354,8 @@ class FirebaseService {
             ),
           }
         : null,
-      starredQuotes: appState.starredQuotes || [], // <-- ADDED FOR EXPORT
+      starredQuotes: appState.starredQuotes || [],
+      goalArchive: appState.goalArchive || [],
     };
   }
 
@@ -367,7 +403,8 @@ class FirebaseService {
             ),
           }
         : defaultState.routineSettings,
-      starredQuotes: importedData.starredQuotes || [], // <-- ADDED FOR IMPORT
+      starredQuotes: importedData.starredQuotes || [],
+      goalArchive: importedData.goalArchive || [],
     };
   }
 
@@ -664,7 +701,7 @@ class FirebaseService {
       updateFn(settings);
 
       await updateDoc(userDocRef, { routineSettings: settings });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to update routine settings.', error);
     }
   }

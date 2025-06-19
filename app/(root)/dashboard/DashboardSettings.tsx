@@ -57,23 +57,28 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
     setIsGoalModalOpen(true);
   };
 
-  const promptForNewGoal = () => {
+  const promptForArchiveAndNewGoal = () => {
     if (appState?.goal) {
       setConfirmationProps({
-        title: 'Create New Goal?',
+        title: 'Archive Current Goal?',
         message:
-          'This will erase your current goal and all associated data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-        action: () => {
+          'This will move your current goal and all its data to the archive and start a fresh slate. This is the standard way to begin a new journey.',
+        action: async () => {
           if (!currentUser) return;
-          firebaseService.resetUserData(currentUser.uid).then(newAppState => {
+          try {
+            const newAppState = await firebaseService.archiveCurrentGoal(currentUser.uid);
             onAppStateUpdate(newAppState);
-            handleOpenGoalModal(false);
-          });
+            showMessage('Goal archived! Ready for the next one.', 'success');
+            handleOpenGoalModal(false); // Open modal to set new goal
+          } catch (e) {
+            showMessage((e as Error).message, 'error');
+          }
         },
-        actionDelayMs: 10000,
+        actionDelayMs: 3000,
       });
       setIsConfirmModalOpen(true);
     } else {
+      // If there's no current goal, just open the modal to create one
       handleOpenGoalModal(false);
     }
   };
@@ -168,12 +173,11 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
       <div className="p-8 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
         <h3 className="mb-2 text-2xl font-bold">Manage Your Goal</h3>
         <p className="mx-auto mb-6 max-w-2xl text-white/60">
-          Need to make changes? You can update your goal, start fresh, or manage your data backups
-          here.
+          Update your current goal, archive it to start a new one, or manage your data backups.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
           <button
-            onClick={() => handleOpenGoalModal(!!appState?.goal)}
+            onClick={() => handleOpenGoalModal(true)}
             disabled={!appState?.goal}
             className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-blue-400/30 hover:bg-blue-400/10 hover:border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -181,19 +185,12 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
             <span className="font-semibold">Update Goal</span>
           </button>
           <button
-            onClick={promptForNewGoal}
-            className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50"
+            onClick={promptForArchiveAndNewGoal}
+            className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-green-400/30 hover:bg-green-400/10 hover:border-green-400/50"
           >
-            <FiPlusCircle size={24} className="mb-2 text-red-400" />
+            <FiPlusCircle size={24} className="mb-2 text-green-400" />
             <span className="font-semibold">New Goal</span>
           </button>
-          <label
-            htmlFor="dashboardImportFile"
-            className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10"
-          >
-            <FiUpload size={24} className="mb-2 text-green-400" />
-            <span className="font-semibold">Import Data</span>
-          </label>
           <button
             onClick={handleExport}
             disabled={!appState?.goal}
@@ -202,6 +199,13 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
             <FiDownload size={24} className="mb-2 text-purple-400" />
             <span className="font-semibold">Export Data</span>
           </button>
+          <label
+            htmlFor="dashboardImportFile"
+            className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10"
+          >
+            <FiUpload size={24} className="mb-2 text-teal-400" />
+            <span className="font-semibold">Import Data</span>
+          </label>
         </div>
       </div>
 
