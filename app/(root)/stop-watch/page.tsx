@@ -1,68 +1,82 @@
 // app/(root)/stop-watch/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { firebaseService } from '@/services/firebaseService';
 import Stopwatch from '@/components/Stopwatch';
 import { User } from 'firebase/auth';
 import { AppState, StopwatchSession } from '@/types';
-import { FiTrash2, FiX } from 'react-icons/fi';
+import { FiTrash2, FiX, FiCalendar } from 'react-icons/fi';
+import { GoStopwatch } from 'react-icons/go';
+import { CgScreen } from 'react-icons/cg';
 import { Timestamp } from 'firebase/firestore';
 import ToastMessage from '@/components/ToastMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import SessionLog from '@/components/stopwatch/SessionLog';
+import PomodoroTimer from '@/components/stopwatch/PomodoroTimer';
+import type { TimerMode } from '@/components/stopwatch/PomodoroTimer';
+import { IconType } from 'react-icons';
+import * as Tone from 'tone';
+import { TimerContext } from '@/contexts/TimerContext';
 
 interface SessionToDeleteInfo {
   dateKey: string;
   sessionStartTime: Timestamp;
 }
 
-const StopwatchPageSkeleton = () => (
-  <div className="mx-auto w-full max-w-3xl animate-pulse">
-    <div className="mb-12 text-center">
-      <div className="mx-auto mb-4 w-3/4 h-8 rounded-lg bg-white/10"></div>
-      <div className="mx-auto w-full h-5 rounded-lg bg-white/10"></div>
-      <div className="mx-auto mt-2 w-5/6 h-5 rounded-lg bg-white/10"></div>
-    </div>
-    <div className="p-6 sm:p-8 bg-white/[0.02] border border-white/10 rounded-3xl shadow-2xl">
-      <div className="mx-auto w-3/4 h-16 rounded-lg sm:h-20 bg-white/10"></div>
-      <div className="mx-auto mt-2 w-1/4 h-6 rounded-lg bg-white/10"></div>
-      <div className="flex gap-4 justify-center mt-8 sm:mt-10">
-        <div className="w-16 h-16 rounded-full sm:w-20 sm:h-20 bg-white/10"></div>
-        <div className="w-16 h-16 rounded-full sm:w-20 sm:h-20 bg-white/10"></div>
-      </div>
-    </div>
-    <div className="mt-12 p-6 sm:p-8 bg-white/[0.02] border border-white/10 rounded-3xl shadow-2xl">
-      <div className="mx-auto mb-6 w-1/2 h-8 rounded-lg bg-white/10"></div>
-      <div className="space-y-4">
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-      </div>
-    </div>
-  </div>
-);
+interface TabItem {
+  id: string;
+  label: string;
+  icon: IconType;
+}
 
-export default function StopwatchPage() {
+const timeSettings: Record<TimerMode, number> = {
+  pomodoro: 25 * 60,
+  shortBreak: 5 * 60,
+  longBreak: 15 * 60,
+};
+
+const StopwatchPageContent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState | null>(null);
-
-  const [isRunning, setIsRunning] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [isLabeling, setIsLabeling] = useState(false);
-  const [sessionLabel, setSessionLabel] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
+  // --- GLOBAL TIMER STATE ---
+  // Stopwatch State
+  const [stopwatchIsRunning, setStopwatchIsRunning] = useState(false);
+  const [stopwatchElapsedTime, setStopwatchElapsedTime] = useState(0);
+  const [stopwatchIsLabeling, setStopwatchIsLabeling] = useState(false);
+  const [stopwatchSessionLabel, setStopwatchSessionLabel] = useState('');
+  const [isSavingStopwatch, setIsSavingStopwatch] = useState(false);
 
-  const animationFrameRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
+  // Pomodoro State
+  const [pomodoroMode, setPomodoroMode] = useState<TimerMode>('pomodoro');
+  const [pomodoroTimeLeft, setPomodoroTimeLeft] = useState(timeSettings.pomodoro);
+  const [pomodoroIsActive, setPomodoroIsActive] = useState(false);
+  const [pomodoroCount, setPomodoroCount] = useState(0);
+
+  // Refs for timers
+  const stopwatchStartTimeRef = useRef<number>(0);
+  const pomodoroIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const stopwatchFrameRef = useRef<number | null>(null);
+
+  const synth = useRef<Tone.Synth | null>(null);
+
+  useEffect(() => {
+    // Initialize Tone.js synth on client side
+    synth.current = new Tone.Synth().toDestination();
+  }, []);
+
+  // --- TABS & GENERIC LOGIC ---
+  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabFromUrl || 'stopwatch';
+  });
 
   const showMessage = useCallback((text: string, _: 'success' | 'error' | 'info') => {
     setToastMessage(text);
@@ -95,65 +109,118 @@ export default function StopwatchPage() {
     return () => unsubscribe();
   }, [router, fetchUserData]);
 
-  const updateTimer = useCallback(() => {
-    if (isRunning) {
-      setElapsedTime(Date.now() - startTimeRef.current);
+  // --- STOPWATCH LOGIC ---
+  const updateStopwatchTimer = useCallback(() => {
+    if (stopwatchIsRunning) {
+      setStopwatchElapsedTime(Date.now() - stopwatchStartTimeRef.current);
     }
-    animationFrameRef.current = requestAnimationFrame(updateTimer);
-  }, [isRunning]);
+    stopwatchFrameRef.current = requestAnimationFrame(updateStopwatchTimer);
+  }, [stopwatchIsRunning]);
 
   useEffect(() => {
-    animationFrameRef.current = requestAnimationFrame(updateTimer);
+    stopwatchFrameRef.current = requestAnimationFrame(updateStopwatchTimer);
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (stopwatchFrameRef.current) {
+        cancelAnimationFrame(stopwatchFrameRef.current);
       }
     };
-  }, [updateTimer]);
+  }, [updateStopwatchTimer]);
 
-  const handleStart = () => {
-    setIsRunning(true);
-    startTimeRef.current = Date.now() - elapsedTime;
+  const handleStopwatchStart = () => {
+    setStopwatchIsRunning(true);
+    stopwatchStartTimeRef.current = Date.now() - stopwatchElapsedTime;
   };
 
-  const handlePause = () => {
-    setIsRunning(false);
+  const handleStopwatchPause = () => {
+    setStopwatchIsRunning(false);
   };
 
-  const handleReset = () => {
-    if (elapsedTime > 0 && !isLabeling) {
-      setIsRunning(false);
-      setIsLabeling(true);
+  const handleStopwatchReset = () => {
+    if (stopwatchElapsedTime > 0 && !stopwatchIsLabeling) {
+      setStopwatchIsRunning(false);
+      setStopwatchIsLabeling(true);
     } else {
-      setIsRunning(false);
-      setElapsedTime(0);
-      setIsLabeling(false);
-      setSessionLabel('');
+      setStopwatchIsRunning(false);
+      setStopwatchElapsedTime(0);
+      setStopwatchIsLabeling(false);
+      setStopwatchSessionLabel('');
     }
   };
 
-  const handleSaveSession = async () => {
-    if (!currentUser || !sessionLabel.trim()) {
+  const handleStopwatchSave = async () => {
+    if (!currentUser || !stopwatchSessionLabel.trim()) {
       showMessage('Please enter a label for your session.', 'error');
       return;
     }
-    setIsSaving(true);
+    setIsSavingStopwatch(true);
     const newSession: Omit<StopwatchSession, 'startTime'> = {
-      label: sessionLabel.trim(),
-      durationMs: elapsedTime,
+      label: stopwatchSessionLabel.trim(),
+      durationMs: stopwatchElapsedTime,
     };
-
     try {
       await firebaseService.addStopwatchSession(currentUser.uid, newSession);
       await fetchUserData(currentUser.uid);
       showMessage('Focus session saved!', 'success');
-      handleReset();
+      handleStopwatchReset();
     } catch {
       showMessage('Could not save session. Please try again.', 'error');
     } finally {
-      setIsSaving(false);
+      setIsSavingStopwatch(false);
     }
   };
+
+  // --- POMODORO LOGIC ---
+  const playSound = useCallback(() => {
+    Tone.start();
+    synth.current?.triggerAttackRelease('C5', '0.5');
+  }, []);
+
+  const handlePomodoroSwitchMode = useCallback((newMode: TimerMode) => {
+    setPomodoroIsActive(false);
+    setPomodoroMode(newMode);
+    setPomodoroTimeLeft(timeSettings[newMode]);
+  }, []);
+
+  useEffect(() => {
+    if (pomodoroIsActive && pomodoroTimeLeft > 0) {
+      pomodoroIntervalRef.current = setInterval(() => {
+        setPomodoroTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (pomodoroTimeLeft === 0) {
+      playSound();
+      if (pomodoroMode === 'pomodoro') {
+        const newPomodoroCount = pomodoroCount + 1;
+        setPomodoroCount(newPomodoroCount);
+        handlePomodoroSwitchMode(newPomodoroCount % 4 === 0 ? 'longBreak' : 'shortBreak');
+      } else {
+        handlePomodoroSwitchMode('pomodoro');
+      }
+    }
+    return () => {
+      if (pomodoroIntervalRef.current) clearInterval(pomodoroIntervalRef.current);
+    };
+  }, [
+    pomodoroIsActive,
+    pomodoroTimeLeft,
+    pomodoroMode,
+    pomodoroCount,
+    handlePomodoroSwitchMode,
+    playSound,
+  ]);
+
+  const handlePomodoroToggle = () => {
+    setPomodoroIsActive(!pomodoroIsActive);
+  };
+
+  const handlePomodoroReset = () => {
+    setPomodoroIsActive(false);
+    setPomodoroTimeLeft(timeSettings[pomodoroMode]);
+  };
+
+  // --- SESSION LOG LOGIC ---
+  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
 
   const handleDeleteSession = useCallback(async (dateKey: string, sessionStartTime: Timestamp) => {
     setSessionToDeleteInfo({ dateKey, sessionStartTime });
@@ -184,7 +251,6 @@ export default function StopwatchPage() {
 
   const confirmDeleteSession = async () => {
     if (!currentUser || !sessionToDeleteInfo) return;
-
     try {
       await firebaseService.deleteStopwatchSession(
         currentUser.uid,
@@ -201,74 +267,128 @@ export default function StopwatchPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-        <div className="container flex-grow justify-center items-center p-4 mx-auto max-w-4xl">
-          <section className="py-8 w-full">
-            <StopwatchPageSkeleton />
-          </section>
-        </div>
-      </main>
-    );
-  }
+  // --- TABS & RENDER LOGIC ---
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTabInternal(tabId);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('tab', tabId);
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
-  return (
-    <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <ToastMessage
-        message={toastMessage}
-        type={
-          toastMessage?.includes('saved') || toastMessage?.includes('updated') ? 'success' : 'info'
-        }
-      />
-      <div className="container flex-grow justify-center p-4 mx-auto max-w-4xl">
-        <section className="py-8 w-full">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">The Focus Timer</h2>
-            <p className="mx-auto max-w-2xl text-lg text-white/70">
-              Deep work requires uninterrupted concentration. Use this timer to commit to a block of
-              focused effort on your goal. Every second you track is a step forward.
-            </p>
-          </div>
-          <Stopwatch
-            isRunning={isRunning}
-            elapsedTime={elapsedTime}
-            isLabeling={isLabeling}
-            sessionLabel={sessionLabel}
-            setSessionLabel={setSessionLabel}
-            handleStart={handleStart}
-            handlePause={handlePause}
-            handleReset={handleReset}
-            handleSave={handleSaveSession}
-            isSaving={isSaving}
-          />
+  const tabItems: TabItem[] = [
+    { id: 'stopwatch', label: 'Stopwatch', icon: GoStopwatch },
+    { id: 'pomodoro', label: 'Pomodoro', icon: CgScreen },
+    { id: 'log', label: 'Session Log', icon: FiCalendar },
+  ];
 
+  const renderActiveComponent = () => {
+    switch (activeTab) {
+      case 'stopwatch':
+        return <Stopwatch />;
+      case 'pomodoro':
+        return <PomodoroTimer />;
+      case 'log':
+        return (
           <SessionLog
             appState={appState}
             onDeleteSession={handleDeleteSession}
             onUpdateSession={handleUpdateSession}
             isUpdatingId={isUpdatingId}
           />
-        </section>
-      </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        title="Delete Session?"
-        message="Are you sure you want to permanently delete this logged session? This action cannot be undone."
-        confirmButton={{
-          text: 'Delete',
-          onClick: confirmDeleteSession,
-          className: 'bg-red-600 text-white hover:bg-red-700',
-          icon: <FiTrash2 />,
-        }}
-        cancelButton={{
-          text: 'Cancel',
-          onClick: () => setIsConfirmModalOpen(false),
-          icon: <FiX />,
-        }}
-      />
-    </main>
+  return (
+    <TimerContext.Provider
+      value={{
+        stopwatchIsRunning,
+        stopwatchElapsedTime,
+        stopwatchIsLabeling,
+        stopwatchSessionLabel,
+        setStopwatchSessionLabel,
+        handleStopwatchStart,
+        handleStopwatchPause,
+        handleStopwatchReset,
+        handleStopwatchSave,
+        isSavingStopwatch,
+        pomodoroMode,
+        pomodoroTimeLeft,
+        pomodoroIsActive,
+        pomodoroCount,
+        handlePomodoroToggle,
+        handlePomodoroReset,
+        handlePomodoroSwitchMode,
+      }}
+    >
+      <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
+        <ToastMessage
+          message={toastMessage}
+          type={
+            toastMessage?.includes('saved') || toastMessage?.includes('updated')
+              ? 'success'
+              : 'info'
+          }
+        />
+
+        <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+          <div className="flex space-x-2">
+            {tabItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                            ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
+                  aria-label={item.label}
+                >
+                  <Icon size={18} />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        <div className="container flex-grow p-4 mx-auto max-w-4xl">
+          <section className="py-8 w-full">
+            {isLoading ? <div>Loading...</div> : renderActiveComponent()}
+          </section>
+        </div>
+
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          title="Delete Session?"
+          message="Are you sure you want to permanently delete this logged session? This action cannot be undone."
+          confirmButton={{
+            text: 'Delete',
+            onClick: confirmDeleteSession,
+            className: 'bg-red-600 text-white hover:bg-red-700',
+            icon: <FiTrash2 />,
+          }}
+          cancelButton={{
+            text: 'Cancel',
+            onClick: () => setIsConfirmModalOpen(false),
+            icon: <FiX />,
+          }}
+        />
+      </main>
+    </TimerContext.Provider>
+  );
+};
+
+export default function StopwatchPage() {
+  return (
+    <Suspense fallback={<div>Loading Focus Timers...</div>}>
+      <StopwatchPageContent />
+    </Suspense>
   );
 }
