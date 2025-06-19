@@ -27,6 +27,7 @@ import {
   Goal,
   ListItem,
   TodoItem,
+  DistractionItem, // Import DistractionItem
   DailyProgress,
   SatisfactionLevel,
   StopwatchSession,
@@ -37,7 +38,7 @@ import {
   RoutineType,
   RoutineLog,
   Quote,
-  ArchivedGoal, // Import the new type
+  ArchivedGoal,
 } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 import { format, isSameDay } from 'date-fns';
@@ -64,6 +65,10 @@ interface SerializableListItem extends Omit<ListItem, 'createdAt'> {
   createdAt: string;
 }
 
+interface SerializableDistractionItem extends Omit<DistractionItem, 'createdAt'> {
+  createdAt: string;
+}
+
 interface SerializableTodoItem extends Omit<TodoItem, 'createdAt' | 'completedAt' | 'deadline'> {
   createdAt: string;
   completedAt: string | null;
@@ -83,7 +88,7 @@ interface SerializableAppState {
     }
   >;
   toDoList: SerializableTodoItem[];
-  notToDoList: SerializableListItem[];
+  notToDoList: SerializableDistractionItem[];
   contextList: SerializableListItem[];
   routineSettings: {
     sleep: SerializableSleepRoutineSettings | null;
@@ -389,6 +394,7 @@ class FirebaseService {
       })),
       notToDoList: (importedData.notToDoList || []).map(item => ({
         ...item,
+        count: item.count ?? 0, // FIX: Ensure 'count' exists, defaulting to 0
         createdAt: this.deserializeTimestamp(item.createdAt)!,
       })),
       contextList: (importedData.contextList || []).map(item => ({
@@ -422,18 +428,25 @@ class FirebaseService {
     userId: string,
     listName: 'notToDoList' | 'contextList',
     text: string
-  ): Promise<ListItem> {
+  ): Promise<ListItem | DistractionItem> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
       const docSnap = await getDoc(userDocRef);
       if (!docSnap.exists()) throw new FirebaseServiceError('User data not found.');
       const currentData = docSnap.data() as AppState;
-      const newItem: ListItem = {
+
+      const baseItem = {
         id: generateUUID(),
         text: text.trim(),
         createdAt: Timestamp.now(),
       };
-      const updatedList = [...(currentData[listName] || []), newItem];
+
+      const newItem: ListItem | DistractionItem =
+        listName === 'notToDoList' ? { ...baseItem, count: 0 } : baseItem;
+
+      const list = currentData[listName] || [];
+      const updatedList = [...list, newItem];
+
       await updateDoc(userDocRef, { [listName]: updatedList });
       return newItem;
     } catch (error: unknown) {
@@ -445,7 +458,7 @@ class FirebaseService {
     userId: string,
     listName: 'notToDoList' | 'contextList' | 'toDoList',
     itemId: string,
-    updates: Partial<TodoItem | ListItem>
+    updates: Partial<TodoItem | DistractionItem> // Updated to include DistractionItem
   ): Promise<void> {
     const userDocRef = doc(this.db, 'users', userId);
     try {
@@ -453,15 +466,12 @@ class FirebaseService {
       if (!docSnap.exists()) throw new FirebaseServiceError('User data not found.');
       const currentData = docSnap.data() as AppState;
 
-      const list = (currentData[listName] || []) as Array<ListItem | TodoItem>;
+      const list = (currentData[listName] || []) as Array<ListItem | TodoItem | DistractionItem>;
       const updatedList = list.map(item => {
         if (item.id === itemId) {
           const updatedItem = { ...item, ...updates };
-          if (listName === 'toDoList') {
-            const todo = updatedItem as TodoItem;
-            if ('completed' in updates) {
-              todo.completedAt = updates.completed ? Timestamp.now() : null;
-            }
+          if (listName === 'toDoList' && 'completed' in updates) {
+            (updatedItem as TodoItem).completedAt = updates.completed ? Timestamp.now() : null;
           }
           return updatedItem;
         }
@@ -519,7 +529,7 @@ class FirebaseService {
       await updateDoc(userDocRef, {
         [`dailyProgress.${progressData.date}`]: updatedProgressData,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError(
         `Failed to save daily progress for date ${progressData.date}.`,
         error
@@ -533,7 +543,7 @@ class FirebaseService {
       await updateDoc(userDocRef, {
         [`dailyProgress.${dateKey}`]: deleteField(),
       });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError(`Failed to delete daily progress for date ${dateKey}.`, error);
     }
   }
@@ -575,7 +585,7 @@ class FirebaseService {
       await updateDoc(userDocRef, {
         [`dailyProgress.${sessionDateKey}`]: updatedDailyProgress,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to add stopwatch session.', error);
     }
   }
@@ -610,7 +620,7 @@ class FirebaseService {
           [`dailyProgress.${dateKey}`]: updatedDailyProgress,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to update stopwatch session.', error);
     }
   }
@@ -643,7 +653,7 @@ class FirebaseService {
           [`dailyProgress.${dateKey}`]: updatedDailyProgress,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to delete stopwatch session.', error);
     }
   }
@@ -681,7 +691,7 @@ class FirebaseService {
       const updatedTodoList = [newItem, ...reorderedList];
       await updateDoc(userDocRef, { toDoList: updatedTodoList });
       return newItem;
-    } catch (error) {
+    } catch (error: unknown) {
       throw new FirebaseServiceError('Failed to add to-do item.', error);
     }
   }

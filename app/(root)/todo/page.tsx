@@ -10,7 +10,7 @@ import { RiAlarmWarningLine } from 'react-icons/ri';
 import { FaChalkboardTeacher } from 'react-icons/fa';
 
 import { firebaseService } from '@/services/firebaseService';
-import { ListItem, TodoItem, AppState } from '@/types';
+import { ListItem, TodoItem, AppState, DistractionItem } from '@/types';
 import ListComponent from '@/components/List';
 import TodoList from '@/components/todo/TodoList';
 import TodoEditModal from '@/components/todo/TodoEditModal';
@@ -53,7 +53,7 @@ const ConsolidatedListPageContent = () => {
 
   // States for all lists
   const [toDoList, setToDoList] = useState<TodoItem[]>([]);
-  const [notToDoList, setNotToDoList] = useState<ListItem[]>([]);
+  const [notToDoList, setNotToDoList] = useState<DistractionItem[]>([]);
   const [contextList, setContextList] = useState<ListItem[]>([]);
 
   // States for UI feedback and modals
@@ -174,16 +174,17 @@ const ConsolidatedListPageContent = () => {
     async (
       listType: 'toDoList' | 'notToDoList' | 'contextList',
       id: string,
-      updates: Partial<TodoItem | ListItem>
+      updates: Partial<TodoItem | DistractionItem>
     ) => {
       if (!currentUser) return;
       setIsUpdatingId(id);
       try {
         await firebaseService.updateItemInList(currentUser.uid, listType, id, updates);
-        await fetchUserData(currentUser.uid);
-        // Type guard to check if 'completed' property exists
+        await fetchUserData(currentUser.uid); // Refetch for consistency
         if ('completed' in updates && updates.completed !== undefined) {
           showMessage(updates.completed ? 'Task completed!' : 'Task updated!', 'success');
+        } else if ('count' in updates) {
+          // No message for quick counter updates to avoid spam
         } else {
           showMessage('Item updated.', 'success');
         }
@@ -251,7 +252,6 @@ const ConsolidatedListPageContent = () => {
             toDoList={sortedToDoList}
             onAddTodo={handleAddTodo}
             onUpdateTodo={(id, updates) => handleUpdateItem('toDoList', id, updates)}
-            // Corrected to be an async lambda to match expected type
             onDeleteTodo={async id => handleDeleteConfirmation('toDoList', id)}
             onReorderTodos={handleReorderTodos}
             onEditTodo={handleOpenEditModal}
@@ -265,7 +265,7 @@ const ConsolidatedListPageContent = () => {
             list={notToDoList}
             addToList={text => handleAddToList('notToDoList', text)}
             removeFromList={id => handleDeleteConfirmation('notToDoList', id)}
-            updateItem={(id, text) => handleUpdateItem('notToDoList', id, { text })}
+            updateItem={(id, updates) => handleUpdateItem('notToDoList', id, updates)}
             placeholder="Add a distraction to avoid..."
             themeColor="red"
             editingItemId={editingItemId}
@@ -282,7 +282,7 @@ const ConsolidatedListPageContent = () => {
             list={contextList}
             addToList={text => handleAddToList('contextList', text)}
             removeFromList={id => handleDeleteConfirmation('contextList', id)}
-            updateItem={(id, text) => handleUpdateItem('contextList', id, { text })}
+            updateItem={(id, updates) => handleUpdateItem('contextList', id, updates)}
             placeholder="Add a note or learning..."
             themeColor="blue"
             editingItemId={editingItemId}

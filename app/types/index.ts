@@ -56,12 +56,19 @@ export interface TodoItem {
 }
 
 /**
- * Generic structure for items in simple lists like "What Not To Do" and "Contextual Notes".
+ * Generic structure for items in simple lists like "Contextual Notes".
  */
 export interface ListItem {
   id: string;
   text: string;
   createdAt: Timestamp; // Added back
+}
+
+/**
+ * New: Represents an item in the "What Not To Do" list, with a counter.
+ */
+export interface DistractionItem extends ListItem {
+  count: number;
 }
 
 /**
@@ -146,11 +153,11 @@ export interface AppState {
   goal: Goal | null;
   dailyProgress: Record<string, DailyProgress>;
   toDoList: TodoItem[];
-  notToDoList: ListItem[];
+  notToDoList: DistractionItem[]; // Updated to use the new type
   contextList: ListItem[];
   routineSettings: UserRoutineSettings | null;
   starredQuotes: Quote[];
-  goalArchive?: ArchivedGoal[]; // New: Array to store past goals
+  goalArchive?: ArchivedGoal[];
 }
 
 /**
