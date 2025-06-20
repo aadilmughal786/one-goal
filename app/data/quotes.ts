@@ -1,10 +1,6 @@
 // app/data/quotes.ts
 
-export interface Quote {
-  id: number;
-  text: string;
-  author: string;
-}
+import { Quote } from '@/types';
 
 export const quotes: Quote[] = [
   { id: 1, text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },

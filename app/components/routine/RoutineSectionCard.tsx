@@ -8,7 +8,7 @@ import {
   MdDeleteForever,
   MdCheckCircle,
 } from 'react-icons/md';
-import { ScheduledRoutineBase } from '@/types';
+import { ScheduledRoutineBase } from '@/types'; // Ensure correct import of ScheduledRoutineBase
 import { differenceInMinutes, isPast, parse } from 'date-fns';
 import { FiEdit } from 'react-icons/fi'; // Added FiEdit for a potential edit button
 import ScheduleEditModal from './ScheduleEditModal'; // Import the new modal
@@ -26,6 +26,8 @@ interface RoutineSectionCardProps {
   onRemoveSchedule: (index: number) => void;
   // This new prop will handle both adding and updating schedules
   onSaveSchedule: (schedule: ScheduledRoutineBase, index: number | null) => Promise<void>;
+  // NEW: Prop for showing toast messages, passed from parent
+  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
 
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
@@ -42,7 +44,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
   schedules,
   onToggleCompletion,
   onRemoveSchedule,
-  onSaveSchedule,
+  onSaveSchedule, // Now properly consumed
+  showMessage, // Now properly consumed
   newInputLabelPlaceholder,
   newIconOptions,
   iconComponentsMap,
@@ -52,51 +55,60 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
   const [scheduleToEdit, setScheduleToEdit] = useState<ScheduledRoutineBase | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  // Effect to update current time every second for real-time updates
+  // Effect to update current time every second for real-time calculation of "time remaining" etc.
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    return () => clearInterval(timer); // Cleanup timer on component unmount
   }, []);
 
   // --- REFACTORED LOGIC for sorting and annotating schedules ---
 
-  // Sort schedules by time once. This is memoized for efficiency.
+  // Sort schedules by their 'time' property (HH:mm format) once.
+  // This memoization ensures sorting only re-runs if the `schedules` array itself changes.
   const sortedSchedules = useMemo(() => {
     return [...schedules].sort((a, b) => {
-      const timeA = parse(a.scheduledTime, 'HH:mm', new Date());
-      const timeB = parse(b.scheduledTime, 'HH:mm', new Date());
+      // Parse 'HH:mm' strings into Date objects for comparison.
+      // The `new Date()` argument provides a reference date (today), only time matters here.
+      const timeA = parse(a.time, 'HH:mm', new Date()); // Use 'a.time'
+      const timeB = parse(b.time, 'HH:mm', new Date()); // Use 'b.time'
       return timeA.getTime() - timeB.getTime();
     });
   }, [schedules]);
 
-  // Find the next upcoming schedule. This is also memoized.
+  // Find the next upcoming schedule based on the current time.
+  // Memoized to re-run only when `sortedSchedules` or `currentTime` changes.
   const nextUpcomingSchedule = useMemo(() => {
     const now = currentTime;
     return sortedSchedules.find(schedule => {
-      if (schedule.completed) return false;
-      const targetDateTime = parse(schedule.scheduledTime, 'HH:mm', now);
-      return !isPast(targetDateTime);
+      if (schedule.completed) return false; // Completed schedules are not "upcoming"
+      // Combine today's date with the schedule's time for a comparable DateTime object.
+      const targetDateTime = parse(schedule.time, 'HH:mm', now); // Use 'schedule.time'
+      return !isPast(targetDateTime); // Check if the scheduled time is in the future or current
     });
   }, [sortedSchedules, currentTime]);
 
-  // Annotate schedules with display information (timeLeftText, isNext).
-  // This logic is now cleaner and runs only when its dependencies change.
+  // Annotate schedules with display information like 'timeLeftText' and 'isNext'.
+  // This runs when `sortedSchedules`, `nextUpcomingSchedule`, or `currentTime` changes.
   const annotatedSchedules = useMemo(() => {
     const now = currentTime;
     return sortedSchedules.map(schedule => {
-      const targetDateTime = parse(schedule.scheduledTime, 'HH:mm', now);
+      const targetDateTime = parse(schedule.time, 'HH:mm', now); // Use 'schedule.time'
       let timeLeftText = '';
 
       if (schedule.completed) {
         timeLeftText = 'Completed Today';
       } else if (isPast(targetDateTime)) {
+        // If scheduled time is in the past
         const minutesAgo = differenceInMinutes(now, targetDateTime);
-        if (minutesAgo < schedule.durationMinutes) {
+        // Check if it's currently "in progress" based on its duration
+        if (minutesAgo < schedule.duration) {
+          // Use 'schedule.duration'
           timeLeftText = 'In Progress';
         } else {
           timeLeftText = 'Missed';
         }
       } else {
+        // If scheduled time is in the future
         const minutesUntil = differenceInMinutes(targetDateTime, now);
         const hours = Math.floor(minutesUntil / 60);
         const minutes = minutesUntil % 60;
@@ -105,7 +117,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
 
       return {
         ...schedule,
-        isNext: schedule === nextUpcomingSchedule,
+        isNext: schedule.id === nextUpcomingSchedule?.id, // Compare by ID for robustness
         timeLeftText,
       };
     });
@@ -113,18 +125,22 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
 
   // --- End of Refactored Logic ---
 
+  // Opens the modal for adding a new schedule (no existing schedule passed).
   const handleOpenModalForAdd = () => {
-    setScheduleToEdit(null);
-    setEditingIndex(null);
+    setScheduleToEdit(null); // No schedule to edit means adding new
+    setEditingIndex(null); // No specific index for a new item initially
     setIsEditModalOpen(true);
   };
 
+  // Opens the modal for editing an existing schedule.
+  // Sets the schedule object and its original index for `onSaveSchedule` to handle updates.
   const handleOpenModalForEdit = (schedule: ScheduledRoutineBase, index: number) => {
     setScheduleToEdit(schedule);
     setEditingIndex(index);
     setIsEditModalOpen(true);
   };
 
+  // Determine the main icon for the section header. Uses the first icon option as default.
   const MainIconComponent = iconComponentsMap[newIconOptions[0]] || MdOutlineSettings;
 
   return (
@@ -136,15 +152,16 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
           {sectionTitle}
         </h2>
 
-        {/* Summary */}
+        {/* Summary (e.g., "5/7 completed", "3000ml / 2000ml") */}
         <div className="mb-6 text-center">
           <div className="text-4xl font-bold text-white">{summaryCount}</div>
           <div className="text-sm opacity-75 text-white/70">{summaryLabel}</div>
         </div>
+        {/* Progress Bar */}
         <div className="mb-8 h-3 rounded-full bg-white/20">
           <div
             className="h-3 bg-white rounded-full transition-all duration-500"
-            style={{ width: `${progressPercentage}%` }}
+            style={{ width: `${progressPercentage}%` }} // Dynamic width based on progress
           ></div>
         </div>
 
@@ -155,6 +172,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
             <button
               onClick={handleOpenModalForAdd}
               className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors bg-white/10 hover:bg-white/20"
+              aria-label={`Add new ${sectionTitle.toLowerCase()} routine`}
             >
               Add New
             </button>
@@ -167,7 +185,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                 const ScheduleIconComponent = iconComponentsMap[schedule.icon] || MdOutlineSettings;
                 return (
                   <div
-                    key={`${schedule.scheduledTime}-${index}`}
+                    // Use schedule.id as the key for better list performance and stability
+                    key={schedule.id}
                     className={`bg-white/5 rounded-xl p-4 shadow-lg border-2 transition-all border-white/10
                       ${schedule.isNext ? 'border-blue-400' : ''}
                       ${schedule.completed ? 'bg-green-500/10 border-green-500/30' : ''}`}
@@ -180,18 +199,24 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                               ? 'bg-green-500/20 text-green-300'
                               : 'bg-purple-500/20 text-purple-300'
                           }`}
-                          onClick={() => onToggleCompletion(index)}
+                          onClick={() => onToggleCompletion(index)} // Toggle completion for this schedule
+                          aria-label={
+                            schedule.completed
+                              ? `Mark ${schedule.label} as incomplete`
+                              : `Mark ${schedule.label} as complete`
+                          }
                         >
                           {schedule.completed ? (
-                            <MdCheckCircle size={28} />
+                            <MdCheckCircle size={28} /> // Check icon if completed
                           ) : (
-                            <ScheduleIconComponent size={28} />
+                            <ScheduleIconComponent size={28} /> // Custom icon if not completed
                           )}
                         </div>
                         <div className="flex-1">
                           <h3 className="font-medium text-white">{schedule.label}</h3>
                           <div className="text-sm text-white/70">
-                            {schedule.scheduledTime} for {schedule.durationMinutes} min
+                            {schedule.time} for {schedule.duration} min{' '}
+                            {/* Use schedule.time and schedule.duration */}
                           </div>
                           <div
                             className={`text-sm font-semibold ${schedule.isNext ? 'text-blue-300' : schedule.completed ? 'text-green-400' : 'text-white/50'}`}
@@ -202,19 +227,21 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                       </div>
                       <div className="flex gap-1 items-center">
                         {schedule.isNext && !schedule.completed && (
-                          <div className="animate-ping">
+                          <div className="animate-ping" aria-label="Upcoming notification">
                             <MdOutlineNotificationsActive size={20} className="text-orange-400" />
                           </div>
                         )}
                         <button
                           onClick={() => handleOpenModalForEdit(schedule, index)}
                           className="p-2 rounded-full transition-colors text-white/60 hover:bg-white/10"
+                          aria-label={`Edit ${schedule.label}`}
                         >
                           <FiEdit size={16} />
                         </button>
                         <button
                           onClick={() => onRemoveSchedule(index)}
                           className="p-2 rounded-full transition-colors text-red-400/70 hover:bg-red-500/10"
+                          aria-label={`Delete ${schedule.label}`}
                         >
                           <MdDeleteForever size={18} />
                         </button>
@@ -228,13 +255,14 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
         </div>
       </div>
 
+      {/* Schedule Edit Modal */}
       <ScheduleEditModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         scheduleToEdit={scheduleToEdit}
         originalIndex={editingIndex}
-        onSave={onSaveSchedule}
-        showMessage={() => {}} // Pass a dummy function or handle toast messages here
+        onSave={onSaveSchedule} // Pass the onSaveSchedule function from parent
+        showMessage={showMessage} // Pass the showMessage function from parent
         newInputLabelPlaceholder={newInputLabelPlaceholder}
         newIconOptions={newIconOptions}
         iconComponentsMap={iconComponentsMap}

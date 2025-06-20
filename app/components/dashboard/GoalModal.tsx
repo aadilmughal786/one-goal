@@ -9,7 +9,7 @@ import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import t
 
 interface ModalGoalData {
   name: string;
-  description: string | null;
+  description: string;
   startDate: string;
   endDate: string;
 }
@@ -17,7 +17,7 @@ interface ModalGoalData {
 interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSetGoal: (goalName: string, endDate: Date, description: string | null) => Promise<void>;
+  onSetGoal: (goalName: string, endDate: Date, description: string) => Promise<void>;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
   initialGoalData: ModalGoalData | null;
   isEditMode?: boolean;
@@ -32,7 +32,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
   isEditMode = false,
 }) => {
   const [goalName, setGoalName] = useState('');
-  const [goalDescription, setGoalDescription] = useState<string | null>('');
+  const [goalDescription, setGoalDescription] = useState<string>('');
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +45,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
         setEndDate(new Date(initialGoalData.endDate));
       } else {
         setGoalName('');
-        setGoalDescription(null);
+        setGoalDescription('');
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         setEndDate(tomorrow);
@@ -132,7 +132,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   rows={3}
                   className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
                   value={goalDescription || ''}
-                  onChange={e => setGoalDescription(e.target.value === '' ? null : e.target.value)}
+                  onChange={e => setGoalDescription(e.target.value)}
                 />
               </div>
               <div>

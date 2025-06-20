@@ -17,64 +17,123 @@ interface WaterTrackerProps {
   onAppStateUpdate: (newAppState: AppState) => void;
 }
 
+/**
+ * WaterTracker Component
+ *
+ * Manages the user's daily water intake goal and tracks current consumption.
+ * It integrates with Firebase to store and retrieve water routine settings.
+ *
+ * Uses:
+ * - A custom UI for displaying water glasses and interactive buttons to adjust intake.
+ * - A range slider to set the daily water goal.
+ * - RoutineCalendar to provide a calendar view for logging daily water routine completion.
+ */
 const WaterTracker: React.FC<WaterTrackerProps> = ({
   currentUser,
   appState,
   showMessage,
   onAppStateUpdate,
 }) => {
-  const initialSettings = appState?.routineSettings?.water;
-  const [waterGoal, setWaterGoal] = useState(initialSettings?.waterGoalGlasses ?? 8);
-  const [currentWater, setCurrentWater] = useState(initialSettings?.currentWaterGlasses ?? 0);
+  // Derive the active goal ID from the appState
+  const activeGoalId = appState?.activeGoalId;
+  // Get water routine settings for the active goal, or null if no active goal/settings
+  const activeGoalWaterSettings = appState?.goals[activeGoalId || '']?.routineSettings?.water;
 
-  // Sync local state with the appState prop
+  // Local state for water goal and current consumption.
+  // Initialized from active goal's settings or default values.
+  const [waterGoal, setWaterGoal] = useState(activeGoalWaterSettings?.goal ?? 8);
+  const [currentWater, setCurrentWater] = useState(activeGoalWaterSettings?.current ?? 0);
+
+  // Effect to synchronize local state with the `appState` prop.
+  // Ensures component re-renders with the latest data from Firebase.
   useEffect(() => {
-    const newSettings = appState?.routineSettings?.water;
-    setWaterGoal(newSettings?.waterGoalGlasses ?? 8);
-    setCurrentWater(newSettings?.currentWaterGlasses ?? 0);
-  }, [appState]);
+    if (activeGoalId && appState?.goals[activeGoalId]?.routineSettings?.water) {
+      const newSettings = appState.goals[activeGoalId].routineSettings.water;
+      setWaterGoal(newSettings.goal); // Corrected to 'goal'
+      setCurrentWater(newSettings.current); // Corrected to 'current'
+    } else {
+      // Reset to defaults if no active goal or water settings
+      setWaterGoal(8);
+      setCurrentWater(0);
+    }
+  }, [appState, activeGoalId]); // Dependencies: re-run if appState or activeGoalId changes
 
-  // Debounced save function for water settings
+  /**
+   * Debounced function to save water settings (goal and current consumption) to Firebase.
+   * Prevents excessive writes during rapid changes (e.g., slider drag).
+   */
   const saveWaterSettings = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !activeGoalId) {
+      console.warn('Attempted to save water settings without user or active goal.');
+      showMessage('Authentication or active goal required to save water settings.', 'error');
+      return;
+    }
+
+    // Construct the WaterRoutineSettings object using the correct property names ('goal', 'current')
     const newSettings: WaterRoutineSettings = {
-      waterGoalGlasses: waterGoal,
-      currentWaterGlasses: currentWater,
+      goal: waterGoal,
+      current: currentWater,
     };
     try {
-      await firebaseService.updateWaterRoutineSettings(currentUser.uid, newSettings);
+      // Call Firebase service to update water routine settings for the active goal
+      await firebaseService.updateWaterRoutineSettings(activeGoalId, currentUser.uid, newSettings);
+      // Re-fetch entire appState to ensure data consistency across the app, including calendar logs
+      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
+      onAppStateUpdate(updatedAppState);
       // Success message can be omitted for a smoother UX, as saving is frequent.
-    } catch {
+      // showMessage('Water settings saved!', 'success'); // Optional success message
+    } catch (error) {
+      console.error('Failed to save water settings:', error);
       showMessage('Failed to save water settings.', 'error');
+      // No explicit revert of local state here, as `useEffect` syncs with `appState` anyway
     }
-  }, [currentUser, waterGoal, currentWater, showMessage]);
+  }, [currentUser, activeGoalId, waterGoal, currentWater, showMessage, onAppStateUpdate]);
 
-  // Trigger save on state change with debounce
+  // Effect to trigger `saveWaterSettings` with a debounce.
+  // The settings will be saved 1 second after `waterGoal` or `currentWater` stops changing.
   useEffect(() => {
     const handler = setTimeout(() => {
       saveWaterSettings();
     }, 1000); // 1-second debounce
-    return () => clearTimeout(handler);
-  }, [waterGoal, currentWater, saveWaterSettings]);
+    return () => clearTimeout(handler); // Clear timeout on re-render or component unmount
+  }, [waterGoal, currentWater, saveWaterSettings]); // Dependencies for debounce
 
+  /**
+   * Handles incrementing or decrementing the current water consumption.
+   * Caps the value to prevent going below zero and allows a reasonable overshoot above goal.
+   * @param increment The amount to add or subtract (e.g., 1 or -1).
+   */
   const handleWaterChange = (increment: number) => {
     setCurrentWater(prev => {
       const newValue = prev + increment;
-      if (newValue < 0) return 0;
-      // Allow exceeding the goal, but cap it at a reasonable limit, e.g., goal + 10
+      if (newValue < 0) return 0; // Prevent negative consumption
+      // Allow exceeding the goal, but cap it at a reasonable limit (e.g., goal + 10 glasses)
+      // This prevents the number from getting excessively large if user keeps clicking.
       if (newValue > waterGoal + 10) return waterGoal + 10;
       return newValue;
     });
   };
 
+  // If there's no active goal selected, display a placeholder message.
+  if (!activeGoalId || !appState?.goals[activeGoalId]) {
+    return (
+      <div className="p-10 text-center text-white/60">
+        <MdOutlineWaterDrop className="mx-auto mb-4 text-4xl" />
+        <p>Set an active goal to configure your water intake goal and track your hydration.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+      {/* Water Intake Main Card */}
       <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-white">
           <MdOutlineWaterDrop size={28} />
           Daily Water Intake
         </h2>
 
+        {/* Current Water / Goal Summary */}
         <div className="mb-6 text-center">
           <div className="text-4xl font-bold text-blue-400">
             {currentWater}
@@ -83,7 +142,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
           <div className="text-sm text-white/70">Glasses Consumed Today</div>
         </div>
 
-        {/* New Glass UI replaces the progress bar */}
+        {/* Visual representation of water glasses (filled/empty) */}
         <div className="flex flex-wrap gap-2 justify-center mb-8">
           {Array.from({ length: waterGoal }, (_, i) => (
             <div
@@ -95,6 +154,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
                     : 'bg-white/10 border-white/30'
                 }`}
               title={`Glass ${i + 1} ${i < currentWater ? '(Full)' : '(Empty)'}`}
+              aria-label={`Glass ${i + 1}, ${i < currentWater ? 'filled' : 'empty'}`}
             >
               {i < currentWater && (
                 <MdOutlineWaterDrop size={20} className="absolute bottom-1 text-white opacity-50" />
@@ -103,12 +163,13 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
           ))}
         </div>
 
+        {/* Add/Remove Water Buttons */}
         <div className="flex gap-4 justify-center items-center mb-8">
           <button
             onClick={() => handleWaterChange(-1)}
             className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50"
             aria-label="Remove one glass"
-            disabled={currentWater <= 0}
+            disabled={currentWater <= 0} // Disable if no water has been consumed
           >
             <MdRemove size={32} />
           </button>
@@ -121,6 +182,7 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
           </button>
         </div>
 
+        {/* Adjust Daily Goal Slider */}
         <div className="p-6 rounded-xl border bg-black/20 border-white/10">
           <h3 className="mb-4 font-semibold text-white">Adjust Daily Goal</h3>
           <div className="mb-2 text-center">
@@ -129,11 +191,12 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
           </div>
           <input
             type="range"
-            min="4"
-            max="20"
+            min="4" // Minimum goal of 4 glasses
+            max="20" // Maximum goal of 20 glasses
             value={waterGoal}
             onChange={e => setWaterGoal(parseInt(e.target.value, 10))}
             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/20 accent-blue-500"
+            aria-label="Daily water goal in glasses"
           />
           <div className="flex justify-between mt-1 text-xs text-white/50">
             <span>4</span>
@@ -142,14 +205,15 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({
         </div>
       </div>
 
+      {/* Routine Calendar for Water Intake Logging */}
       <RoutineCalendar
         appState={appState}
         currentUser={currentUser}
         showMessage={showMessage}
         onAppStateUpdate={onAppStateUpdate}
-        routineType={RoutineType.WATER}
+        routineType={RoutineType.WATER} // Specify the routine type for this calendar instance
         title="Water Intake Log"
-        icon={MdOutlineWaterDrop}
+        icon={MdOutlineWaterDrop} // Default icon for the calendar header
       />
     </div>
   );

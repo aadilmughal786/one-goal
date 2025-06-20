@@ -8,22 +8,26 @@ import {
   MdOutlineKeyboardArrowDown,
   MdOutlineKeyboardArrowUp,
 } from 'react-icons/md';
-import { ScheduledRoutineBase } from '@/types';
+import { ScheduledRoutineBase } from '@/types'; // Ensure correct import of ScheduledRoutineBase
 import { format, parse } from 'date-fns';
 import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the new component
+import { Timestamp } from 'firebase/firestore'; // Import Timestamp for new schedule creation
 
 interface ScheduleEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  scheduleToEdit: ScheduledRoutineBase | null;
-  originalIndex: number | null;
+  scheduleToEdit: ScheduledRoutineBase | null; // The routine object being edited
+  originalIndex: number | null; // Its original index in the array, for updates
   onSave: (schedule: ScheduledRoutineBase, originalIndex: number | null) => Promise<void>;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
   newInputLabelPlaceholder: string;
-  newIconOptions: string[];
-  iconComponentsMap: { [key: string]: React.ElementType };
-  buttonLabel: string;
+  newIconOptions: string[]; // Array of icon names (strings)
+  iconComponentsMap: { [key: string]: React.ElementType }; // Map from icon name to React component
+  buttonLabel: string; // Label for the save button (e.g., "Add Routine", "Save Changes")
 }
+
+// Helper for generating UUIDs for new item IDs
+const generateUUID = () => crypto.randomUUID();
 
 const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   isOpen,
@@ -38,39 +42,48 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   buttonLabel,
 }) => {
   const [label, setLabel] = useState('');
-  const [scheduledTime, setScheduledTime] = useState(format(new Date(), 'HH:mm'));
-  const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
+  // Changed to 'time' to match ScheduledRoutineBase
+  const [time, setTime] = useState(format(new Date(), 'HH:mm'));
+  // Changed to 'duration' to match ScheduledRoutineBase
+  const [duration, setDuration] = useState<number | ''>(30);
   const [icon, setIcon] = useState(newIconOptions[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false); // State for the time picker
   const iconDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Effect to initialize or reset form fields when the modal opens or `scheduleToEdit` changes.
   useEffect(() => {
     if (isOpen) {
       if (scheduleToEdit) {
+        // If editing an existing schedule, populate fields with its data
         setLabel(scheduleToEdit.label);
-        setScheduledTime(scheduleToEdit.scheduledTime);
-        setDurationMinutes(scheduleToEdit.durationMinutes);
+        setTime(scheduleToEdit.time); // Use 'time' property
+        setDuration(scheduleToEdit.duration); // Use 'duration' property
         setIcon(scheduleToEdit.icon);
       } else {
+        // If adding a new schedule, reset fields to default/empty
         setLabel('');
-        setScheduledTime(format(new Date(), 'HH:mm'));
-        setDurationMinutes(30);
-        setIcon(newIconOptions[0]);
+        setTime(format(new Date(), 'HH:mm')); // Default to current time
+        setDuration(30); // Default duration
+        setIcon(newIconOptions[0]); // Default icon
       }
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Reset submission state
+      setIsIconDropdownOpen(false); // Close dropdown on open
+      setIsTimePickerOpen(false); // Close time picker on open
     }
-  }, [isOpen, scheduleToEdit, newIconOptions]);
+  }, [isOpen, scheduleToEdit, newIconOptions]); // Dependencies: re-run if modal opens/closes or scheduleToEdit/options change
 
+  // Effect to control body scroll when the modal is open/closed.
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'auto';
     return () => {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = 'auto'; // Ensure scroll is re-enabled on unmount
     };
   }, [isOpen]);
 
+  // Effect to handle clicks outside the icon dropdown to close it.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (iconDropdownRef.current && !iconDropdownRef.current.contains(event.target as Node)) {
@@ -81,51 +94,86 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /**
+   * Handles changes to the duration input, ensuring it's a valid number or empty.
+   * @param value The string value from the input.
+   */
   const handleDurationChange = (value: string) => {
-    setDurationMinutes(value === '' ? '' : parseInt(value, 10));
+    // Only allow empty string or valid integers for duration
+    setDuration(value === '' ? '' : parseInt(value, 10));
   };
 
+  /**
+   * Handles the form submission (saving or updating a schedule).
+   */
   const handleSubmit = async () => {
-    const parsedDuration = Number(durationMinutes);
-    if (!label.trim() || !scheduledTime || isNaN(parsedDuration) || parsedDuration < 1) {
+    // Validate inputs
+    const parsedDuration = Number(duration);
+    if (!label.trim() || !time || isNaN(parsedDuration) || parsedDuration < 1) {
       showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
       return;
     }
 
     setIsSubmitting(true);
-    const newOrUpdatedSchedule: ScheduledRoutineBase = {
-      ...(scheduleToEdit || {}),
-      label: label.trim(),
-      scheduledTime,
-      durationMinutes: parsedDuration,
-      icon,
-      completed: scheduleToEdit ? scheduleToEdit.completed : null,
-    };
+    const now = Timestamp.now(); // Current timestamp for creation/update
+
+    let newOrUpdatedSchedule: ScheduledRoutineBase;
+
+    if (scheduleToEdit) {
+      // If editing, update existing properties and `updatedAt`
+      newOrUpdatedSchedule = {
+        ...scheduleToEdit,
+        label: label.trim(),
+        time, // Use 'time'
+        duration: parsedDuration, // Use 'duration'
+        icon,
+        updatedAt: now, // Update timestamp on modification
+      };
+    } else {
+      // If creating a new schedule, set all required properties, including ID and timestamps
+      newOrUpdatedSchedule = {
+        id: generateUUID(), // Generate a unique ID for new items
+        label: label.trim(),
+        time, // Use 'time'
+        duration: parsedDuration, // Use 'duration'
+        icon,
+        completed: false, // New routines start as not completed
+        completedAt: null, // No completion time for new routines
+        createdAt: now, // Set creation timestamp
+        updatedAt: now, // Set update timestamp
+      };
+    }
 
     try {
-      await onSave(newOrUpdatedSchedule, originalIndex);
-      onClose();
-    } catch {
+      await onSave(newOrUpdatedSchedule, originalIndex); // Pass the routine and its original index
+      onClose(); // Close the modal on successful save
+    } catch (error) {
+      console.error('Error saving schedule:', error);
       showMessage('Failed to save schedule. Please try again.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Reset submission state
     }
   };
 
+  // Do not render the modal if it's not open.
   if (!isOpen) return null;
 
+  // Dynamically get the React component for the currently selected icon.
   const CurrentFormIconComponent = iconComponentsMap[icon] || MdOutlineSettings;
 
   return (
     <>
       <div
         className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
-        onClick={onClose}
+        onClick={onClose} // Close modal when clicking outside content
+        aria-modal="true" // Indicate to assistive technologies that this is a modal
+        role="dialog" // Indicate this is a dialog window
       >
         <div
           className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md cursor-auto"
-          onClick={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()} // Prevent modal from closing when clicking inside
         >
+          {/* Modal Header */}
           <div className="flex justify-between items-center p-6 border-b border-white/10">
             <h2 className="text-xl font-semibold text-white">
               {scheduleToEdit ? 'Edit Schedule' : 'Add New Schedule'}
@@ -139,17 +187,25 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
             </button>
           </div>
 
+          {/* Modal Body: Form Fields */}
           <div className="p-6 space-y-6">
+            {/* Label and Icon Input */}
             <div>
-              <label className="block mb-2 text-sm text-white/70">Label</label>
+              <label htmlFor="schedule-label" className="block mb-2 text-sm text-white/70">
+                Label
+              </label>
               <div
                 className="flex relative items-center rounded-lg border border-white/10 bg-black/20"
-                ref={iconDropdownRef}
+                ref={iconDropdownRef} // Ref for click outside logic
               >
+                {/* Icon selection button */}
                 <button
                   type="button"
                   onClick={() => setIsIconDropdownOpen(prev => !prev)}
                   className="flex items-center p-3 text-white rounded-l-lg cursor-pointer hover:bg-white/10"
+                  aria-label="Select icon"
+                  aria-expanded={isIconDropdownOpen}
+                  aria-haspopup="true"
                 >
                   <CurrentFormIconComponent size={20} />
                   {isIconDropdownOpen ? (
@@ -158,6 +214,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                     <MdOutlineKeyboardArrowDown size={20} className="ml-1" />
                   )}
                 </button>
+                {/* Icon dropdown content */}
                 {isIconDropdownOpen && (
                   <div className="overflow-y-auto absolute left-0 top-full z-50 p-2 mt-2 w-full max-h-48 rounded-lg border shadow-lg bg-neutral-900 border-white/10">
                     <div className="grid grid-cols-5 gap-1">
@@ -169,6 +226,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                             setIsIconDropdownOpen(false);
                           }}
                           className="flex justify-center items-center p-3 text-white rounded-md transition-colors hover:bg-white/10"
+                          aria-label={`Select ${optionIconName} icon`}
                         >
                           {React.createElement(iconComponentsMap[optionIconName], { size: 24 })}
                         </button>
@@ -176,46 +234,68 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                     </div>
                   </div>
                 )}
+                {/* Label input field */}
                 <input
+                  id="schedule-label"
                   type="text"
                   placeholder={newInputLabelPlaceholder}
                   value={label}
                   onChange={e => setLabel(e.target.value)}
                   className="p-3 w-full text-white bg-transparent focus:outline-none"
+                  aria-required="true"
                 />
               </div>
             </div>
 
+            {/* Time and Duration Inputs */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-2 text-sm text-white/70">Start Time</label>
+                <label htmlFor="start-time" className="block mb-2 text-sm text-white/70">
+                  Start Time
+                </label>
                 <button
+                  id="start-time"
                   onClick={() => setIsTimePickerOpen(true)}
-                  className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
+                  className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  aria-haspopup="true"
+                  aria-expanded={isTimePickerOpen}
                 >
-                  {format(parse(scheduledTime, 'HH:mm', new Date()), 'h:mm a')}
+                  {/* Format the time for display */}
+                  {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
                 </button>
               </div>
               <div>
-                <label className="block mb-2 text-sm text-white/70">Duration (min)</label>
+                <label htmlFor="duration-minutes" className="block mb-2 text-sm text-white/70">
+                  Duration (min)
+                </label>
                 <input
+                  id="duration-minutes"
                   type="number"
-                  min={10}
-                  max={150}
+                  min={1} // Changed min from 10 to 1 for more flexibility
                   placeholder="e.g., 30"
-                  value={durationMinutes}
+                  value={duration}
                   onChange={e => handleDurationChange(e.target.value)}
-                  className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500"
+                  className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  aria-required="true"
+                  aria-label="Duration in minutes"
                 />
               </div>
             </div>
           </div>
 
+          {/* Modal Footer: Save Button */}
           <div className="p-6 border-t border-white/10">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                !label.trim() ||
+                !time ||
+                Number(duration) < 1 ||
+                isNaN(Number(duration))
+              }
               className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-60"
+              aria-label={buttonLabel}
             >
               {isSubmitting ? (
                 <FiLoader className="w-5 h-5 animate-spin" />
@@ -227,14 +307,17 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
           </div>
         </div>
       </div>
+      {/* DateTimePicker component for time selection */}
       <DateTimePicker
         isOpen={isTimePickerOpen}
-        value={parse(scheduledTime, 'HH:mm', new Date())}
+        // Parse the 'time' string into a Date object for the picker
+        value={parse(time, 'HH:mm', new Date())}
         onChange={date => {
-          if (date) setScheduledTime(format(date, 'HH:mm'));
+          // If a date is selected, format it back to 'HH:mm' string
+          if (date) setTime(format(date, 'HH:mm'));
         }}
         onClose={() => setIsTimePickerOpen(false)}
-        mode="time"
+        mode="time" // Set picker to time mode
       />
     </>
   );

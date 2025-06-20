@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { DailyProgress, SatisfactionLevel, Goal } from '@/types';
+import { DailyProgress, SatisfactionLevel, Goal, StopwatchSession } from '@/types'; // Ensure StopwatchSession is imported
 import {
   format,
   getDay,
@@ -47,17 +47,44 @@ interface ChartsProps {
   goal: Goal | null;
 }
 
+// Define the interface for a single item in the chartData array
+interface ChartDataItem {
+  date: string;
+  satisfaction: number;
+  timeSpent: number; // In minutes
+  efficiency: number; // Satisfaction per hour
+  movingAvg: number; // 7-day moving average for satisfaction
+}
+
+/**
+ * Maps SatisfactionLevel enum values to display information (color, label, numeric value).
+ * @param level The SatisfactionLevel enum value.
+ * @returns An object containing color, label, and numeric representation.
+ */
 const getSatisfactionInfo = (level: SatisfactionLevel) => {
   const info: Record<SatisfactionLevel, { color: string; label: string; numeric: number }> = {
-    [SatisfactionLevel.VERY_LOW]: { color: '#ef4444', label: 'Very Low', numeric: 1 },
-    [SatisfactionLevel.LOW]: { color: '#f97316', label: 'Low', numeric: 2 },
-    [SatisfactionLevel.MEDIUM]: { color: '#f59e0b', label: 'Medium', numeric: 3 },
-    [SatisfactionLevel.HIGH]: { color: '#84cc16', label: 'High', numeric: 4 },
-    [SatisfactionLevel.VERY_HIGH]: { color: '#22c55e', label: 'Very High', numeric: 5 },
+    // Corrected enum member names to match types/index.ts
+    [SatisfactionLevel.VERY_UNSATISFIED]: {
+      color: '#ef4444',
+      label: 'Very Unsatisfied',
+      numeric: 1,
+    },
+    [SatisfactionLevel.UNSATISFIED]: { color: '#f97316', label: 'Unsatisfied', numeric: 2 },
+    [SatisfactionLevel.NEUTRAL]: { color: '#f59e0b', label: 'Neutral', numeric: 3 },
+    [SatisfactionLevel.SATISFIED]: { color: '#84cc16', label: 'Satisfied', numeric: 4 },
+    [SatisfactionLevel.VERY_SATISFIED]: { color: '#22c55e', label: 'Very Satisfied', numeric: 5 },
   };
+  // Fallback for unexpected level, though TypeScript should prevent this if enum is strictly used.
   return info[level] || { color: '#9ca3af', label: 'Unknown', numeric: 0 };
 };
 
+/**
+ * Custom Tooltip component for Recharts, providing formatted display of data points.
+ * @param active - Boolean indicating if the tooltip is active.
+ * @param payload - Array of data entries for the active point.
+ * @param label - The label for the active data point (e.g., date).
+ * @returns ReactNode representing the custom tooltip.
+ */
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
@@ -69,16 +96,28 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
 
           if (typeof value === 'number') {
             // Format based on the data key for better readability
-            if (entry.dataKey === 'cumulativeHours' || entry.dataKey === 'avgTime') {
-              displayValue = `${value.toFixed(1)}`;
-            } else if (entry.dataKey === 'completionRate') {
-              displayValue = `${value.toFixed(1)}%`;
-            } else if (entry.dataKey === 'consistency') {
-              displayValue = `${value.toFixed(0)}%`;
+            if (entry.dataKey === 'cumulativeHours') {
+              displayValue = `${value.toFixed(1)} hrs`;
+            } else if (entry.dataKey === 'avgTime' || entry.dataKey === 'timeSpent') {
+              // Added 'timeSpent'
+              displayValue = `${value.toFixed(1)} mins`;
+            } else if (
+              entry.dataKey === 'completionRate' ||
+              entry.dataKey === 'consistency' ||
+              entry.dataKey === 'successRate'
+            ) {
+              displayValue = `${value.toFixed(0)}%`; // Round percentages to whole numbers
+            } else if (
+              entry.dataKey === 'satisfaction' ||
+              entry.dataKey === 'avgSatisfaction' ||
+              entry.dataKey === 'movingAvg'
+            ) {
+              displayValue = value.toFixed(1); // Satisfaction levels to 1 decimal
             } else {
-              displayValue = value.toFixed(2);
+              displayValue = value.toFixed(2); // Default for other numbers
             }
           } else if (typeof value === 'string') {
+            // Attempt to parse string to float for formatting, else display as is
             const parsed = parseFloat(value);
             displayValue = isNaN(parsed) ? value : parsed.toFixed(2);
           } else {
@@ -97,52 +136,77 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   return null;
 };
 
+/**
+ * Charts Component
+ *
+ * Displays various performance charts based on daily progress data for a goal.
+ * Utilizes Recharts library for data visualization.
+ */
 const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
-  // Enhanced chart data with more meaningful metrics
-  const chartData = useMemo(() => {
+  /**
+   * Helper to calculate total duration in minutes from an array of StopwatchSession.
+   * @param sessions - Array of StopwatchSession objects.
+   * @returns Total duration in minutes.
+   */
+  const getTotalSessionMinutes = (sessions: StopwatchSession[] | undefined): number => {
+    // Ensure sessions is an array and sum the 'duration' property (which is in milliseconds)
+    return (sessions || []).reduce((sum, s) => sum + s.duration, 0) / (1000 * 60); // Convert ms to minutes
+  };
+
+  /**
+   * Memoized data for daily satisfaction, time spent, and moving averages.
+   * This is the primary data source for the Satisfaction Trend chart.
+   */
+  const chartData: ChartDataItem[] = useMemo(() => {
+    // Explicitly type as ChartDataItem[]
     // Ensure dailyProgress is an array before mapping
     if (!dailyProgress) return [];
 
     const data = dailyProgress.map(p => ({
-      date: format(new Date(p.date), 'MMM d'), // Use new Date(p.date) as p.date is string
-      satisfaction: getSatisfactionInfo(p.satisfactionLevel).numeric,
-      // Use effortTimeMinutes which is now number | null
-      timeSpent: p.effortTimeMinutes || 0,
-      movingAvg: 0,
+      date: format(new Date(p.date), 'MMM d'), // Format date string for display
+      satisfaction: getSatisfactionInfo(p.satisfaction).numeric, // Use 'satisfaction' property from DailyProgress
+      timeSpent: getTotalSessionMinutes(p.sessions), // Calculate total time spent in minutes from sessions
+      // Efficiency calculation (satisfaction per hour spent). Avoid division by zero.
       efficiency:
-        (p.effortTimeMinutes || 0) > 0
-          ? getSatisfactionInfo(p.satisfactionLevel).numeric / ((p.effortTimeMinutes || 0) / 60)
+        getTotalSessionMinutes(p.sessions) > 0
+          ? getSatisfactionInfo(p.satisfaction).numeric / (getTotalSessionMinutes(p.sessions) / 60)
           : 0,
+      movingAvg: 0, // Initialize movingAvg here
     }));
 
-    // Calculate 7-day moving average
+    // Calculate 7-day moving average for satisfaction.
     for (let i = 0; i < data.length; i++) {
-      const start = Math.max(0, i - 6);
-      const end = i + 1;
-      const window = data.slice(start, end);
-      const sum = window.reduce((acc, curr) => acc + curr.satisfaction, 0);
-      data[i].movingAvg = parseFloat((sum / window.length).toFixed(2));
+      const start = Math.max(0, i - 6); // Start index for the 7-day window
+      const end = i + 1; // End index for the window
+      const window = data.slice(start, end); // Extract the window of data
+      const sum = window.reduce((acc, curr) => acc + curr.satisfaction, 0); // Sum satisfaction in the window
+      data[i].movingAvg = parseFloat((sum / window.length).toFixed(2)); // Calculate average and format
     }
 
     return data;
-  }, [dailyProgress]);
+  }, [dailyProgress]); // Dependency: re-calculate if dailyProgress changes
 
-  // Goal progress tracking
+  /**
+   * Memoized data for overall goal progress, including days passed, logged, and consistency rates.
+   * Used in the RadialBarChart.
+   */
   const goalProgressData = useMemo(() => {
     if (!goal) return null;
 
-    // Use goal.createdAt instead of goal.startDate
-    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1;
+    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1; // Total duration of the goal
     const daysPassed = Math.min(
-      differenceInDays(new Date(), goal.startDate.toDate()) + 1,
+      differenceInDays(new Date(), goal.startDate.toDate()) + 1, // Days from goal start to today
       totalDays
     );
+    // Count days where there's progress (satisfaction > neutral or some time spent)
     const daysLogged = dailyProgress.filter(
-      p => getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || (p.effortTimeMinutes || 0) > 0
-    ).length; // Use effortTimeMinutes
+      p =>
+        getSatisfactionInfo(p.satisfaction).numeric > SatisfactionLevel.NEUTRAL ||
+        getTotalSessionMinutes(p.sessions) > 0
+    ).length;
 
-    const completionRate = (daysPassed / totalDays) * 100;
-    const loggingRate = (daysLogged / daysPassed) * 100;
+    const completionRate = (daysPassed / totalDays) * 100; // Percentage of goal period passed
+    const loggingRate = daysPassed > 0 ? (daysLogged / daysPassed) * 100 : 0; // Consistency of logging
 
     return {
       totalDays,
@@ -152,102 +216,113 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       completionRate,
       loggingRate,
     };
-  }, [dailyProgress, goal]);
+  }, [dailyProgress, goal]); // Dependencies: dailyProgress and goal
 
-  // Consistency metrics
+  /**
+   * Memoized data for weekly consistency tracking.
+   * Used in the BarChart for weekly consistency.
+   */
   const consistencyData = useMemo(() => {
     if (!goal) return [];
 
     const weeks = [];
-    // Use goal.createdAt instead of goal.startDate
-    let currentDate = goal.startDate.toDate();
-    const endDate = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
+    let currentDate = goal.startDate.toDate(); // Start from goal's start date
+    // End date for loop is min of today and goal end date, to avoid future dates
+    const endDateForLoop = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
 
-    while (currentDate.getTime() <= endDate) {
+    while (currentDate.getTime() <= endDateForLoop) {
       const weekStart = startOfWeek(currentDate);
       const weekEnd = endOfWeek(currentDate);
       const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
       const weekProgress = weekDays
-        // Use goal.createdAt instead of goal.startDate
+        // Filter days to be within goal start and current date (or goal end date)
         .filter(day => day >= goal.startDate.toDate() && day <= new Date())
         .map(day => {
-          const dayKey = format(day, 'yyyy-MM-dd'); // Format date string correctly
-          return dailyProgress.find(p => p.date === dayKey); // Compare date strings
+          const dayKey = format(day, 'yyyy-MM-dd'); // Format date string correctly for lookup
+          return dailyProgress.find(p => p.date === dayKey); // Find progress for this specific day
         });
 
       const activeDays = weekProgress.filter(
         p =>
           p &&
-          (getSatisfactionInfo(p.satisfactionLevel).numeric > 1 || (p.effortTimeMinutes || 0) > 0)
-      ).length; // Use effortTimeMinutes
+          (getSatisfactionInfo(p.satisfaction).numeric > SatisfactionLevel.NEUTRAL ||
+            getTotalSessionMinutes(p.sessions) > 0)
+      ).length; // Count days with logged progress
 
       const totalWeekDays = weekProgress.length;
-      const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0;
+      const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0; // Consistency percentage
 
       weeks.push({
-        week: format(weekStart, 'MMM d'),
-        consistency,
+        week: format(weekStart, 'MMM d'), // Label for the week
+        consistency: parseFloat(consistency.toFixed(1)), // Format consistency percentage
         activeDays,
         totalDays: totalWeekDays,
       });
 
+      // Move to the next week's start
       currentDate = new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000);
     }
 
     return weeks;
-  }, [dailyProgress, goal]);
+  }, [dailyProgress, goal]); // Dependencies: dailyProgress and goal
 
-  // Enhanced cumulative data
+  /**
+   * Memoized data for cumulative hours invested and rolling average satisfaction.
+   * Used in the Cumulative Progress chart.
+   */
   const cumulativeTimeData = useMemo(() => {
-    // Ensure dailyProgress is an array before mapping
     if (!dailyProgress) return [];
 
-    let accumulatedTime = 0;
+    let accumulatedTimeMinutes = 0;
     let accumulatedSatisfaction = 0;
 
     return dailyProgress.map((p, index) => {
-      accumulatedTime += p.effortTimeMinutes || 0; // Use effortTimeMinutes
-      accumulatedSatisfaction += getSatisfactionInfo(p.satisfactionLevel).numeric;
+      accumulatedTimeMinutes += getTotalSessionMinutes(p.sessions); // Accumulate minutes
+      accumulatedSatisfaction += getSatisfactionInfo(p.satisfaction).numeric; // Accumulate satisfaction
 
       return {
-        date: format(new Date(p.date), 'MMM d'), // Use new Date(p.date)
-        cumulativeHours: parseFloat((accumulatedTime / 60).toFixed(2)),
-        avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)),
+        date: format(new Date(p.date), 'MMM d'), // Format date string
+        cumulativeHours: parseFloat((accumulatedTimeMinutes / 60).toFixed(2)), // Convert to hours
+        avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)), // Rolling average
       };
     });
-  }, [dailyProgress]);
+  }, [dailyProgress]); // Dependency: dailyProgress
 
-  // Time vs satisfaction correlation
+  /**
+   * Memoized data for correlating time spent with satisfaction levels.
+   * Used in the Time vs Satisfaction Analysis chart.
+   */
   const correlationData = useMemo(() => {
-    // Ensure chartData is an array before mapping
-    if (!chartData) return [];
+    if (!chartData) return []; // Depends on chartData, which has been fixed
 
     return chartData.map(item => ({
-      timeSpent: item.timeSpent, // Already uses effortTimeMinutes from chartData
-      satisfaction: item.satisfaction,
-      efficiency: item.efficiency,
+      timeSpent: item.timeSpent, // Already uses minutes from chartData
+      satisfaction: item.satisfaction, // Already from chartData
+      efficiency: item.efficiency, // Already calculated in chartData
       date: item.date,
     }));
-  }, [chartData]);
+  }, [chartData]); // Dependency: chartData
 
-  // Weekly performance (enhanced)
+  /**
+   * Memoized data for weekly performance, averaged by day of the week.
+   * Used in the Day-of-Week Performance Analysis chart.
+   */
   const weeklyPerformance = useMemo(() => {
-    // Ensure dailyProgress is an array before processing
     if (!dailyProgress) return [];
 
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData: {
       [key: number]: {
         totalSatisfaction: number;
-        totalTime: number;
+        totalTime: number; // In minutes
         count: number;
         highSatisfactionDays: number;
       };
     } = {};
 
     dailyProgress.forEach(p => {
-      const dayIndex = getDay(new Date(p.date)); // Use new Date(p.date)
+      const dayIndex = getDay(new Date(p.date)); // Get day of week (0-6)
       if (!weeklyData[dayIndex]) {
         weeklyData[dayIndex] = {
           totalSatisfaction: 0,
@@ -256,37 +331,39 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
           highSatisfactionDays: 0,
         };
       }
-      const satisfaction = getSatisfactionInfo(p.satisfactionLevel).numeric;
+      const satisfaction = getSatisfactionInfo(p.satisfaction).numeric; // Use 'satisfaction'
       weeklyData[dayIndex].totalSatisfaction += satisfaction;
-      weeklyData[dayIndex].totalTime += p.effortTimeMinutes || 0; // Use effortTimeMinutes
+      weeklyData[dayIndex].totalTime += getTotalSessionMinutes(p.sessions); // Accumulate total minutes
       weeklyData[dayIndex].count++;
-      if (satisfaction >= 4) weeklyData[dayIndex].highSatisfactionDays++;
+      if (satisfaction >= SatisfactionLevel.SATISFIED) weeklyData[dayIndex].highSatisfactionDays++; // Count high satisfaction days
     });
 
     return daysOfWeek.map((name, index) => ({
-      name,
+      name, // Day name (Sun, Mon, etc.)
       avgSatisfaction: weeklyData[index]
         ? parseFloat((weeklyData[index].totalSatisfaction / weeklyData[index].count).toFixed(2))
         : 0,
       avgTime: weeklyData[index]
         ? parseFloat((weeklyData[index].totalTime / weeklyData[index].count).toFixed(2))
-        : 0,
+        : 0, // Average time in minutes
       successRate: weeklyData[index]
         ? parseFloat(
             ((weeklyData[index].highSatisfactionDays / weeklyData[index].count) * 100).toFixed(1)
           )
         : 0,
     }));
-  }, [dailyProgress]);
+  }, [dailyProgress]); // Dependency: dailyProgress
 
-  // Satisfaction distribution (enhanced)
+  /**
+   * Memoized data for the distribution of satisfaction levels.
+   * Used in the Satisfaction Level Distribution PieChart.
+   */
   const satisfactionDistribution = useMemo(() => {
-    // Ensure dailyProgress is an array before processing
     if (!dailyProgress) return [];
 
     const distribution = new Map<SatisfactionLevel, number>();
     dailyProgress.forEach(p => {
-      distribution.set(p.satisfactionLevel, (distribution.get(p.satisfactionLevel) || 0) + 1);
+      distribution.set(p.satisfaction, (distribution.get(p.satisfaction) || 0) + 1); // Use 'satisfaction'
     });
 
     return Array.from(distribution.entries()).map(([level, count]) => ({
@@ -295,9 +372,10 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       percentage: parseFloat(((count / dailyProgress.length) * 100).toFixed(1)),
       color: getSatisfactionInfo(level).color,
     }));
-  }, [dailyProgress]);
+  }, [dailyProgress]); // Dependency: dailyProgress
 
-  if (dailyProgress.length === 0) {
+  // Render a message if no progress data is available.
+  if (!dailyProgress || dailyProgress.length === 0) {
     return (
       <div className="p-8 text-center text-white/60">
         <FiBarChart className="mx-auto mb-4 text-4xl" />

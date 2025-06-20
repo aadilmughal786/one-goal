@@ -16,17 +16,21 @@ import {
   FiHash,
   FiLogIn,
   FiChevronsRight,
-  FiEdit, // Import the edit icon
+  FiEdit,
 } from 'react-icons/fi';
 import { MdRocketLaunch } from 'react-icons/md';
 import { User } from 'firebase/auth';
 import { firebaseService } from '@/services/firebaseService';
-import { AppState } from '@/types';
-import { differenceInDays, format as formatDate } from 'date-fns';
-import ConfirmationModal from '@/components/ConfirmationModal';
-import ToastMessage from '@/components/ToastMessage';
-import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal'; // Import the new modal
+import { AppState } from '@/types'; // Ensure AppState and nested types are correctly imported
+import { differenceInDays, format as formatDate } from 'date-fns'; // Renamed format to formatDate to avoid conflict
+import ConfirmationModal from '@/components/common/ConfirmationModal';
+import ToastMessage from '@/components/common/ToastMessage';
+import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal';
 
+/**
+ * Skeleton loader for the Profile Page.
+ * Displays animated placeholders while content is loading.
+ */
 const ProfilePageSkeleton = () => (
   <div className="space-y-8 animate-pulse">
     {/* Profile Header Skeleton */}
@@ -60,6 +64,9 @@ const ProfilePageSkeleton = () => (
   </div>
 );
 
+/**
+ * Reusable component for displaying a single statistic card.
+ */
 const StatCard = ({
   icon,
   label,
@@ -80,172 +87,239 @@ const StatCard = ({
   </div>
 );
 
+/**
+ * Main Profile Page component.
+ * Displays user profile information, goal statistics, and data management options.
+ */
 export default function ProfilePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Manages overall loading state for the page
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false); // State for the new modal
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [confirmationProps, setConfirmationProps] = useState({
     title: '',
     message: '',
-    action: () => {},
+    action: () => {}, // Default empty action
     actionDelayMs: 0,
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
+  /**
+   * Callback function to display a toast message.
+   */
   const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
     setToastMessage(text);
     setToastType(type);
+    // Optional: Auto-clear toast after a few seconds
+    setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
+  /**
+   * Fetches user data from Firebase after authentication.
+   */
   const fetchUserAndData = useCallback(
     async (user: User) => {
       try {
         const userData = await firebaseService.getUserData(user.uid);
         setAppState(userData);
-      } catch {
+      } catch (error) {
+        console.error('Failed to load user data:', error);
         showMessage('Failed to load user data.', 'error');
       } finally {
-        setLoading(false);
+        setLoading(false); // Always set loading to false after fetch attempt
       }
     },
     [showMessage]
   );
 
+  // Effect to listen for Firebase authentication state changes.
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(async user => {
       if (user) {
         setCurrentUser(user);
-        fetchUserAndData(user);
+        fetchUserAndData(user); // Fetch data if user is logged in
       } else {
-        router.push('/login');
+        router.push('/login'); // Redirect to login if not authenticated
       }
     });
-    return () => unsubscribe();
+    return () => unsubscribe(); // Cleanup Firebase listener
   }, [router, fetchUserAndData]);
 
+  /**
+   * Handles importing user data from a JSON file.
+   * Prompts for confirmation if existing goal data would be overwritten.
+   */
   const handleImportData = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (!file || !currentUser) return;
+      if (!file || !currentUser) {
+        showMessage('No file selected or user not authenticated.', 'info');
+        return;
+      }
 
       if (file.size > 5 * 1024 * 1024) {
+        // Max 5MB file size
         showMessage('File is too large (max 5MB).', 'error');
         return;
       }
-      event.target.value = '';
+      event.target.value = ''; // Clear file input value to allow re-uploading the same file
 
       const reader = new FileReader();
       reader.onload = async e => {
         try {
-          const importedData = JSON.parse(e.target?.result as string);
-          const deserializedData = firebaseService.deserializeForImport(importedData);
+          const importedRawData = JSON.parse(e.target?.result as string);
+          // Deserialize the imported data to convert timestamps back to Timestamp objects
+          const deserializedData = firebaseService.deserializeAppState(importedRawData);
 
           const performImport = async () => {
-            if (!currentUser) return;
+            if (!currentUser) return; // Re-check user authentication
             await firebaseService.setUserData(currentUser.uid, deserializedData);
-            setAppState(deserializedData);
+            setAppState(deserializedData); // Update local state with imported data
             showMessage('Data imported successfully! Refreshing...', 'success');
+            // A full page reload is often necessary after a data import to re-initialize all components
             setTimeout(() => window.location.reload(), 2000);
           };
 
-          if (appState?.goal) {
+          // If there's an existing active goal, prompt for confirmation before overwriting
+          if (appState?.activeGoalId && appState.goals[appState.activeGoalId]) {
             setConfirmationProps({
               title: 'Overwrite All Data?',
               message:
                 'Importing will replace your current goal and all associated data. This action is irreversible. The confirm button will be enabled in 5 seconds.',
               action: performImport,
-              actionDelayMs: 5000,
+              actionDelayMs: 5000, // Delay for user to read warning
             });
             setIsConfirmModalOpen(true);
           } else {
+            // No active goal, proceed with import directly
             await performImport();
           }
-        } catch {
+        } catch (error) {
+          console.error('Error importing data:', error);
           showMessage('Import failed. Please check file format.', 'error');
         }
       };
-      reader.readAsText(file);
+      reader.readAsText(file); // Read the file content as text
     },
-    [currentUser, appState?.goal, showMessage]
+    [currentUser, appState, showMessage]
   );
 
+  /**
+   * Handles exporting all user data to a JSON file.
+   */
   const handleExportData = useCallback(async () => {
-    if (!appState) return;
+    if (!appState) {
+      showMessage('No data to export.', 'info');
+      return;
+    }
     try {
-      const serializableData = firebaseService.serializeForExport(appState);
-      const dataStr = JSON.stringify(serializableData, null, 2);
+      // Serialize the AppState to convert Timestamp objects to strings for export
+      const serializableData = firebaseService.serializeAppState(appState);
+      const dataStr = JSON.stringify(serializableData, null, 2); // Pretty print JSON
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
+      const url = URL.createObjectURL(dataBlob); // Create a URL for the blob
+      const link = document.createElement('a'); // Create a temporary anchor element
       link.href = url;
-      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`; // Set download filename
+      document.body.appendChild(link); // Append to body to make it clickable
+      link.click(); // Programmatically click the link to start download
+      document.body.removeChild(link); // Clean up the temporary link
+      URL.revokeObjectURL(url); // Release the object URL
       showMessage('Data exported successfully.', 'success');
     } catch (error) {
+      console.error('Failed to export data:', error);
       showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
     }
   }, [appState, showMessage]);
 
+  /**
+   * Handles initiating the data reset process.
+   * Prompts for confirmation before proceeding.
+   */
   const handleResetData = useCallback(() => {
     setConfirmationProps({
       title: 'Reset All Data?',
       message:
         'This will permanently erase all your goal data, lists, and routines. This action cannot be undone. The confirm button will be enabled in 10 seconds.',
       action: async () => {
-        if (!currentUser) return;
+        if (!currentUser) return; // Re-check user authentication
         const resetData = await firebaseService.resetUserData(currentUser.uid);
-        setAppState(resetData);
+        setAppState(resetData); // Update local state with the reset data
         showMessage('All data has been reset.', 'info');
       },
-      actionDelayMs: 10000,
+      actionDelayMs: 10000, // Longer delay for data reset confirmation
     });
     setIsConfirmModalOpen(true);
   }, [currentUser, showMessage]);
 
+  /**
+   * Handles selecting a new avatar URL and updating the user's profile.
+   */
   const handleAvatarSelect = async (avatarUrl: string) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      showMessage('Authentication required to update avatar.', 'error');
+      return;
+    }
     try {
       await firebaseService.updateUserProfile(currentUser, { photoURL: avatarUrl });
       // Manually update the user object in state to trigger re-render instantly
       setCurrentUser(prevUser => {
         if (!prevUser) return null;
-        // Create a new object to ensure React detects the change
+        // Create a new object to ensure React detects the change and re-renders
         const updatedUser = Object.assign(Object.create(Object.getPrototypeOf(prevUser)), prevUser);
         updatedUser.photoURL = avatarUrl;
         return updatedUser;
       });
       showMessage('Avatar updated successfully!', 'success');
-      setIsAvatarModalOpen(false);
-    } catch {
+      setIsAvatarModalOpen(false); // Close the avatar selection modal
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
       showMessage('Failed to update avatar. Please try again.', 'error');
     }
   };
 
+  /**
+   * Memoized calculation of current goal statistics.
+   * Re-calculates only when `appState` changes.
+   */
   const goalStats = useMemo(() => {
-    if (!appState?.goal) return null;
-    const { goal, dailyProgress } = appState;
+    // Return null if no active goal is found
+    if (!appState?.activeGoalId || !appState.goals[appState.activeGoalId]) return null;
+
+    const goal = appState.goals[appState.activeGoalId];
+    const { dailyProgress } = goal; // Use dailyProgress from the specific goal
+
     const startDate = goal.startDate.toDate();
     const endDate = goal.endDate.toDate();
     const now = new Date();
 
-    const totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
-    const daysPassed = Math.max(0, differenceInDays(now, startDate) + 1);
-    const daysRemaining = Math.max(0, differenceInDays(endDate, now) + 1);
-    const progressValues = Object.values(dailyProgress);
+    const totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1); // Ensure at least 1 day
+    const daysPassed = Math.max(0, differenceInDays(now, startDate) + 1); // Days from start to today (inclusive)
+    const daysRemaining = Math.max(0, differenceInDays(endDate, now) + 1); // Days from today to end (inclusive)
+
+    const progressValues = Object.values(dailyProgress || {}); // Get all daily progress entries
+
+    // FIX: Correctly calculate total time spent from StopwatchSession durations
     const totalTimeSpentHours =
-      progressValues.reduce((sum, entry) => sum + (entry.effortTimeMinutes || 0), 0) / 60;
+      progressValues.reduce((daySum, entry) => {
+        // Sum durations (in milliseconds) from all sessions for each day
+        const sessionDurationMs = (entry.sessions || []).reduce(
+          (sessionSum, session) => sessionSum + session.duration, // Use 'duration' property
+          0
+        );
+        return daySum + sessionDurationMs;
+      }, 0) /
+      (1000 * 60 * 60); // Convert total milliseconds to hours
+
+    // FIX: Correctly calculate average satisfaction from 'satisfaction' property
     const avgSatisfaction =
       progressValues.length > 0
-        ? progressValues.reduce((sum, p) => sum + p.satisfactionLevel, 0) / progressValues.length
+        ? progressValues.reduce((sum, p) => sum + p.satisfaction, 0) / progressValues.length // Use 'satisfaction' property
         : 0;
 
     return {
@@ -256,8 +330,9 @@ export default function ProfilePage() {
       totalTimeSpentHours,
       avgSatisfaction,
     };
-  }, [appState]);
+  }, [appState]); // Dependency on appState ensures recalculation when data changes
 
+  // Display skeleton loader while page data is loading
   if (loading) {
     return (
       <main className="px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
@@ -266,20 +341,22 @@ export default function ProfilePage() {
     );
   }
 
+  // If no current user, typically means unauthenticated or redirecting, render nothing.
   if (!currentUser) return null;
 
   return (
-    // FIX: Removed the `z-10` class from the main element.
     <main className="relative px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
       <ToastMessage message={toastMessage} type={toastType} />
+      {/* Hidden file input for importing data */}
       <input
         type="file"
         id="import-file-profile"
-        accept=".json"
+        accept=".json" // Only accept JSON files
         onChange={handleImportData}
-        className="hidden"
+        className="hidden" // Hide the native input element
       />
 
+      {/* User Profile Header Section */}
       <div className="p-8 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
         <div className="flex flex-col gap-6 items-center md:flex-row md:items-start">
           <div className="relative group">
@@ -311,24 +388,31 @@ export default function ProfilePage() {
                 <span>
                   Member since{' '}
                   {currentUser.metadata.creationTime
-                    ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy')
+                    ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy') // Corrected format
                     : 'N/A'}
                 </span>
               </div>
               <div className="flex gap-2 justify-center items-center md:justify-start">
                 <MdRocketLaunch size={16} />
-                <span>{appState?.goal ? 'Currently pursuing a goal' : 'No active goal'}</span>
+                <span>
+                  {appState?.activeGoalId && appState.goals[appState.activeGoalId]
+                    ? 'Currently pursuing a goal'
+                    : 'No active goal'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Current Goal Statistics Section (only renders if an active goal exists) */}
       {goalStats && (
         <div className="p-8 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
           <h2 className="mb-6 text-2xl font-bold text-white">Current Goal Stats</h2>
           <div className="p-4 mb-6 rounded-lg bg-white/5">
-            <h3 className="text-lg font-semibold text-white">{appState?.goal?.name}</h3>
+            <h3 className="text-lg font-semibold text-white">
+              {appState?.goals[appState.activeGoalId || '']?.name}
+            </h3>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
@@ -371,6 +455,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Data Management Section */}
       <div className="space-y-8">
         <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
           <h2 className="mb-6 text-2xl font-bold text-white">Data Management</h2>
@@ -413,6 +498,7 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+        {/* Account Information Section */}
         <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
           <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
           <div className="space-y-4">
@@ -424,7 +510,7 @@ export default function ProfilePage() {
               <span className="text-white/60">Account Created</span>
               <span className="text-white/80">
                 {currentUser.metadata.creationTime
-                  ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy')
+                  ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy') // Corrected format
                   : 'Unknown'}
               </span>
             </div>
@@ -432,7 +518,7 @@ export default function ProfilePage() {
               <span className="text-white/60">Last Sign In</span>
               <span className="text-white/80">
                 {currentUser.metadata.lastSignInTime
-                  ? formatDate(new Date(currentUser.metadata.lastSignInTime), 'MMM d, yyyy')
+                  ? formatDate(new Date(currentUser.metadata.lastSignInTime), 'MMM d, yyyy') // Corrected format
                   : 'Unknown'}
               </span>
             </div>
@@ -446,6 +532,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Avatar Selection Modal */}
       {isAvatarModalOpen && (
         <AvatarSelectionModal
           isOpen={isAvatarModalOpen}
@@ -456,6 +543,7 @@ export default function ProfilePage() {
         />
       )}
 
+      {/* Generic Confirmation Modal */}
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
@@ -463,7 +551,7 @@ export default function ProfilePage() {
         message={confirmationProps.message}
         confirmButton={{ text: 'Confirm', onClick: confirmationProps.action }}
         cancelButton={{ text: 'Cancel', onClick: () => setIsConfirmModalOpen(false) }}
-        actionDelayMs={confirmationProps.actionDelayMs}
+        actionDelayMs={confirmationProps.actionDelayMs} // Apply delay to confirm button
       />
     </main>
   );

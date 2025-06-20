@@ -5,7 +5,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { firebaseService } from '@/services/firebaseService';
-import ToastMessage from '@/components/ToastMessage';
+import ToastMessage from '@/components/common/ToastMessage';
 import { FirebaseServiceError } from '@/utils/errors';
 import { User } from 'firebase/auth';
 

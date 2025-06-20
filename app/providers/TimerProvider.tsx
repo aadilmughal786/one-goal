@@ -3,12 +3,15 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth';
+import { Timestamp } from 'firebase/firestore'; // Import Timestamp
 import { TimerContext, TimerContextType } from '@/contexts/TimerContext';
 import { firebaseService } from '@/services/firebaseService';
 import { StopwatchSession } from '@/types';
 
 export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setUser] = useState<User | null>(null);
+  // NEW: State to hold the active goal ID
+  const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
 
   // Stopwatch State
   const [stopwatchIsRunning, setStopwatchIsRunning] = useState(false);
@@ -22,8 +25,20 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const stopwatchFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthChange(user => {
+    const unsubscribe = firebaseService.onAuthChange(async user => {
       setUser(user);
+      if (user) {
+        try {
+          // Fetch user data to get the activeGoalId
+          const appState = await firebaseService.getUserData(user.uid);
+          setActiveGoalId(appState.activeGoalId);
+        } catch (error) {
+          console.error("Error fetching user's active goal:", error);
+          setActiveGoalId(null); // Ensure it's cleared on error
+        }
+      } else {
+        setActiveGoalId(null); // Clear active goal if user logs out
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -84,17 +99,37 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const handleStopwatchSave = async () => {
-    if (!currentUser || !stopwatchSessionLabel.trim()) return;
+    // Check if a user is logged in, there's an active goal, and a label is provided
+    if (!currentUser) {
+      console.error('Cannot save stopwatch session: User not authenticated.');
+      return;
+    }
+    if (!activeGoalId) {
+      console.error(
+        'Cannot save stopwatch session: No active goal selected. Please select a goal.'
+      );
+      return;
+    }
+    if (!stopwatchSessionLabel.trim()) {
+      console.error('Cannot save stopwatch session: Label is required.');
+      return;
+    }
+
     setIsSavingStopwatch(true);
-    const newSession: Omit<StopwatchSession, 'startTime'> = {
+    const newSession: Omit<StopwatchSession, 'id' | 'createdAt' | 'updatedAt'> = {
       label: stopwatchSessionLabel.trim(),
-      durationMs: stopwatchElapsedTime,
+      duration: stopwatchElapsedTime, // Use 'duration' as per new type
+      // FIX: Add the required 'startTime' property as a Firebase Timestamp
+      startTime: Timestamp.fromDate(new Date(stopwatchStartTimeRef.current)),
     };
+
     try {
-      await firebaseService.addStopwatchSession(currentUser.uid, newSession);
-      handleStopwatchReset();
-    } catch {
-      // Handle error appropriately
+      // Pass the activeGoalId to the service method
+      await firebaseService.addStopwatchSession(activeGoalId, currentUser.uid, newSession);
+      handleStopwatchReset(); // Reset stopwatch after successful save
+    } catch (error) {
+      console.error('Failed to save stopwatch session:', error);
+      // Implement user-facing error notification here (e.g., a toast message)
     } finally {
       setIsSavingStopwatch(false);
     }
