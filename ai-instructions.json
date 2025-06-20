@@ -1,0 +1,150 @@
+{
+  "project": {
+    "name": "One Goal App",
+    "framework": "Next.js (Static Export)",
+    "language": "TypeScript",
+    "styling": "Tailwind CSS",
+    "hosting": "GitHub Pages (Static Export)",
+    "features": [
+      "Client-side Firebase (Auth, Firestore)",
+      "No API routes",
+      "No getServerSideProps or middleware",
+      "Dynamic data import/export",
+      "Routine tracking",
+      "Stopwatch for focus sessions",
+      "Goal archiving"
+    ],
+    "pathAliases": {
+      "@": "./app"
+    }
+  },
+  "dependencies": {
+    "main": [
+      "next",
+      "react",
+      "react-dom",
+      "firebase",
+      "date-fns",
+      "fuse.js",
+      "react-icons",
+      "recharts"
+    ],
+    "dev": [
+      "typescript",
+      "eslint",
+      "prettier",
+      "@eslint/eslintrc",
+      "@tailwindcss/postcss",
+      "@types/node",
+      "@types/react",
+      "@types/react-dom",
+      "eslint-config-next",
+      "eslint-config-prettier",
+      "husky",
+      "lint-staged",
+      "rimraf",
+      "tailwindcss"
+    ]
+  },
+  "folderStructure": {
+    "trackChanges": true,
+    "guidelines": [
+      "Update this file immediately when adding/removing/renaming files or folders.",
+      "Ensure file paths are correct in imports.",
+      "Always add full file path as a comment at the top of each file. Example: // File: app/lib/services/auth.ts"
+    ],
+    "files": [
+      ".github/workflows/deploy.yml",
+      ".github/workflows/eslint-prettier.yml",
+      ".gitignore",
+      ".prettierrc.json",
+      ".vscode/settings.json",
+      "README.md",
+      "app/(root)/archive/page.tsx",
+      "app/(root)/dashboard/DashboardAnalytics.tsx",
+      "app/(root)/dashboard/DashboardLessons.tsx",
+      "app/(root)/dashboard/DashboardMain.tsx",
+      "app/(root)/dashboard/DashboardQuotes.tsx",
+      "app/(root)/dashboard/DashboardSettings.tsx",
+      "app/(root)/dashboard/RoutineTimeline.tsx",
+      "app/(root)/dashboard/page.tsx",
+      "app/(root)/layout.tsx",
+      "app/(root)/profile/page.tsx",
+      "app/(root)/routine/page.tsx",
+      "app/(root)/stop-watch/page.tsx",
+      "app/(root)/todo/page.tsx",
+      "app/components/ConfirmationModal.tsx",
+      "app/components/FloatingStopwatch.tsx",
+      "app/components/Footer.tsx",
+      "app/components/List.tsx",
+      "app/components/NavBar.tsx",
+      "app/components/Stopwatch.tsx",
+      "app/components/ToastMessage.tsx",
+      "app/components/archive/ArchivedGoalModal.tsx",
+      "app/components/common/DateTimePicker.tsx",
+      "app/components/dashboard/Charts.tsx",
+      "app/components/dashboard/CountdownCard.tsx",
+      "app/components/dashboard/DailyProgressModal.tsx",
+      "app/components/dashboard/GoalModal.tsx",
+      "app/components/dashboard/ProgressCalendar.tsx",
+      "app/components/nav/ProfileDropdown.tsx",
+      "app/components/profile/AvatarSelectionModal.tsx",
+      "app/components/routine/BathSchedule.tsx",
+      "app/components/routine/ExerciseTracker.tsx",
+      "app/components/routine/MealSchedule.tsx",
+      "app/components/routine/RoutineCalendar.tsx",
+      "app/components/routine/RoutinePageContent.tsx",
+      "app/components/routine/RoutineSectionCard.tsx",
+      "app/components/routine/ScheduleEditModal.tsx",
+      "app/components/routine/SleepSchedule.tsx",
+      "app/components/routine/TeethCare.tsx",
+      "app/components/routine/WaterTracker.tsx",
+      "app/components/stopwatch/SessionLog.tsx",
+      "app/components/todo/TodoEditModal.tsx",
+      "app/components/todo/TodoList.tsx",
+      "app/contexts/TimerContext.tsx",
+      "app/data/quotes.ts",
+      "app/globals.css",
+      "app/layout.tsx",
+      "app/login/page.tsx",
+      "app/not-found.tsx",
+      "app/page.tsx",
+      "app/providers/TimerProvider.tsx",
+      "app/services/firebaseService.ts",
+      "app/types/index.ts",
+      "app/utils/errors.ts",
+      "devcontainer.json",
+      "eslint.config.mjs",
+      "next.config.ts",
+      "package.json",
+      "postcss.config.mjs",
+      "tailwind.config.js",
+      "tsconfig.json"
+    ]
+  },
+  "rules": {
+    "linting": {
+      "noErrorsAllowed": true,
+      "disallowedRules": ["no-console"],
+      "warnOnRules": ["no-unused-vars", "@typescript-eslint/no-unused-vars"]
+    },
+    "typescript": {
+      "noAny": true,
+      "strict": true,
+      "typeSafetyEnforced": true
+    },
+    "general": {
+      "exports": "named only",
+      "apiStyle": "async/await with try-catch",
+      "consoleLogs": "not allowed in production",
+      "componentsPath": "app/components/",
+      "servicesPath": "app/services/",
+      "pagesPath": "app/"
+    }
+  },
+  "notes": {
+    "author": "Aadil Mugal",
+    "purpose": "Used by AI tools and developers for static project consistency",
+    "lastUpdated": "2025-06-20"
+  }
+}
