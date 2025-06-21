@@ -1,46 +1,46 @@
 // app/services/firebaseService.ts
 
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import {
-  getAuth,
-  Auth,
-  User,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  updateProfile,
-} from 'firebase/auth';
-import {
-  getFirestore,
-  Firestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  Timestamp,
-  deleteField,
-} from 'firebase/firestore';
 import {
   AppState,
-  Goal,
-  TodoItem,
-  DistractionItem,
   DailyProgress,
-  SatisfactionLevel,
-  StopwatchSession,
-  UserRoutineSettings,
-  SleepRoutineSettings,
-  WaterRoutineSettings,
-  ScheduledRoutineBase,
+  DistractionItem,
+  Goal,
+  GoalStatus,
+  RoutineLogStatus,
   RoutineType,
+  SatisfactionLevel,
+  ScheduledRoutineBase,
+  SleepRoutineSettings,
   StickyNote,
   StickyNoteColor,
-  RoutineLogStatus,
-  GoalStatus,
+  StopwatchSession,
+  TodoItem,
+  UserRoutineSettings,
+  WaterRoutineSettings,
 } from '@/types';
 import { FirebaseServiceError } from '@/utils/errors';
 import { format, isSameDay } from 'date-fns';
+import { FirebaseApp, initializeApp } from 'firebase/app';
+import {
+  Auth,
+  GoogleAuthProvider,
+  User,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+} from 'firebase/auth';
+import {
+  Firestore,
+  Timestamp,
+  deleteField,
+  doc,
+  getDoc,
+  getFirestore,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
 
 // Helper for generating UUIDs for new item IDs
 const generateUUID = () => crypto.randomUUID();
@@ -118,6 +118,7 @@ interface SerializableUserRoutineSettings
   lastRoutineResetDate: string | null;
 }
 
+// SerializableGoal is now used for individual goal serialization/deserialization
 interface SerializableGoal
   extends Omit<
       Goal,
@@ -139,8 +140,10 @@ interface SerializableGoal
   notToDoList: SerializableDistractionItem[];
   stickyNotes: SerializableStickyNote[];
   routineSettings: SerializableUserRoutineSettings;
+  starredQuotes: number[];
 }
 
+// SerializableAppState for full app state import/export
 interface SerializableAppState {
   activeGoalId: string | null;
   goals: Record<string, SerializableGoal>;
@@ -243,7 +246,7 @@ class FirebaseService {
         teeth: [],
         lastRoutineResetDate: null,
       },
-      starredQuotes: [],
+      starredQuotes: [], // Default to empty array of numbers (quote IDs)
     };
   }
 
@@ -289,10 +292,14 @@ class FirebaseService {
       // Perform daily routine reset for each active goal
       const now = new Date();
       let appStateNeedsUpdate = false;
+      const updatedGoalsCopy = { ...appState.goals }; // Create a mutable copy
 
-      for (const goalId in appState.goals) {
-        const goal = appState.goals[goalId];
-        if (goal.status === 0 /* GoalStatus.ACTIVE */ && goal.routineSettings) {
+      for (const goalId in updatedGoalsCopy) {
+        // Iterate over the copy
+        const goal = updatedGoalsCopy[goalId];
+        // Only process active goals for routine resets
+        if (goal.status === GoalStatus.ACTIVE && goal.routineSettings) {
+          // Use GoalStatus enum directly
           const lastReset = goal.routineSettings.lastRoutineResetDate?.toDate();
 
           if (!lastReset || !isSameDay(lastReset, now)) {
@@ -325,6 +332,8 @@ class FirebaseService {
 
             if (goalNeedsUpdate) {
               goal.routineSettings.lastRoutineResetDate = Timestamp.fromDate(now);
+              // Mark the goal itself as needing update
+              updatedGoalsCopy[goalId] = { ...goal, updatedAt: Timestamp.now() }; // Update the copy
               appStateNeedsUpdate = true; // Mark top-level AppState for update
             }
           }
@@ -333,6 +342,8 @@ class FirebaseService {
 
       // If any goal's routine settings were updated, save the whole AppState
       if (appStateNeedsUpdate) {
+        // Update the original appState object with the modified goals
+        appState.goals = updatedGoalsCopy;
         await updateDoc(userDocRef, { goals: appState.goals });
       }
 
@@ -1264,6 +1275,7 @@ class FirebaseService {
         );
       }
 
+      // Ensure starredQuotes is initialized and add the new quoteId
       const updatedStarredQuotes = [...(currentGoal.starredQuotes || []), quoteId];
       await updateDoc(userDocRef, { [`goals.${goalId}.starredQuotes`]: updatedStarredQuotes });
     } catch (error: unknown) {
@@ -1291,6 +1303,7 @@ class FirebaseService {
         );
       }
 
+      // Ensure starredQuotes is initialized and filter out the quoteId
       const updatedStarredQuotes = (currentGoal.starredQuotes || []).filter(id => id !== quoteId);
       await updateDoc(userDocRef, { [`goals.${goalId}.starredQuotes`]: updatedStarredQuotes });
     } catch (error: unknown) {
@@ -1343,6 +1356,7 @@ class FirebaseService {
       };
 
       // Persist the entire new AppState to Firestore
+      // Using setDoc to completely overwrite the user document, ensuring full consistency.
       await setDoc(userDocRef, newAppState);
 
       return newAppState; // Return the updated AppState
@@ -1356,7 +1370,7 @@ class FirebaseService {
     }
   }
 
-  // --- Serialization / Deserialization methods ---
+  // --- Serialization / Deserialization methods for ENTIRE AppState (for Profile Page) ---
   private serializeTimestamp(ts: Timestamp | null | undefined): string | null {
     return ts ? ts.toDate().toISOString() : null;
   }
@@ -1652,6 +1666,294 @@ class FirebaseService {
     return {
       activeGoalId: serializedData.activeGoalId,
       goals: deserializedGoals,
+    };
+  }
+
+  // --- NEW: Serialization / Deserialization methods for INDIVIDUAL Goals (for Goals Page) ---
+  /**
+   * Serializes a single Goal object into a plain JavaScript object
+   * with Timestamps converted to ISO date strings, suitable for export.
+   * @param goal The Goal object to serialize.
+   * @returns A SerializableGoal object.
+   */
+  serializeGoalForExport(goal: Goal): SerializableGoal {
+    // This logic is essentially the same as how a single goal is handled in serializeAppState
+    return {
+      id: goal.id,
+      createdAt: this.serializeTimestamp(goal.createdAt)!,
+      updatedAt: this.serializeTimestamp(goal.updatedAt)!,
+      name: goal.name,
+      description: goal.description,
+      startDate: this.serializeTimestamp(goal.startDate)!,
+      endDate: this.serializeTimestamp(goal.endDate)!,
+      status: goal.status,
+      dailyProgress: Object.fromEntries(
+        Object.entries(goal.dailyProgress).map(([dateKey, dp]) => [
+          dateKey,
+          {
+            date: dp.date,
+            satisfaction: dp.satisfaction,
+            notes: dp.notes,
+            routines: dp.routines,
+            sessions: dp.sessions.map(s => ({
+              id: s.id,
+              createdAt: this.serializeTimestamp(s.createdAt)!,
+              updatedAt: this.serializeTimestamp(s.updatedAt)!,
+              startTime: this.serializeTimestamp(s.startTime)!,
+              label: s.label,
+              duration: s.duration,
+            })),
+          } as SerializableDailyProgress,
+        ])
+      ),
+      toDoList: goal.toDoList.map(todo => ({
+        id: todo.id,
+        createdAt: this.serializeTimestamp(todo.createdAt)!,
+        updatedAt: this.serializeTimestamp(todo.updatedAt)!,
+        completedAt: this.serializeTimestamp(todo.completedAt),
+        deadline: this.serializeTimestamp(todo.deadline),
+        completed: todo.completed,
+        order: todo.order,
+        text: todo.text,
+        description: todo.description,
+      })),
+      notToDoList: goal.notToDoList.map(distraction => ({
+        id: distraction.id,
+        createdAt: this.serializeTimestamp(distraction.createdAt)!,
+        updatedAt: this.serializeTimestamp(distraction.updatedAt)!,
+        title: distraction.title,
+        description: distraction.description,
+        triggerPatterns: distraction.triggerPatterns,
+        count: distraction.count,
+      })),
+      stickyNotes: goal.stickyNotes.map(note => ({
+        id: note.id,
+        createdAt: this.serializeTimestamp(note.createdAt)!,
+        updatedAt: this.serializeTimestamp(note.updatedAt)!,
+        title: note.title,
+        content: note.content,
+        color: note.color,
+      })),
+      routineSettings: {
+        sleep: goal.routineSettings.sleep
+          ? {
+              wakeTime: goal.routineSettings.sleep.wakeTime,
+              sleepTime: goal.routineSettings.sleep.sleepTime,
+              naps: goal.routineSettings.sleep.naps.map(nap => ({
+                id: nap.id,
+                createdAt: this.serializeTimestamp(nap.createdAt)!,
+                updatedAt: this.serializeTimestamp(nap.updatedAt)!,
+                completedAt: this.serializeTimestamp(nap.completedAt),
+                completed: nap.completed,
+                time: nap.time,
+                duration: nap.duration,
+                label: nap.label,
+                icon: nap.icon,
+              })),
+            }
+          : null,
+        water: goal.routineSettings.water,
+        bath: goal.routineSettings.bath.map(r => ({
+          id: r.id,
+          createdAt: this.serializeTimestamp(r.createdAt)!,
+          updatedAt: this.serializeTimestamp(r.updatedAt)!,
+          completedAt: this.serializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        exercise: goal.routineSettings.exercise.map(r => ({
+          id: r.id,
+          createdAt: this.serializeTimestamp(r.createdAt)!,
+          updatedAt: this.serializeTimestamp(r.updatedAt)!,
+          completedAt: this.serializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        meal: goal.routineSettings.meal.map(r => ({
+          id: r.id,
+          createdAt: this.serializeTimestamp(r.createdAt)!,
+          updatedAt: this.serializeTimestamp(r.updatedAt)!,
+          completedAt: this.serializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        teeth: goal.routineSettings.teeth.map(r => ({
+          id: r.id,
+          createdAt: this.serializeTimestamp(r.createdAt)!,
+          updatedAt: this.serializeTimestamp(r.updatedAt)!,
+          completedAt: this.serializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        lastRoutineResetDate: this.serializeTimestamp(goal.routineSettings.lastRoutineResetDate),
+      },
+      starredQuotes: goal.starredQuotes,
+    };
+  }
+
+  /**
+   * Deserializes a plain JavaScript object (from import) back into a Goal object
+   * with ISO date strings converted to Firebase Timestamps.
+   * Note: This function will typically be used when importing a goal to *create a new one*.
+   * It will generate new IDs and timestamps if the original ones are not suitable for new creation.
+   * @param serializedGoalData The SerializableGoal object to deserialize.
+   * @returns A Goal object.
+   */
+  deserializeGoalForImport(serializedGoalData: SerializableGoal): Goal {
+    const now = Timestamp.now();
+    // When importing an individual goal, we typically want to assign it a new ID and timestamps
+    // to prevent conflicts if it's being added as a 'new' goal from a backup.
+    // However, if the intent is to replace an *existing* goal with this data (by matching ID),
+    // then the ID and timestamps should be preserved.
+    // For the purpose of "importing a goal to create a new one", we generate new IDs.
+    const newGoalId = generateUUID();
+
+    const deserializedGoal: Goal = {
+      id: serializedGoalData.id || newGoalId, // Use existing ID or generate new if creating new goal
+      createdAt: this.deserializeTimestamp(serializedGoalData.createdAt) || now,
+      updatedAt: this.deserializeTimestamp(serializedGoalData.updatedAt) || now,
+      name: serializedGoalData.name,
+      description: serializedGoalData.description,
+      startDate: this.deserializeTimestamp(serializedGoalData.startDate)!,
+      endDate: this.deserializeTimestamp(serializedGoalData.endDate)!,
+      status: serializedGoalData.status,
+      dailyProgress: Object.fromEntries(
+        Object.entries(serializedGoalData.dailyProgress).map(([dateKey, serializedDp]) => [
+          dateKey,
+          {
+            date: serializedDp.date,
+            satisfaction: serializedDp.satisfaction,
+            notes: serializedDp.notes,
+            routines: serializedDp.routines,
+            sessions: serializedDp.sessions.map(s => ({
+              id: s.id || generateUUID(), // Ensure new ID for sessions too if creating new goal
+              createdAt: this.deserializeTimestamp(s.createdAt) || now,
+              updatedAt: this.deserializeTimestamp(s.updatedAt) || now,
+              startTime: this.deserializeTimestamp(s.startTime)!,
+              label: s.label,
+              duration: s.duration,
+            })),
+          } as DailyProgress,
+        ])
+      ),
+      toDoList: serializedGoalData.toDoList.map(serializedTodo => ({
+        id: serializedTodo.id || generateUUID(),
+        createdAt: this.deserializeTimestamp(serializedTodo.createdAt) || now,
+        updatedAt: this.deserializeTimestamp(serializedTodo.updatedAt) || now,
+        completedAt: this.deserializeTimestamp(serializedTodo.completedAt),
+        deadline: this.deserializeTimestamp(serializedTodo.deadline),
+        completed: serializedTodo.completed,
+        order: serializedTodo.order,
+        text: serializedTodo.text,
+        description: serializedTodo.description,
+      })),
+      notToDoList: serializedGoalData.notToDoList.map(serializedDistraction => ({
+        id: serializedDistraction.id || generateUUID(),
+        createdAt: this.deserializeTimestamp(serializedDistraction.createdAt) || now,
+        updatedAt: this.deserializeTimestamp(serializedDistraction.updatedAt) || now,
+        title: serializedDistraction.title,
+        description: serializedDistraction.description,
+        triggerPatterns: serializedDistraction.triggerPatterns,
+        count: serializedDistraction.count,
+      })),
+      stickyNotes: serializedGoalData.stickyNotes.map(serializedNote => ({
+        id: serializedNote.id || generateUUID(),
+        createdAt: this.deserializeTimestamp(serializedNote.createdAt) || now,
+        updatedAt: this.deserializeTimestamp(serializedNote.updatedAt) || now,
+        title: serializedNote.title,
+        content: serializedNote.content,
+        color: serializedNote.color,
+      })),
+      routineSettings: {
+        sleep: serializedGoalData.routineSettings.sleep
+          ? {
+              wakeTime: serializedGoalData.routineSettings.sleep.wakeTime,
+              sleepTime: serializedGoalData.routineSettings.sleep.sleepTime,
+              naps: serializedGoalData.routineSettings.sleep.naps.map(serializedNap => ({
+                id: serializedNap.id || generateUUID(),
+                createdAt: this.deserializeTimestamp(serializedNap.createdAt) || now,
+                updatedAt: this.deserializeTimestamp(serializedNap.updatedAt) || now,
+                completedAt: this.deserializeTimestamp(serializedNap.completedAt),
+                completed: serializedNap.completed,
+                time: serializedNap.time,
+                duration: serializedNap.duration,
+                label: serializedNap.label,
+                icon: serializedNap.icon,
+              })),
+            }
+          : null,
+        water: serializedGoalData.routineSettings.water,
+        bath: serializedGoalData.routineSettings.bath.map(r => ({
+          id: r.id || generateUUID(),
+          createdAt: this.deserializeTimestamp(r.createdAt) || now,
+          updatedAt: this.deserializeTimestamp(r.updatedAt) || now,
+          completedAt: this.deserializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        exercise: serializedGoalData.routineSettings.exercise.map(r => ({
+          id: r.id || generateUUID(),
+          createdAt: this.deserializeTimestamp(r.createdAt) || now,
+          updatedAt: this.deserializeTimestamp(r.updatedAt) || now,
+          completedAt: this.deserializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        meal: serializedGoalData.routineSettings.meal.map(r => ({
+          id: r.id || generateUUID(),
+          createdAt: this.deserializeTimestamp(r.createdAt) || now,
+          updatedAt: this.deserializeTimestamp(r.updatedAt) || now,
+          completedAt: this.deserializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        teeth: serializedGoalData.routineSettings.teeth.map(r => ({
+          id: r.id || generateUUID(),
+          createdAt: this.deserializeTimestamp(r.createdAt) || now,
+          updatedAt: this.deserializeTimestamp(r.updatedAt) || now,
+          completedAt: this.deserializeTimestamp(r.completedAt),
+          completed: r.completed,
+          time: r.time,
+          duration: r.duration,
+          label: r.label,
+          icon: r.icon,
+        })),
+        lastRoutineResetDate:
+          this.deserializeTimestamp(serializedGoalData.routineSettings.lastRoutineResetDate) ||
+          null, // Ensure default to null if not present
+      },
+      starredQuotes: serializedGoalData.starredQuotes,
+    };
+
+    // When importing to create a NEW goal, force a new ID and current timestamps
+    // and reset its status to ACTIVE.
+    return {
+      ...deserializedGoal,
+      id: newGoalId, // Ensure it gets a new ID
+      createdAt: now, // New creation timestamp
+      updatedAt: now, // New update timestamp
+      status: GoalStatus.ACTIVE, // New goal from import starts as active
     };
   }
 }

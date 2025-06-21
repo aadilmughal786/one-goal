@@ -2,19 +2,19 @@
 'use client';
 
 import { User } from 'firebase/auth';
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp
+import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { FiSearch } from 'react-icons/fi'; // FiPlus still needed for CreateGoalCard
 
-import GoalSummaryModal from '@/components/archive/GoalSummaryModal'; // Reusing GoalSummaryModal
+import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import ToastMessage from '@/components/common/ToastMessage';
-import GoalModal from '@/components/dashboard/GoalModal'; // Reusing GoalModal from dashboard
+import GoalModal from '@/components/dashboard/GoalModal';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState, Goal, GoalStatus } from '@/types';
 
-// New components for this page
-import GoalDataManagement from '@/components/goal/GoalDataManagement';
+// Components for this page
 import GoalList from '@/components/goal/GoalList';
 
 // Page-level Skeleton Loader
@@ -75,6 +75,10 @@ const GoalPageContent = () => {
     action: () => {},
     actionDelayMs: 0,
   });
+
+  // States for search and filter (managed here, passed to GoalList)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
 
   // Toast message states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -202,6 +206,7 @@ const GoalPageContent = () => {
           const newGoals = { ...appState.goals, [createdGoal.id]: createdGoal };
           // If no active goal exists, make the newly created one active
           const newActiveGoalId = appState.activeGoalId || createdGoal.id;
+          await firebaseService.setActiveGoal(currentUser.uid, newActiveGoalId); // Ensure active goal is set in Firebase
           handleAppStateUpdate({ ...appState, goals: newGoals, activeGoalId: newActiveGoalId });
           showMessage('Goal created successfully!', 'success');
         }
@@ -232,189 +237,6 @@ const GoalPageContent = () => {
     setIsSummaryModalOpen(true);
   }, []);
 
-  // --- Goal List Action Handlers ---
-
-  /**
-   * Sets a specific goal as the active goal in the AppState.
-   * @param goalId The ID of the goal to set as active.
-   */
-  const handleSetGoalAsActive = useCallback(
-    async (goalId: string) => {
-      if (!currentUser || !appState) return;
-      try {
-        await firebaseService.setActiveGoal(currentUser.uid, goalId);
-        const newAppState = await firebaseService.getUserData(currentUser.uid); // Fetch updated state
-        handleAppStateUpdate(newAppState);
-        showMessage('Goal set as active!', 'success');
-      } catch (error) {
-        console.error('Failed to set goal as active:', error);
-        showMessage('Failed to set goal as active.', 'error');
-      }
-    },
-    [currentUser, appState, showMessage, handleAppStateUpdate]
-  );
-
-  /**
-   * Initiates the goal deletion process by opening a confirmation modal.
-   * @param goal The goal object to be deleted.
-   */
-  const handleDeleteGoalConfirmation = useCallback(
-    (goal: Goal) => {
-      setConfirmationPropsAndOpenModal({
-        // Using the common handler
-        title: `Delete Goal: ${goal.name}?`,
-        message: `Are you sure you want to permanently delete "${goal.name}" and all its associated data? This action cannot be undone.`,
-        action: async () => {
-          if (!currentUser) return;
-          try {
-            await firebaseService.deleteGoal(currentUser.uid, goal.id);
-            const newAppState = await firebaseService.getUserData(currentUser.uid);
-            handleAppStateUpdate(newAppState);
-            showMessage('Goal deleted successfully.', 'info');
-          } catch (error) {
-            console.error('Failed to delete goal:', error);
-            showMessage('Failed to delete goal.', 'error');
-          }
-        },
-        actionDelayMs: 5000, // 5-second delay for deletion confirmation
-      });
-    },
-    [currentUser, showMessage, handleAppStateUpdate, setConfirmationPropsAndOpenModal]
-  );
-
-  /**
-   * Initiates the goal archiving process by opening a confirmation modal.
-   * @param goal The goal object to be archived.
-   */
-  const handleArchiveGoalConfirmation = useCallback(
-    (goal: Goal) => {
-      // Ensure the goal is actually active before attempting to archive via this flow
-      if (goal.status !== GoalStatus.ACTIVE) {
-        showMessage('Only active goals can be archived via this action.', 'info');
-        return;
-      }
-
-      setConfirmationPropsAndOpenModal({
-        // Using the common handler
-        title: `Archive Goal: ${goal.name}?`,
-        message: `This will mark "${goal.name}" as 'Completed' and remove it from your active goal (if it is the active one). It will still be viewable in your goals list as a completed goal.`,
-        action: async () => {
-          if (!currentUser) return;
-          try {
-            // First, update the goal's status to COMPLETED
-            await firebaseService.updateGoal(currentUser.uid, goal.id, {
-              status: GoalStatus.COMPLETED,
-            });
-
-            // If the archived goal was the active one, also clear activeGoalId
-            if (appState?.activeGoalId === goal.id) {
-              await firebaseService.setActiveGoal(currentUser.uid, null);
-            }
-            const newAppState = await firebaseService.getUserData(currentUser.uid); // Re-fetch to get consistent state
-            handleAppStateUpdate(newAppState);
-            showMessage('Goal archived successfully!', 'success');
-          } catch (error) {
-            console.error('Failed to archive goal:', error);
-            showMessage('Failed to archive goal.', 'error');
-          }
-        },
-        actionDelayMs: 3000, // 3-second delay for archiving confirmation
-      });
-    },
-    [currentUser, appState, showMessage, handleAppStateUpdate, setConfirmationPropsAndOpenModal]
-  );
-
-  // --- Data Management Handlers ---
-
-  /**
-   * Handles change event for the file input for data import.
-   * Parses the JSON file and prepares for import confirmation.
-   */
-  const handleImportChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file || !currentUser) return;
-      if (file.size > 5 * 1024 * 1024) {
-        // Limit file size to 5MB
-        showMessage('File is too large (max 5MB).', 'error');
-        event.target.value = ''; // Clear input for next attempt
-        return;
-      }
-      event.target.value = ''; // Clear file input value to allow re-uploading the same file
-
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          const importedRawData = JSON.parse(e.target?.result as string);
-          // Deserialize the imported data to convert timestamps back to Timestamp objects
-          const importedState = firebaseService.deserializeAppState(importedRawData);
-
-          // Prepare the action for the confirmation modal
-          const confirmImportAction = async () => {
-            if (!currentUser) return; // Double check auth
-            try {
-              await firebaseService.setUserData(currentUser.uid, importedState); // Overwrite user data
-              showMessage('Data imported successfully. Refreshing...', 'success');
-              setTimeout(() => window.location.reload(), 2000); // Full reload to re-initialize everything
-            } catch (error) {
-              console.error('Failed to save imported data:', error);
-              showMessage(`Failed to save imported data: ${(error as Error).message}`, 'error');
-            }
-          };
-
-          // If there's an active goal, prompt for confirmation before overwriting
-          if (appState?.activeGoalId && appState.goals[appState.activeGoalId]) {
-            setConfirmationPropsAndOpenModal({
-              // Using the common handler
-              title: 'Overwrite All Data?',
-              message:
-                'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-              action: confirmImportAction,
-              actionDelayMs: 10000, // Long delay for critical overwrite
-            });
-          } else {
-            // No active goal, proceed with import directly without confirmation modal
-            await confirmImportAction();
-          }
-        } catch (error) {
-          console.error('Import failed:', error);
-          showMessage('Import failed: Invalid file format or corrupted data.', 'error');
-        }
-      };
-      reader.readAsText(file); // Read the file content as text
-    },
-    [currentUser, appState, showMessage, setConfirmationPropsAndOpenModal]
-  );
-
-  /**
-   * Handles exporting all user application data to a JSON file.
-   * Serializes the current AppState and triggers a file download.
-   */
-  const handleExport = useCallback(async () => {
-    if (!currentUser || !appState || Object.keys(appState.goals).length === 0) {
-      showMessage('No data to export or user not authenticated.', 'info');
-      return;
-    }
-    try {
-      // Serialize the AppState to convert Firebase Timestamps to ISO strings for export
-      const serializableData = firebaseService.serializeAppState(appState);
-      const dataStr = JSON.stringify(serializableData, null, 2); // Pretty print JSON for readability
-      const dataBlob = new Blob([dataStr], { type: 'application/json' }); // Create a Blob from the JSON string
-      const url = URL.createObjectURL(dataBlob); // Create a temporary URL for the Blob
-      const link = document.createElement('a'); // Create a temporary anchor element
-      link.href = url;
-      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`; // Set download filename
-      document.body.appendChild(link); // Append to body to make it programmatically clickable
-      link.click(); // Programmatically click the link to initiate download
-      document.body.removeChild(link); // Clean up the temporary link
-      URL.revokeObjectURL(url); // Release the object URL
-      showMessage('Data exported successfully.', 'success');
-    } catch (error) {
-      console.error('Failed to export data:', error);
-      showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
-    }
-  }, [currentUser, appState, showMessage]);
-
   // Helper to construct initialGoalData for GoalModal when editing
   const transformedGoalForModal = useMemo(() => {
     return selectedGoalForModal // Use selectedGoalForModal for this transformation
@@ -426,6 +248,24 @@ const GoalPageContent = () => {
         }
       : null;
   }, [selectedGoalForModal]); // Dependency: selectedGoalForModal changes
+
+  // Function to get display text for goal status (for filter buttons)
+  const getStatusText = useCallback((status: GoalStatus | 'all') => {
+    switch (status) {
+      case 'all':
+        return 'All';
+      case GoalStatus.ACTIVE:
+        return 'Active';
+      case GoalStatus.COMPLETED:
+        return 'Completed';
+      case GoalStatus.PAUSED:
+        return 'Paused';
+      case GoalStatus.CANCELLED:
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
+  }, []);
 
   // Display skeleton loader while page data is loading
   if (isLoading) {
@@ -450,8 +290,66 @@ const GoalPageContent = () => {
       {/* Toast Message Display */}
       <ToastMessage message={toastMessage} type={toastType} />
 
+      {/* Header with Search and Filter */}
+      <nav className="flex flex-col px-4 pt-3 border-b backdrop-blur-md bg-black/50 border-white/10">
+        {/* Page Context/Description */}
+        <div className="mb-4 text-center">
+          {' '}
+          {/* Added margin-bottom */}
+          <h2 className="mb-1 text-2xl font-bold text-white">Your Goal Hub</h2>
+          <p className="text-sm text-white/70">
+            Manage all your past, present, and future goals in one place.
+          </p>
+        </div>
+
+        {/* Search Input (Centered horizontally with increased max-width) */}
+        <div className="relative mx-auto mb-3 w-full max-w-xl">
+          {' '}
+          {/* max-w-xl for wider search, mx-auto for centering, mb for space below */}
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+          <input
+            type="text"
+            placeholder="Search goals by name or description..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="p-3 pl-10 w-full h-12 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Search goals"
+          />
+        </div>
+
+        {/* Status Filter Buttons (Aligned below search bar, tab-like style) */}
+        <div className="flex flex-wrap gap-2 justify-center w-full">
+          {' '}
+          {/* No mt-2 needed as mb is on search bar */}
+          {(
+            [
+              'all',
+              GoalStatus.ACTIVE,
+              GoalStatus.COMPLETED,
+              GoalStatus.PAUSED,
+              GoalStatus.CANCELLED,
+            ] as const
+          ).map(status => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              // Apply tab-like border design (removed rounded-full)
+              className={`px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                ${
+                  filterStatus === status
+                    ? 'text-white border-blue-500 bg-transparent' // Active state: text-white, blue border, NO background
+                    : 'border-transparent text-white/60 hover:bg-white/10 hover:border-white/5' // Inactive state: subtle text, transparent border, hover effects
+                }`}
+              aria-label={`Filter goals by ${getStatusText(status)} status`}
+            >
+              {getStatusText(status)}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {/* Main Content Area */}
-      <div className="container p-4 mx-auto max-w-4xl md:p-8">
+      <div className="container p-4 mx-auto max-w-5xl md:p-8">
         <section className="py-8 space-y-8">
           {/* Goal List Section */}
           <GoalList
@@ -462,16 +360,17 @@ const GoalPageContent = () => {
             onOpenGoalModal={handleOpenGoalModal} // Pass handler for creating/editing goals
             onOpenSummaryModal={handleOpenSummaryModal} // Pass handler for viewing summaries
             onOpenConfirmationModal={setConfirmationPropsAndOpenModal} // Unified confirmation handler
+            // Pass search and filter states to GoalList
+            searchQuery={searchQuery}
+            filterStatus={filterStatus}
           />
 
-          {/* Goal Data Management Section */}
-          <GoalDataManagement
-            currentUser={currentUser}
-            appState={appState}
-            showMessage={showMessage}
-            onAppStateUpdate={handleAppStateUpdate}
-            onOpenConfirmationModal={setConfirmationPropsAndOpenModal} // Unified confirmation handler
-          />
+          {/* Goal Data Management Section (removed from here, as per user's request) */}
+          {/*
+            The GoalDataManagement component handles app-level import/export.
+            According to the latest instructions, this functionality is now on the Profile page.
+            So, it is correctly removed from the /goal page.
+          */}
         </section>
       </div>
 

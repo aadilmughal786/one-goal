@@ -1,33 +1,28 @@
 // app/(root)/dashboard/page.tsx
 'use client';
 
-import { format, isToday } from 'date-fns'; // Import format and isToday
+import { format, isToday } from 'date-fns';
 import { User } from 'firebase/auth';
-import Link from 'next/link'; // For linking to other pages
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiBarChart2, FiEdit, FiFeather, FiGrid } from 'react-icons/fi'; // FiEdit for the "Go to Goals Page" link
-import { MdRocketLaunch } from 'react-icons/md'; // For no-goal message
-// Removed Timestamp import as GoalModal/ConfirmationModal are no longer here
-// import { Timestamp } from 'firebase/firestore';
+import { FiBarChart2, FiFeather, FiGrid } from 'react-icons/fi'; // FiEdit removed as it's now in NoActiveGoalMessage
 
 import ToastMessage from '@/components/common/ToastMessage';
 import { firebaseService } from '@/services/firebaseService';
 import { AppState, DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
-// Removed ConfirmationModal and GoalModal imports as they are no longer managed here
-// import ConfirmationModal from '@/components/common/ConfirmationModal';
-// import GoalModal from '@/components/dashboard/GoalModal';
+
+// Import the new common component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 // Import the refactored dashboard components
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import DashboardMain from '@/components/dashboard/DashboardMain';
 import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
-// Removed DashboardSettings import as it's no longer part of DashboardPage directly
-// import DashboardSettings from '@/components/dashboard/DashboardSettings';
+// DashboardSettings is no longer used directly by dashboard page
 
-// Define a simplified interface for the props passed to each dashboard tab component
+// Define a comprehensive interface for the props passed to ALL dashboard tab components
 interface DashboardTabProps {
   currentUser: User | null;
   appState: AppState | null;
@@ -41,27 +36,21 @@ interface DashboardTabProps {
   handleSaveProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
   setIsDailyProgressModalOpen: (isOpen: boolean) => void;
 
-  // Goal management props are now REMOVED from this interface
-  // handleOpenGoalModal: (isEditing?: boolean) => void;
-  // promptForArchiveAndNewGoal: () => void;
-  // handleExport: () => Promise<void>;
-  // handleImportChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  // transformedGoalForModal: { name: string; description: string | null; startDate: string; endDate: string } | null;
-  // isEditMode: boolean;
+  // Goal management related props are removed from this interface as they are no longer needed
 }
 
 interface TabItem {
   id: string;
   label: string;
   icon: IconType;
-  component: React.ComponentType<DashboardTabProps>; // Component now receives simplified DashboardTabProps
+  component: React.ComponentType<DashboardTabProps>; // Component now receives the comprehensive DashboardTabProps
 }
 
-// Updated tab items: Removed 'settings' tab
 const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
+  // 'settings' tab removed from here
 ];
 
 // Skeleton Loader for dashboard page to show during data fetching
@@ -91,12 +80,6 @@ const ConsolidatedDashboardPageContent = () => {
   // States for DailyProgressModal (moved to page level)
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-  // Removed states for GoalModal and ConfirmationModal as they are no longer managed here
-  // const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  // const [isEditMode, setIsEditMode] = useState(false);
-  // const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  // const [confirmationProps, setConfirmationProps] = useState({ /* ... */ });
 
   // Common Toast states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -255,30 +238,14 @@ const ConsolidatedDashboardPageContent = () => {
       return <PageSkeletonLoader />;
     }
 
-    // If there's no active goal selected, prompt the user to set one (and link to goals page)
+    // If there's no active goal selected, render the NoActiveGoalMessage component
     if (!activeGoal) {
-      return (
-        <div className="flex flex-col justify-center items-center p-10 h-full text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-          <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
-          <h2 className="mb-4 text-3xl font-bold text-white">No Active Goal Found</h2>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-            Please set a primary goal to begin tracking your progress. Goal management is now
-            handled on the dedicated Goals page.
-          </p>
-          <Link
-            href="/goal" // Link to the new /goal page
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-          >
-            <FiEdit size={20} /> {/* Using FiEdit for goal management link */}
-            Go to Goals Page
-          </Link>
-        </div>
-      );
+      return <NoActiveGoalMessage />;
     }
 
-    // Props object for components rendered in tabs.
-    // This ensures all components receive the necessary shared data and handlers.
+    // Render content based on the active tab when an active goal exists
     const dashboardTabProps: DashboardTabProps = {
+      // Define props object once
       currentUser,
       appState,
       showMessage,
@@ -289,8 +256,7 @@ const ConsolidatedDashboardPageContent = () => {
       handleDayClick,
       handleSaveProgress,
       setIsDailyProgressModalOpen,
-      // Goal management related props are removed from here as they are no longer needed
-      // (e.g., handleOpenGoalModal, promptForArchiveAndNewGoal, handleExport, handleImportChange, transformedGoalForModal, isEditMode)
+      // Goal management related props are removed from this interface as they are no longer needed
     };
 
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
@@ -349,11 +315,6 @@ const ConsolidatedDashboardPageContent = () => {
           showMessage={showMessage}
         />
       )}
-
-      {/* GoalModal and ConfirmationModal are no longer rendered directly by the dashboard page,
-          as their logic has been moved to the /goal page for centralized goal management.
-          The DashboardSettings component (if still present) will now link to the /goal page for these actions.
-      */}
     </div>
   );
 };

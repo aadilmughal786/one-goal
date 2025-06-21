@@ -1,23 +1,25 @@
 // app/(root)/todo/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiCheckSquare } from 'react-icons/fi';
-import { RiAlarmWarningLine } from 'react-icons/ri';
+import { FiCheckSquare } from 'react-icons/fi'; // FiBookOpen removed, as it's not used here
 import { MdStickyNote2 } from 'react-icons/md'; // Import for StickyNotes icon
-import Link from 'next/link'; // Import Link for navigation to dashboard
+import { RiAlarmWarningLine } from 'react-icons/ri';
 
-import { firebaseService } from '@/services/firebaseService';
-import { TodoItem, AppState, DistractionItem, StickyNote } from '@/types'; // Import StickyNote
-import DistractionListComponent from '@/components/todo/DistractionList'; // Renamed import to be specific
-import TodoList from '@/components/todo/TodoList';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
+import ToastMessage from '@/components/common/ToastMessage';
+import DistractionListComponent from '@/components/todo/DistractionList';
 import StickyNotesComponent from '@/components/todo/StickyNotes'; // New import for StickyNotes
 import TodoEditModal from '@/components/todo/TodoEditModal';
-import ToastMessage from '@/components/common/ToastMessage';
-import ConfirmationModal from '@/components/common/ConfirmationModal';
+import TodoList from '@/components/todo/TodoList';
+import { firebaseService } from '@/services/firebaseService';
+import { AppState, DistractionItem, StickyNote, TodoItem } from '@/types';
+
+// Import the new common component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 // Skeleton Loader for lists page to show during data fetching
 const ListsPageSkeletonLoader = () => (
@@ -42,8 +44,8 @@ interface TabItem {
 // Define the tabs for the page, mapping to list types and icons
 const tabItems: TabItem[] = [
   { id: 'todo', label: 'To-Do List', icon: FiCheckSquare },
-  { id: 'distractions', label: 'Distractions', icon: RiAlarmWarningLine }, // Renamed tab
-  { id: 'sticky-notes', label: 'Sticky Notes', icon: MdStickyNote2 }, // Renamed tab
+  { id: 'distractions', label: 'Distractions', icon: RiAlarmWarningLine },
+  { id: 'sticky-notes', label: 'Sticky Notes', icon: MdStickyNote2 },
 ];
 
 // Main content component for the To-Do/Lists page
@@ -57,14 +59,14 @@ const ConsolidatedListPageContent = () => {
 
   // States for specific lists, derived from appState
   const [toDoList, setToDoList] = useState<TodoItem[]>([]);
-  const [distractionList, setDistractionList] = useState<DistractionItem[]>([]); // Renamed state
-  const [, setStickyNotesList] = useState<StickyNote[]>([]); // Renamed state
+  const [distractionList, setDistractionList] = useState<DistractionItem[]>([]);
+  const [, setStickyNotesList] = useState<StickyNote[]>([]);
 
   // States for UI feedback and modals
   const [isAdding, setIsAdding] = useState({
     todo: false,
-    distractions: false, // Updated key for distraction list adding status
-    stickyNotes: false, // Updated key for sticky notes adding status (though StickyNotesComponent manages its own)
+    distractions: false,
+    stickyNotes: false,
   });
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null); // For general item updates (e.g., distraction count)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -131,7 +133,7 @@ const ConsolidatedListPageContent = () => {
       }
     });
     return () => unsubscribe(); // Cleanup the Firebase auth listener
-  }, [router, fetchUserData]); // Dependencies: router and fetchUserData
+  }, [router, fetchUserData]);
 
   // Handles changing the active tab and updates the URL search parameters accordingly.
   const handleTabChange = useCallback(
@@ -144,7 +146,7 @@ const ConsolidatedListPageContent = () => {
     [router, searchParams]
   );
 
-  // Effect to synchronize the active tab state with the URL search parameters on component mount/update.
+  // Sync active tab state with URL search params on mount/update
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && activeTab !== tabFromUrl) {
@@ -152,7 +154,7 @@ const ConsolidatedListPageContent = () => {
         setActiveTabInternal(tabFromUrl);
       }
     }
-  }, [searchParams, activeTab]); // Dependencies: searchParams changes or activeTab mismatch
+  }, [searchParams, activeTab]);
 
   // --- Specific Handlers for Distraction List ---
 
@@ -305,7 +307,6 @@ const ConsolidatedListPageContent = () => {
 
   // Prepares for deletion by setting the item to delete and opening the confirmation modal.
   const handleDeleteConfirmation = useCallback(
-    // FIX: Make the lambda an async function so it implicitly returns Promise<void>
     async (listType: 'todo' | 'distraction' | 'sticky-note', id: string) => {
       setItemToDelete({ listType, id });
       setIsConfirmModalOpen(true);
@@ -349,32 +350,15 @@ const ConsolidatedListPageContent = () => {
     return [...toDoList].sort((a, b) => a.order - b.order);
   }, [toDoList]);
 
-  // Renders the content for the currently active tab.
   const renderActiveTabContent = () => {
-    // If no active goal is selected, prompt the user to set one.
-    if (!appState?.activeGoalId || !appState.goals[appState.activeGoalId]) {
-      return (
-        <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-          <FiCheckSquare className="mx-auto mb-6 w-20 h-20 text-white/70" />
-          <h2 className="mb-4 text-3xl font-bold text-white">No Active Goal Found</h2>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-            You need to set an active primary goal to manage your lists. Please select or create one
-            in your dashboard settings.
-          </p>
-          <Link
-            href="/dashboard?tab=settings" // Link to dashboard settings to guide user
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-          >
-            <FiCheckSquare size={20} />
-            Go to Dashboard to Set Goal
-          </Link>
-        </div>
-      );
-    }
-
-    // Show skeleton loader if data is still loading.
     if (isLoading) {
       return <ListsPageSkeletonLoader />;
+    }
+
+    // If no active goal is selected, render the NoActiveGoalMessage component
+    const activeGoal = appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null;
+    if (!activeGoal) {
+      return <NoActiveGoalMessage />;
     }
 
     // Render the specific component based on the active tab.
@@ -385,7 +369,6 @@ const ConsolidatedListPageContent = () => {
             toDoList={sortedToDoList}
             onAddTodo={handleAddTodo}
             onUpdateTodo={handleUpdateTodo}
-            // FIX: Make the anonymous function async to return Promise<void>
             onDeleteTodo={async id => handleDeleteConfirmation('todo', id)}
             onReorderTodos={handleReorderTodos}
             onEditTodo={handleOpenTodoEditModal}
@@ -396,27 +379,26 @@ const ConsolidatedListPageContent = () => {
       case 'distractions': // Case for Distractions tab
         return (
           <DistractionListComponent
-            list={distractionList} // Pass the specialized distractionList
-            addToList={handleAddDistraction} // Pass the specific add handler
-            // FIX: Make the anonymous function async to return Promise<void>
+            list={distractionList}
+            addToList={handleAddDistraction}
             removeFromList={async id => handleDeleteConfirmation('distraction', id)}
-            updateItem={handleUpdateDistraction} // Pass the specific update handler
+            updateItem={handleUpdateDistraction}
             placeholder="Add a distraction to avoid..."
             editingItemId={editingItemId}
             setEditingItemId={setEditingItemId}
             editText={editText}
             setEditText={setEditText}
-            isAdding={isAdding.distractions} // Pass adding status
-            isUpdatingId={isUpdatingId} // Pass updating ID
+            isAdding={isAdding.distractions}
+            isUpdatingId={isUpdatingId}
           />
         );
       case 'sticky-notes': // Case for Sticky Notes tab
         return (
           <StickyNotesComponent
-            currentUser={currentUser} // StickyNotes component manages its own CRUD, needs these props
+            currentUser={currentUser}
             appState={appState}
             showMessage={showMessage}
-            onAppStateUpdate={setAppState} // Pass setAppState to trigger full data refresh from StickyNotes
+            onAppStateUpdate={setAppState} // Pass setAppState to update the main app state
           />
         );
       default:
@@ -428,26 +410,31 @@ const ConsolidatedListPageContent = () => {
     <main className="flex flex-col min-h-screen text-white bg-black">
       <ToastMessage message={toastMessage} type={toastType} />
 
-      {/* Tab Navigation Bar */}
+      {/* Tab Navigation Bar (always visible) */}
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex flex-wrap justify-center space-x-2">
-          {tabItems.map(item => {
-            const Icon = item.icon; // Get icon component
-            const isActive = activeTab === item.id; // Check if current tab is active
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabChange(item.id)}
-                className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+          {isLoading
+            ? [...Array(tabItems.length)].map((_, i) => (
+                <div key={i} className="px-3 py-4 animate-pulse">
+                  <div className="w-20 h-6 rounded-md bg-white/10"></div>
+                </div>
+              ))
+            : tabItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
                     ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
-                aria-label={item.label} // Accessibility label
-              >
-                <Icon size={18} />
-                <span className="hidden sm:inline">{item.label}</span>{' '}
-                {/* Label on larger screens */}
-              </button>
-            );
-          })}
+                    aria-label={item.label}
+                  >
+                    <Icon size={18} />
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </button>
+                );
+              })}
         </div>
       </nav>
 
@@ -462,7 +449,7 @@ const ConsolidatedListPageContent = () => {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           todoItem={selectedTodoItem}
-          onSave={handleUpdateTodo} // Uses specialized update handler for Todo
+          onSave={handleUpdateTodo}
           showMessage={showMessage}
         />
       )}
@@ -475,7 +462,7 @@ const ConsolidatedListPageContent = () => {
         message="Are you sure you want to delete this item? This action cannot be undone."
         confirmButton={{
           text: 'Delete',
-          onClick: confirmDeletion, // Uses the consolidated confirmDeletion handler
+          onClick: confirmDeletion,
           className: 'bg-red-600 text-white hover:bg-red-700',
         }}
         cancelButton={{ text: 'Cancel', onClick: () => setIsConfirmModalOpen(false) }}
@@ -484,12 +471,9 @@ const ConsolidatedListPageContent = () => {
   );
 };
 
-// Wrap the main content component in React.Suspense for Next.js client-side rendering.
 export default function TodoPage() {
   return (
     <Suspense fallback={<ListsPageSkeletonLoader />}>
-      {' '}
-      {/* Provide a fallback during loading */}
       <ConsolidatedListPageContent />
     </Suspense>
   );

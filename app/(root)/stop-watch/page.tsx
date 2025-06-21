@@ -1,21 +1,21 @@
 // app/(root)/stop-watch/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { firebaseService } from '@/services/firebaseService';
-import Stopwatch from '@/components/stop-watch/Stopwatch';
-import { User } from 'firebase/auth';
-import { AppState } from '@/types';
-import { FiTrash2, FiX, FiCalendar } from 'react-icons/fi';
-import { GoStopwatch } from 'react-icons/go';
-// Removed Timestamp import as it's no longer directly used in SessionToDeleteInfo,
-// now using sessionId string.
-// import { Timestamp } from 'firebase/firestore';
-import ToastMessage from '@/components/common/ToastMessage';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
+import ToastMessage from '@/components/common/ToastMessage';
 import SessionLog from '@/components/stop-watch/SessionLog';
+import Stopwatch from '@/components/stop-watch/Stopwatch';
+import { firebaseService } from '@/services/firebaseService';
+import { AppState } from '@/types';
+import { User } from 'firebase/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
+import { FiCalendar, FiTrash2, FiX } from 'react-icons/fi'; // FiTarget and FiEdit removed as they are in NoActiveGoalMessage
+import { GoStopwatch } from 'react-icons/go';
+
+// Import the new common component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 // Updated interface to reflect the change from sessionStartTime (Timestamp) to sessionId (string)
 interface SessionToDeleteInfo {
@@ -29,6 +29,11 @@ interface TabItem {
   icon: IconType;
 }
 
+const tabItems: TabItem[] = [
+  { id: 'stopwatch', label: 'Stopwatch', icon: GoStopwatch },
+  { id: 'log', label: 'Session Log', icon: FiCalendar },
+];
+
 const StopwatchPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,61 +43,47 @@ const StopwatchPageContent = () => {
   const [appState, setAppState] = useState<AppState | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // State to track if an item is being updated (for loading spinners)
+  // --- SESSION LOG LOGIC (Remains local to this page) ---
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
-  // State for the confirmation modal for session deletion
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  // State to store information about the session to be deleted
   const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
 
   // --- TABS & GENERIC LOGIC ---
-  // Controls the currently active tab, initialized from URL search params or defaults to 'stopwatch'
   const [activeTab, setActiveTabInternal] = useState<string>(() => {
     const tabFromUrl = searchParams.get('tab');
     return tabFromUrl || 'stopwatch';
   });
 
-  /**
-   * Displays a toast message to the user.
-   * @param text The message to display.
-   * @param type The type of message ('success', 'error', 'info') - currently inferred.
-   */
   const showMessage = useCallback((text: string, _: 'success' | 'error' | 'info') => {
     setToastMessage(text);
-    // Automatically clear the message after 3 seconds
     setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
-  /**
-   * Fetches user data from Firebase and updates the appState.
-   * @param uid The user's Firebase UID.
-   */
   const fetchUserData = useCallback(
     async (uid: string) => {
       try {
         const data = await firebaseService.getUserData(uid);
         setAppState(data);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error("Error fetching user's active goal:", error);
         showMessage('Failed to load user data.', 'error');
       } finally {
-        setIsLoading(false); // Set loading to false regardless of success or failure
+        setIsLoading(false);
       }
     },
     [showMessage]
   );
 
-  // Effect to listen for Firebase authentication state changes
   useEffect(() => {
     const unsubscribe = firebaseService.onAuthChange(user => {
       if (user) {
         setUser(user);
-        fetchUserData(user.uid); // Fetch data when user is authenticated
+        fetchUserData(user.uid);
       } else {
-        router.replace('/login'); // Redirect to login if no user is found
+        router.replace('/login');
       }
     });
-    return () => unsubscribe(); // Cleanup the auth listener on component unmount
+    return () => unsubscribe();
   }, [router, fetchUserData]);
 
   /**
@@ -104,9 +95,8 @@ const StopwatchPageContent = () => {
    */
   const handleDeleteSession = useCallback(
     async (goalId: string, dateKey: string, sessionId: string) => {
-      // Store information about the session to be deleted in state
       setSessionToDeleteInfo({ dateKey, sessionId });
-      setIsConfirmModalOpen(true); // Open the confirmation modal
+      setIsConfirmModalOpen(true);
     },
     []
   );
@@ -124,23 +114,18 @@ const StopwatchPageContent = () => {
         showMessage('Authentication required to update session.', 'error');
         return;
       }
-      // Set the updating ID to show a loading spinner on the specific session
       setIsUpdatingId(sessionId);
       try {
-        await firebaseService.updateStopwatchSession(
-          goalId, // Pass goalId
-          currentUser.uid,
-          dateKey,
-          sessionId,
-          { label: newLabel } // Pass only the label update
-        );
-        await fetchUserData(currentUser.uid); // Re-fetch data to update UI
-        showMessage('Session updated!', 'success');
+        await firebaseService.updateStopwatchSession(goalId, currentUser.uid, dateKey, sessionId, {
+          label: newLabel,
+        });
+        await fetchUserData(currentUser.uid); // Re-fetch for consistency
+        showMessage('Session updated.', 'success');
       } catch (error) {
         console.error('Error updating session:', error);
         showMessage('Failed to update session.', 'error');
       } finally {
-        setIsUpdatingId(null); // Clear the updating ID
+        setIsUpdatingId(null);
       }
     },
     [currentUser, fetchUserData, showMessage]
@@ -150,9 +135,12 @@ const StopwatchPageContent = () => {
    * Confirms and proceeds with deleting the stored session.
    */
   const confirmDeleteSession = async () => {
-    if (!currentUser || !sessionToDeleteInfo || !appState?.activeGoalId) {
+    // Get the active goal from the current appState
+    const activeGoalId = appState?.activeGoalId;
+
+    if (!currentUser || !sessionToDeleteInfo || !activeGoalId) {
       console.error('Attempted to delete session without complete info or active goal.');
-      showMessage('Cannot delete session: Missing information.', 'error');
+      showMessage('Cannot delete session: Missing information or no active goal.', 'error');
       setIsConfirmModalOpen(false);
       setSessionToDeleteInfo(null);
       return;
@@ -160,7 +148,7 @@ const StopwatchPageContent = () => {
 
     try {
       await firebaseService.deleteStopwatchSession(
-        appState.activeGoalId, // Pass activeGoalId
+        activeGoalId, // Pass activeGoalId
         currentUser.uid,
         sessionToDeleteInfo.dateKey,
         sessionToDeleteInfo.sessionId // Use sessionId here
@@ -177,38 +165,37 @@ const StopwatchPageContent = () => {
   };
 
   // --- TABS & RENDER LOGIC ---
-  /**
-   * Handles changing the active tab and updates the URL search parameters.
-   * @param tabId The ID of the tab to activate.
-   */
   const handleTabChange = useCallback(
     (tabId: string) => {
       setActiveTabInternal(tabId);
       const newSearchParams = new URLSearchParams(searchParams.toString());
       newSearchParams.set('tab', tabId);
-      // Replace the current URL without a full page reload or scroll
       router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
     [router, searchParams]
   );
 
-  // Defines the available tabs for the page
-  const tabItems: TabItem[] = [
-    { id: 'stopwatch', label: 'Stopwatch', icon: GoStopwatch },
-    { id: 'log', label: 'Session Log', icon: FiCalendar },
-  ];
-
-  /**
-   * Renders the component corresponding to the currently active tab.
-   */
   const renderActiveComponent = () => {
+    // Get the active goal for conditional rendering within the tabs' content
+    const activeGoal = appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null;
+
+    if (isLoading) {
+      return <div className="text-center text-white/70">Loading...</div>;
+    }
+
+    // If no active goal, display the reusable NoActiveGoalMessage component
+    if (!activeGoal) {
+      return <NoActiveGoalMessage />;
+    }
+
+    // Render the active tab content if an active goal exists
     switch (activeTab) {
       case 'stopwatch':
         return <Stopwatch />;
       case 'log':
         return (
           <SessionLog
-            appState={appState}
+            appState={appState} // Pass appState (which contains the active goal)
             onDeleteSession={handleDeleteSession}
             onUpdateSession={handleUpdateSession}
             isUpdatingId={isUpdatingId}
@@ -221,50 +208,45 @@ const StopwatchPageContent = () => {
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      {/* Toast message display component */}
       <ToastMessage
         message={toastMessage}
-        // Dynamically set toast type based on message content (can be improved with explicit type passing)
         type={
           toastMessage?.includes('saved') || toastMessage?.includes('updated') ? 'success' : 'info'
         }
       />
 
-      {/* Navigation bar for tabs */}
+      {/* Navigation tabs always visible */}
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex space-x-2">
-          {tabItems.map(item => {
-            const Icon = item.icon; // Get the icon component
-            const isActive = activeTab === item.id; // Check if the current tab is active
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabChange(item.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
-                        ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
-                aria-label={item.label} // Accessibility label for the button
-              >
-                <Icon size={18} />
-                <span className="hidden sm:inline">{item.label}</span>{' '}
-                {/* Label visible on larger screens */}
-              </button>
-            );
-          })}
+          {isLoading
+            ? [...Array(tabItems.length)].map((_, i) => (
+                <div key={i} className="px-4 py-4 animate-pulse">
+                  <div className="w-20 h-6 rounded-md bg-white/10"></div>
+                </div>
+              ))
+            : tabItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                          ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
+                    aria-label={item.label}
+                  >
+                    <Icon size={18} />
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </button>
+                );
+              })}
         </div>
       </nav>
 
-      {/* Main content area */}
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
-        <section className="py-8 w-full">
-          {isLoading ? (
-            <div className="text-center text-white/70">Loading...</div>
-          ) : (
-            renderActiveComponent()
-          )}
-        </section>
+        <section className="py-8 w-full">{renderActiveComponent()}</section>
       </div>
 
-      {/* Confirmation Modal for deleting sessions */}
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
@@ -286,16 +268,9 @@ const StopwatchPageContent = () => {
   );
 };
 
-// Wrapper component to use React.Suspense for components using `useSearchParams`
 export default function StopwatchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex flex-col justify-center items-center min-h-screen text-white bg-black font-poppins">
-          Loading Focus Timers...
-        </div>
-      }
-    >
+    <Suspense fallback={<div>Loading Focus Timers...</div>}>
       <StopwatchPageContent />
     </Suspense>
   );
