@@ -1,77 +1,67 @@
 // app/(root)/dashboard/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { format, isToday } from 'date-fns'; // Import format and isToday
 import { User } from 'firebase/auth';
+import Link from 'next/link'; // For linking to other pages
 import { useRouter, useSearchParams } from 'next/navigation';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiGrid, FiBarChart2, FiFeather, FiEdit } from 'react-icons/fi';
-import { MdRocketLaunch } from 'react-icons/md';
-import Link from 'next/link';
-import { format, isToday } from 'date-fns';
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp for goal handling
+import { FiBarChart2, FiEdit, FiFeather, FiGrid } from 'react-icons/fi'; // FiEdit for the "Go to Goals Page" link
+import { MdRocketLaunch } from 'react-icons/md'; // For no-goal message
+// Removed Timestamp import as GoalModal/ConfirmationModal are no longer here
+// import { Timestamp } from 'firebase/firestore';
 
-import { firebaseService } from '@/services/firebaseService';
-import {
-  AppState,
-  Goal,
-  DailyProgress,
-  GoalStatus,
-  SatisfactionLevel,
-  RoutineType,
-  RoutineLogStatus,
-} from '@/types';
 import ToastMessage from '@/components/common/ToastMessage';
-import ConfirmationModal from '@/components/common/ConfirmationModal';
+import { firebaseService } from '@/services/firebaseService';
+import { AppState, DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
+// Removed ConfirmationModal and GoalModal imports as they are no longer managed here
+// import ConfirmationModal from '@/components/common/ConfirmationModal';
+// import GoalModal from '@/components/dashboard/GoalModal';
 
 // Import the refactored dashboard components
-import DashboardMain from '@/components/dashboard/DashboardMain';
-import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
-import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
-import DashboardSettings from '@/components/dashboard/DashboardSettings';
-import GoalModal from '@/components/dashboard/GoalModal';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
+import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
+import DashboardMain from '@/components/dashboard/DashboardMain';
+import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
+// Removed DashboardSettings import as it's no longer part of DashboardPage directly
+// import DashboardSettings from '@/components/dashboard/DashboardSettings';
 
-// Define a specific interface for the props passed to each dashboard tab component
+// Define a simplified interface for the props passed to each dashboard tab component
 interface DashboardTabProps {
   currentUser: User | null;
   appState: AppState | null;
   showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
   onAppStateUpdate: (newAppState: AppState) => void;
 
-  // Props specific to DashboardMain (passed to DashboardMain component)
+  // Props specific to DashboardMain's daily progress logging
   isDailyProgressModalOpen: boolean;
   selectedDate: Date | null;
   handleDayClick: (date: Date) => void;
   handleSaveProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
   setIsDailyProgressModalOpen: (isOpen: boolean) => void;
 
-  // Props specific to DashboardSettings (passed to DashboardSettings component)
-  handleOpenGoalModal: (isEditing?: boolean) => void;
-  promptForArchiveAndNewGoal: () => void;
-  handleExport: () => Promise<void>;
-  handleImportChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  transformedGoalForModal: {
-    name: string;
-    description: string | null;
-    startDate: string;
-    endDate: string;
-  } | null;
-  isEditMode: boolean; // Indicates if GoalModal should open in edit mode
+  // Goal management props are now REMOVED from this interface
+  // handleOpenGoalModal: (isEditing?: boolean) => void;
+  // promptForArchiveAndNewGoal: () => void;
+  // handleExport: () => Promise<void>;
+  // handleImportChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  // transformedGoalForModal: { name: string; description: string | null; startDate: string; endDate: string } | null;
+  // isEditMode: boolean;
 }
 
 interface TabItem {
   id: string;
   label: string;
   icon: IconType;
-  component: React.ComponentType<DashboardTabProps>; // Component now receives DashboardTabProps
+  component: React.ComponentType<DashboardTabProps>; // Component now receives simplified DashboardTabProps
 }
 
+// Updated tab items: Removed 'settings' tab
 const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
-  { id: 'settings', label: 'Settings', icon: FiEdit, component: DashboardSettings },
 ];
 
 // Skeleton Loader for dashboard page to show during data fetching
@@ -81,6 +71,8 @@ const PageSkeletonLoader = () => (
       <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
       <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
       <div className="space-y-3">
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
         <div className="w-full h-12 rounded-lg bg-white/5"></div>
       </div>
     </div>
@@ -100,22 +92,11 @@ const ConsolidatedDashboardPageContent = () => {
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // States for GoalModal and ConfirmationModal (managed at the page level)
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // True if editing an existing goal, false for new goal
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false); // For confirmation dialogs
-  const [confirmationProps, setConfirmationProps] = useState<{
-    title: string;
-    message: string;
-    action: () => Promise<void> | void; // Action can be async or sync
-    actionDelayMs: number;
-  }>({
-    // Explicit type for confirmationProps
-    title: '',
-    message: '',
-    action: () => {},
-    actionDelayMs: 0,
-  });
+  // Removed states for GoalModal and ConfirmationModal as they are no longer managed here
+  // const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  // const [isEditMode, setIsEditMode] = useState(false);
+  // const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  // const [confirmationProps, setConfirmationProps] = useState({ /* ... */ });
 
   // Common Toast states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -260,194 +241,12 @@ const ConsolidatedDashboardPageContent = () => {
     [currentUser, appState, activeGoal, showMessage, handleAppStateUpdate]
   );
 
-  // --- DashboardSettings Specific Handlers (moved to page level) ---
-
-  const handleSetGoal = useCallback(
-    async (goalName: string, endDate: Date, description: string) => {
-      if (!currentUser || !appState) {
-        showMessage('Authentication required to set goal.', 'error');
-        return;
-      }
-
-      if (isEditMode && activeGoal) {
-        const updatedGoal: Goal = {
-          ...activeGoal,
-          name: goalName,
-          description: description,
-          endDate: Timestamp.fromDate(endDate),
-          updatedAt: Timestamp.now(),
-        };
-        try {
-          await firebaseService.updateGoal(currentUser.uid, activeGoal.id, updatedGoal);
-          const updatedGoals = {
-            ...appState.goals,
-            [activeGoal.id]: updatedGoal,
-          };
-          handleAppStateUpdate({ ...appState, goals: updatedGoals });
-          setIsGoalModalOpen(false);
-          showMessage('Goal updated successfully!', 'success');
-        } catch (error) {
-          console.error('Failed to update goal:', error);
-          showMessage('Failed to update goal.', 'error');
-        }
-      } else {
-        const newGoalData: Omit<
-          Goal,
-          | 'id'
-          | 'createdAt'
-          | 'updatedAt'
-          | 'dailyProgress'
-          | 'toDoList'
-          | 'notToDoList'
-          | 'stickyNotes'
-          | 'routineSettings'
-          | 'starredQuotes'
-        > = {
-          name: goalName,
-          description: description,
-          startDate: Timestamp.now(),
-          endDate: Timestamp.fromDate(endDate),
-          status: GoalStatus.ACTIVE,
-        };
-        try {
-          const createdGoal = await firebaseService.createGoal(currentUser.uid, newGoalData);
-          const updatedGoals = { ...appState.goals, [createdGoal.id]: createdGoal };
-          handleAppStateUpdate({ ...appState, goals: updatedGoals, activeGoalId: createdGoal.id });
-          setIsGoalModalOpen(false);
-          showMessage('Goal set successfully!', 'success');
-        } catch (error) {
-          console.error('Failed to create goal:', error);
-          showMessage('Failed to set goal.', 'error');
-        }
-      }
-    },
-    [currentUser, appState, activeGoal, isEditMode, showMessage, handleAppStateUpdate]
-  );
-
-  const handleOpenGoalModal = useCallback((isEditing = false) => {
-    setIsEditMode(isEditing);
-    setIsGoalModalOpen(true);
-  }, []);
-
-  const promptForArchiveAndNewGoal = useCallback(() => {
-    if (activeGoal) {
-      setConfirmationProps({
-        title: 'Archive Current Goal?',
-        message:
-          'This will mark your current goal as completed and clear it as the active goal. All its data will remain accessible through the archive page. The confirm button will be enabled in 3 seconds.',
-        action: async () => {
-          if (!currentUser) return;
-          try {
-            // Call the modified firebaseService.archiveCurrentGoal
-            const newAppState = await firebaseService.archiveCurrentGoal(currentUser.uid); // FIX: Using correct firebaseService method
-            handleAppStateUpdate(newAppState);
-            showMessage('Goal archived! Ready for the next one.', 'success');
-            handleOpenGoalModal(false);
-          } catch (e) {
-            console.error('Error archiving goal:', e);
-            showMessage((e as Error).message || 'Failed to archive goal.', 'error');
-          }
-        },
-        actionDelayMs: 3000,
-      });
-      setIsConfirmModalOpen(true);
-    } else {
-      handleOpenGoalModal(false);
-    }
-  }, [activeGoal, currentUser, showMessage, handleAppStateUpdate, handleOpenGoalModal]); // FIX: Added handleAppStateUpdate to dependencies
-
-  const handleImportChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file || !currentUser) return;
-      if (file.size > 5 * 1024 * 1024) {
-        showMessage('File is too large (max 5MB).', 'error');
-        return;
-      }
-      event.target.value = '';
-
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          const importedRawData = JSON.parse(e.target?.result as string);
-          const importedState = firebaseService.deserializeAppState(importedRawData);
-
-          const confirmImport = () => handleConfirmImport(importedState);
-
-          if (appState?.activeGoalId && appState.goals[appState.activeGoalId]) {
-            setConfirmationProps({
-              title: 'Overwrite All Data?',
-              message:
-                'Importing will replace all your current data. This action is irreversible. The confirm button will be enabled in 10 seconds.',
-              action: confirmImport,
-              actionDelayMs: 10000,
-            });
-            setIsConfirmModalOpen(true);
-          } else {
-            confirmImport();
-          }
-        } catch (error) {
-          console.error('Import failed:', error);
-          showMessage('Import failed: Invalid file format.', 'error');
-        }
-      };
-      reader.readAsText(file);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser, appState, showMessage]
-  );
-
-  const handleConfirmImport = useCallback(
-    async (importedState: AppState) => {
-      if (!currentUser) return;
-      try {
-        await firebaseService.setUserData(currentUser.uid, importedState);
-        showMessage('Data imported successfully. Refreshing...', 'success');
-        setIsConfirmModalOpen(false);
-        setTimeout(() => window.location.reload(), 2000);
-      } catch (error) {
-        console.error('Failed to save imported data:', error);
-        showMessage(`Failed to save imported data: ${(error as Error).message}`, 'error');
-        setIsConfirmModalOpen(false);
-      }
-    },
-    [currentUser, showMessage]
-  );
-
-  const handleExport = useCallback(async () => {
-    if (!currentUser || !appState) {
-      showMessage('No data to export.', 'info');
-      return;
-    }
-    try {
-      const serializableData = firebaseService.serializeAppState(appState);
-      const dataStr = JSON.stringify(serializableData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `one-goal-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      showMessage('Data exported successfully.', 'success');
-    } catch (error) {
-      console.error('Failed to export data:', error);
-      showMessage(`Failed to export data: ${(error as Error).message}`, 'error');
-    }
-  }, [currentUser, appState, showMessage]);
-
-  const transformedGoalForModal = useMemo(() => {
-    return activeGoal
-      ? {
-          name: activeGoal.name,
-          description: activeGoal.description,
-          startDate: activeGoal.startDate.toDate().toISOString(),
-          endDate: activeGoal.endDate.toDate().toISOString(),
-        }
+  // Memoized initialProgress for DailyProgressModal
+  const initialProgress = useMemo(() => {
+    return selectedDate && activeGoal
+      ? activeGoal.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
       : null;
-  }, [activeGoal]);
+  }, [selectedDate, activeGoal]);
 
   // Main rendering logic for the active tab
   const renderActiveTabContent = () => {
@@ -456,64 +255,42 @@ const ConsolidatedDashboardPageContent = () => {
       return <PageSkeletonLoader />;
     }
 
-    // If there's no active goal selected, prompt the user to set one (and show settings actions)
+    // If there's no active goal selected, prompt the user to set one (and link to goals page)
     if (!activeGoal) {
       return (
-        <div className="space-y-12">
-          <section>
-            <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-              <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
-              <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
-              <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-                Define your primary objective or import existing data using the management options
-                below.
-              </p>
-              <Link
-                href="/dashboard?tab=settings" // Link to settings tab
-                className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-              >
-                <FiEdit size={20} /> {/* Use FiEdit for settings link */}
-                Go to Settings to Set Goal
-              </Link>
-            </div>
-          </section>
-          {/* Render DashboardSettings directly when no goal is set */}
-          <DashboardSettings
-            currentUser={currentUser}
-            appState={appState}
-            showMessage={showMessage}
-            onAppStateUpdate={handleAppStateUpdate}
-            handleOpenGoalModal={handleOpenGoalModal}
-            promptForArchiveAndNewGoal={promptForArchiveAndNewGoal}
-            handleExport={handleExport}
-            handleImportChange={handleImportChange}
-            transformedGoalForModal={transformedGoalForModal}
-            isEditMode={isEditMode}
-          />
+        <div className="flex flex-col justify-center items-center p-10 h-full text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+          <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
+          <h2 className="mb-4 text-3xl font-bold text-white">No Active Goal Found</h2>
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
+            Please set a primary goal to begin tracking your progress. Goal management is now
+            handled on the dedicated Goals page.
+          </p>
+          <Link
+            href="/goal" // Link to the new /goal page
+            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
+          >
+            <FiEdit size={20} /> {/* Using FiEdit for goal management link */}
+            Go to Goals Page
+          </Link>
         </div>
       );
     }
 
-    // Render content based on the active tab when a goal exists
+    // Props object for components rendered in tabs.
+    // This ensures all components receive the necessary shared data and handlers.
     const dashboardTabProps: DashboardTabProps = {
-      // Define props object once
       currentUser,
       appState,
       showMessage,
       onAppStateUpdate: handleAppStateUpdate,
-      // DashboardMain specific
+      // DashboardMain specific props
       isDailyProgressModalOpen,
       selectedDate,
       handleDayClick,
       handleSaveProgress,
       setIsDailyProgressModalOpen,
-      // DashboardSettings specific (also passed to DashboardMain for its "no goal" section)
-      handleOpenGoalModal,
-      promptForArchiveAndNewGoal,
-      handleExport,
-      handleImportChange,
-      transformedGoalForModal,
-      isEditMode,
+      // Goal management related props are removed from here as they are no longer needed
+      // (e.g., handleOpenGoalModal, promptForArchiveAndNewGoal, handleExport, handleImportChange, transformedGoalForModal, isEditMode)
     };
 
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
@@ -521,7 +298,7 @@ const ConsolidatedDashboardPageContent = () => {
     if (ActiveComponent) {
       return <ActiveComponent {...dashboardTabProps} />;
     }
-    return null; // Fallback if no component found
+    return null; // Fallback if no component found for the active tab
   };
 
   return (
@@ -561,51 +338,22 @@ const ConsolidatedDashboardPageContent = () => {
         {renderActiveTabContent()}
       </main>
 
-      {/* Modals (shared across tabs where applicable) */}
-      {/* Daily Progress Modal */}
-      {isDailyProgressModalOpen &&
-        selectedDate && ( // Render only if open and selectedDate exists
-          <DailyProgressModal
-            isOpen={isDailyProgressModalOpen}
-            onClose={() => setIsDailyProgressModalOpen(false)}
-            date={selectedDate}
-            initialProgress={
-              selectedDate && activeGoal
-                ? activeGoal.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
-                : null
-            }
-            onSave={handleSaveProgress}
-            showMessage={showMessage}
-          />
-        )}
+      {/* Daily Progress Modal (only rendered if open and selectedDate exists) */}
+      {isDailyProgressModalOpen && selectedDate && (
+        <DailyProgressModal
+          isOpen={isDailyProgressModalOpen}
+          onClose={() => setIsDailyProgressModalOpen(false)}
+          date={selectedDate}
+          initialProgress={initialProgress} // Use initialProgress from memoized value
+          onSave={handleSaveProgress}
+          showMessage={showMessage}
+        />
+      )}
 
-      {/* Goal Modal (for setting/editing goals) */}
-      <GoalModal
-        isOpen={isGoalModalOpen}
-        onClose={() => setIsGoalModalOpen(false)}
-        onSetGoal={handleSetGoal}
-        showMessage={showMessage}
-        initialGoalData={isEditMode ? transformedGoalForModal : null}
-        isEditMode={isEditMode}
-      />
-
-      {/* Confirmation Modal (for archive/import) */}
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        title={confirmationProps.title}
-        message={confirmationProps.message}
-        confirmButton={{
-          text: 'Confirm',
-          onClick: () => {
-            confirmationProps.action(); // Execute the action defined in confirmationProps
-            setIsConfirmModalOpen(false); // Close modal
-          },
-          className: 'bg-red-600 text-white hover:bg-red-700',
-        }}
-        cancelButton={{ text: 'Cancel', onClick: () => setIsConfirmModalOpen(false) }}
-        actionDelayMs={confirmationProps.actionDelayMs}
-      />
+      {/* GoalModal and ConfirmationModal are no longer rendered directly by the dashboard page,
+          as their logic has been moved to the /goal page for centralized goal management.
+          The DashboardSettings component (if still present) will now link to the /goal page for these actions.
+      */}
     </div>
   );
 };

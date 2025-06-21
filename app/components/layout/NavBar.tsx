@@ -1,25 +1,24 @@
 // app/components/layout/NavBar.tsx
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { firebaseService } from '@/services/firebaseService'; // Import Firebase service
 import { User } from 'firebase/auth';
+import Image from 'next/image'; // Import Next.js Image component for optimized images
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image'; // Import Next.js Image component for optimized images
-import { FiHome, FiCheckSquare, FiArchive } from 'react-icons/fi';
-import { firebaseService } from '@/services/firebaseService'; // Import Firebase service
-import ProfileDropdown from './ProfileDropdown'; // Import user profile dropdown
-import { MdRocketLaunch, MdOutlineRepeat } from 'react-icons/md'; // Material Design icons
+import React, { useEffect, useRef, useState } from 'react';
+import { FiCheckSquare, FiHome, FiTarget } from 'react-icons/fi'; // Imported FiTarget for Goal link
 import { GoStopwatch } from 'react-icons/go'; // Go icon for stopwatch
+import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md'; // Material Design icons
+import ProfileDropdown from './ProfileDropdown';
 
-// Define the navigation links for the sidebar.
-// Each link has a href, a display label, and an associated icon.
+// Navigation links updated to remove Archive and add Goal
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
   { href: '/todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> },
-  { href: '/archive', label: 'Archive', icon: <FiArchive /> },
+  { href: '/goal', label: 'Goals', icon: <FiTarget /> }, // New: Goal Management Page
 ];
 
 /**
