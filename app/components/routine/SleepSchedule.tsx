@@ -1,26 +1,27 @@
 // app/components/routine/SleepSchedule.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  MdOutlineWbSunny,
-  MdOutlineNightlight,
-  MdOutlineAccessTime,
-  MdBedtime,
-  MdOutlineLightbulb,
-} from 'react-icons/md';
-import { FaMoon, FaSun } from 'react-icons/fa'; // Ensure FaMoon and FaSun are imported
-import { FiRefreshCw, FiLoader } from 'react-icons/fi';
-import { parse, differenceInMinutes, format, isAfter, isBefore, addDays } from 'date-fns';
-import { AppState, RoutineType, SleepRoutineSettings, ScheduledRoutineBase } from '@/types';
 import { firebaseService } from '@/services/firebaseService';
+import { AppState, RoutineType, ScheduledRoutineBase, SleepRoutineSettings } from '@/types';
+import { addDays, differenceInMinutes, format, isAfter, isBefore, parse } from 'date-fns';
 import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore'; // Import Timestamp for setting dates
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FaMoon, FaSun } from 'react-icons/fa'; // Ensure FaMoon and FaSun are imported
+import { FiLoader, FiRefreshCw } from 'react-icons/fi';
+import {
+  MdBedtime,
+  MdOutlineAccessTime,
+  MdOutlineLightbulb,
+  MdOutlineNightlight,
+  MdOutlineWbSunny,
+} from 'react-icons/md';
 
 // Import the reusable components
-import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import { DateTimePicker } from '@/components/common/DateTimePicker';
+import RoutineCalendar from '@/components/routine/RoutineCalendar';
+import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
 
 interface SleepScheduleProps {
   currentUser: User | null;
@@ -82,7 +83,10 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
   // Derive the active goal ID from the appState
   const activeGoalId = appState?.activeGoalId;
   // Get sleep settings for the active goal, or null if no active goal/settings
-  const activeGoalSleepSettings = appState?.goals[activeGoalId || '']?.routineSettings?.sleep;
+  const activeGoalSleepSettings = useMemo(() => {
+    // Use useMemo for activeGoalSleepSettings
+    return appState?.goals[activeGoalId || '']?.routineSettings?.sleep;
+  }, [appState, activeGoalId]);
 
   // State for main sleep times and nap schedules
   const [bedtime, setBedtime] = useState(activeGoalSleepSettings?.sleepTime || '22:00'); // Corrected to sleepTime
@@ -96,39 +100,46 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
   const [randomTip, setRandomTip] = useState<string>('');
   const [isRefreshingTip, setIsRefreshingTip] = useState(false);
 
+  // FIX: Ref to track initial mount for debounced save
+  const isInitialDebounceMount = useRef(true);
+
   // Effect to update current time every second for real-time calculations (e.g., time until next event)
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Effect to synchronize local state with Firebase appState, and refresh initial tip
+  // Function to refresh the random sleep tip with a small artificial delay
+  // This useCallback has NO dependencies on appState or activeGoalId. It is truly standalone.
+  const refreshTip = useCallback(() => {
+    setIsRefreshingTip(true); // Activate fetching loader
+    setTimeout(() => {
+      const randomIndex = Math.floor(Math.random() * sleepTips.length);
+      setRandomTip(sleepTips[randomIndex]); // Set a new random tip
+      setIsRefreshingTip(false); // Deactivate fetching loader
+    }, 500); // 500ms fake delay for UX
+  }, []); // Empty dependency array means this callback is stable and only created once.
+
+  // Effect to synchronize local state with Firebase appState on appState/activeGoalId changes.
   useEffect(() => {
-    // Only update if an active goal and its sleep settings exist
-    if (activeGoalId && appState?.goals[activeGoalId]?.routineSettings?.sleep) {
-      const sleepSettings = appState.goals[activeGoalId].routineSettings.sleep;
-      setBedtime(sleepSettings.sleepTime); // Corrected to sleepTime
-      setWakeTime(sleepSettings.wakeTime);
-      setNapSchedule(sleepSettings.naps || []);
+    if (activeGoalSleepSettings) {
+      // Depend on the memoized activeGoalSleepSettings
+      setBedtime(activeGoalSleepSettings.sleepTime);
+      setWakeTime(activeGoalSleepSettings.wakeTime);
+      setNapSchedule(activeGoalSleepSettings.naps || []);
     } else {
       // Reset to defaults if no active goal or sleep settings
       setBedtime('22:00');
       setWakeTime('06:00');
       setNapSchedule([]);
     }
-    refreshTip();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appState, activeGoalId]); // Added activeGoalId to dependencies to react to goal changes
+  }, [activeGoalSleepSettings]); // This useEffect correctly depends on activeGoalSleepSettings
 
-  // Function to refresh the random sleep tip with a small artificial delay
-  const refreshTip = useCallback(() => {
-    setIsRefreshingTip(true);
-    setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * sleepTips.length);
-      setRandomTip(sleepTips[randomIndex]);
-      setIsRefreshingTip(false);
-    }, 500); // 500ms fake delay for UX
-  }, []);
+  // Effect to set initial random tip on first render.
+  // This useEffect will specifically call refreshTip ONCE on component mount.
+  useEffect(() => {
+    refreshTip();
+  }, [refreshTip]); // Depends only on refreshTip callback's stability
 
   /**
    * Memoized calculation of sleep-related status and timings.
@@ -240,8 +251,12 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
   }, [currentUser, activeGoalId, bedtime, wakeTime, napSchedule, showMessage, onAppStateUpdate]);
 
   // Effect to debounce saving of main sleep settings.
-  // Saves 1 second after bedtime or wakeTime changes.
+  // FIX: Skip on initial mount
   useEffect(() => {
+    if (isInitialDebounceMount.current) {
+      isInitialDebounceMount.current = false; // Set to false after first render
+      return; // Skip the effect on first render
+    }
     const handler = setTimeout(() => {
       saveMainSleepSettings();
     }, 1000); // Debounce for 1 second
@@ -430,12 +445,8 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
   // Render nothing if no active goal is selected.
   // This is a common pattern to avoid errors when trying to access goal-specific data.
   if (!activeGoalId || !appState?.goals[activeGoalId]) {
-    return (
-      <div className="p-10 text-center text-white/60">
-        <MdBedtime className="mx-auto mb-4 text-4xl" />
-        <p>Set an active goal to configure your sleep schedule and track your sleep log.</p>
-      </div>
-    );
+    // Using the NoActiveGoalMessage component
+    return <NoActiveGoalMessage />;
   }
 
   return (
