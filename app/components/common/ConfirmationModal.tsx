@@ -1,37 +1,61 @@
 // app/components/common/ConfirmationModal.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { FiAlertTriangle, FiX, FiLoader } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import { FiAlertTriangle, FiLoader, FiX } from 'react-icons/fi';
 
-// Define a type for a single button in the modal
+// =================================================================//
+//
+// INTERFACES
+//
+// =================================================================//
+
+/**
+ * Defines the configuration for a button within the modal.
+ * This allows for flexible text, styling, and actions.
+ */
 interface ModalButton {
+  /** The text displayed on the button. */
   text: string;
-  onClick: () => void; // Function to be executed when the button is clicked
-  className?: string; // Optional custom classes for styling the button
-  icon?: React.ReactNode; // Optional icon component to display next to the text
+  /** The function to execute when the button is clicked. */
+  onClick: () => void;
+  /** Optional custom Tailwind CSS classes for styling. */
+  className?: string;
+  /** An optional icon component to display next to the text. */
+  icon?: React.ReactNode;
 }
 
 /**
- * Props for a generic confirmation modal.
- * Designed to support exactly two buttons: a primary action (confirm) and a secondary (cancel).
+ * Defines the props for the reusable ConfirmationModal component.
  */
 interface ConfirmationModalProps {
-  isOpen: boolean; // Controls whether the modal is visible
-  onClose: () => void; // Callback function to close the modal
-  message: string; // The main message displayed in the modal body
-  title: string; // The title of the modal, displayed in the header
-  confirmButton: ModalButton; // Configuration for the primary action button
-  cancelButton: ModalButton; // Configuration for the cancel button
-  actionDelayMs?: number; // Optional delay in milliseconds before the confirm button is enabled (e.g., for destructive actions)
+  /** Controls whether the modal is visible. */
+  isOpen: boolean;
+  /** A callback function to close the modal. */
+  onClose: () => void;
+  /** The main message or description displayed in the modal body. */
+  message: string;
+  /** The title displayed in the modal header. */
+  title: string;
+  /** The configuration for the primary action button (e.g., "Confirm", "Delete"). */
+  confirmButton: ModalButton;
+  /** The configuration for the secondary action button (e.g., "Cancel"). */
+  cancelButton: ModalButton;
+  /** An optional delay in milliseconds before the confirm button becomes active.
+   * Useful for destructive actions to prevent accidental clicks. */
+  actionDelayMs?: number;
 }
 
+// =================================================================//
+//
+// COMPONENT IMPLEMENTATION
+//
+// =================================================================//
+
 /**
- * ConfirmationModal Component
- *
- * A reusable, generic modal component for displaying confirmation dialogs.
- * It supports a configurable title, message, two action buttons (confirm and cancel),
- * and an optional delay before the confirm button becomes active.
+ * A generic, reusable modal component for displaying confirmation dialogs.
+ * It is designed to be highly configurable for various use cases like deletion,
+ * data import overwrites, or any action requiring user confirmation.
  */
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
@@ -40,101 +64,118 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   title,
   confirmButton,
   cancelButton,
-  actionDelayMs = 0, // Default to no delay if not provided
+  actionDelayMs = 0,
 }) => {
-  // State for the countdown timer (in seconds) before the confirm button is enabled
+  // =================================================================//
+  //
+  // STATE MANAGEMENT
+  //
+  // =================================================================//
+
+  /** State to manage the countdown timer (in seconds) before the confirm button is enabled. */
   const [countdown, setCountdown] = useState(actionDelayMs / 1000);
-  // State to track if action buttons (specifically confirm) are enabled
+  /** State to track if action buttons are enabled, primarily used for the confirm button delay. */
   const [actionsEnabled, setActionsEnabled] = useState(actionDelayMs === 0);
-  // State to indicate if the confirmation action is currently in progress (e.g., API call)
+  /** State to indicate if the confirmation action is currently in progress (e.g., an API call). */
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Effect to manage the countdown timer.
+  // =================================================================//
+  //
+  // LIFECYCLE & SYNCHRONIZATION
+  //
+  // =================================================================//
+
+  /**
+   * Effect to manage the countdown timer for the action delay.
+   * It runs whenever the modal is opened or the delay value changes.
+   */
   useEffect(() => {
-    let timer: NodeJS.Timeout | undefined; // Declare timer variable with type
+    let timer: NodeJS.Timeout | undefined;
     if (isOpen) {
       if (actionDelayMs > 0) {
-        setActionsEnabled(false); // Disable actions initially if there's a delay
-        setCountdown(Math.max(0, actionDelayMs / 1000)); // Reset countdown to initial value
+        setActionsEnabled(false);
+        setCountdown(Math.max(0, actionDelayMs / 1000));
         timer = setInterval(() => {
           setCountdown(prev => {
             if (prev <= 1) {
-              clearInterval(timer); // Stop the timer when countdown reaches 1 or less
-              setActionsEnabled(true); // Enable actions
-              return 0; // Set countdown to 0
+              clearInterval(timer);
+              setActionsEnabled(true);
+              return 0;
             }
-            return prev - 1; // Decrement countdown
+            return prev - 1;
           });
-        }, 1000); // Update every second
+        }, 1000);
       } else {
-        setActionsEnabled(true); // Enable actions immediately if no delay
+        setActionsEnabled(true);
       }
     }
-
     // Cleanup function to clear the interval when the modal closes or component unmounts.
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isOpen, actionDelayMs]); // Re-run effect if modal opens/closes or delay changes
+  }, [isOpen, actionDelayMs]);
+
+  // =================================================================//
+  //
+  // EVENT HANDLERS
+  //
+  // =================================================================//
 
   /**
-   * Handles the click event for the confirm button.
-   * Disables the button during the action and re-enables it afterwards.
+   * Handles the click event for the confirm button. Sets a loading state
+   * and executes the provided onClick action.
    */
   const handleConfirm = async () => {
-    if (!actionsEnabled || isConfirming) return; // Prevent action if not enabled or already confirming
-    setIsConfirming(true); // Set confirming state to true
+    if (!actionsEnabled || isConfirming) return;
+    setIsConfirming(true);
     try {
-      // Execute the provided onClick function, ensuring it's treated as a Promise
       await Promise.resolve(confirmButton.onClick());
     } finally {
-      setIsConfirming(false); // Reset confirming state regardless of success or failure
-      // Note: The modal is typically closed by the parent component's `action` callback,
-      // which is invoked by `confirmButton.onClick()`.
+      setIsConfirming(false);
+      // The modal is typically closed by the parent's `action` callback.
     }
   };
 
-  // If modal is not open, don't render anything to optimize performance.
-  if (!isOpen) return null;
-
   /**
-   * Handles clicks outside the modal content to close it.
-   * Ensures clicks on the modal content itself do not close it.
+   * Handles clicks on the modal overlay to close it.
+   * Clicks on the modal content itself are ignored.
    */
   const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // If the click target is the overlay itself (not a child element), close the modal
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
+  // =================================================================//
+  //
+  // MAIN RENDER
+  //
+  // =================================================================//
+
+  if (!isOpen) return null;
+
   return (
-    // Overlay for the modal: fixed position, covers screen, centers content, blurred background
     <div
-      className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm bg-black/50"
+      className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm cursor-pointer bg-black/50"
       onClick={handleOutsideClick}
-      role="dialog" // ARIA role for dialog
-      aria-modal="true" // ARIA attribute to indicate it's a modal dialog
-      aria-labelledby="modal-title" // ARIA attribute to link to the title for screen readers
-      aria-describedby="modal-message" // ARIA attribute to link to the message for screen readers
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      aria-describedby="modal-message"
     >
-      {/* Modal Content Box: responsive width, styled background, rounded corners, shadow */}
       <div
-        className="relative w-full max-w-sm text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl"
-        // Prevent clicks inside content from bubbling up and closing modal
+        className="relative w-full max-w-sm text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-md shadow-2xl cursor-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex justify-between items-center p-6 border-b border-white/10">
-          {/* Title with warning icon */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
           <h3 id="modal-title" className="flex gap-2 items-center text-xl font-bold text-white">
             <FiAlertTriangle className="w-6 h-6 text-yellow-400" /> {title}
           </h3>
-          {/* Close button */}
           <button
             className="p-1.5 rounded-full transition-colors duration-200 cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
             onClick={onClose}
-            aria-label="Close modal" // Accessibility label
+            aria-label="Close modal"
           >
             <FiX className="w-5 h-5" />
           </button>
@@ -142,7 +183,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6">
-          {/* Message text */}
           <p id="modal-message" className="mb-6 leading-relaxed text-left text-white/80">
             {message}
           </p>
@@ -151,26 +191,23 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <div className="flex flex-col gap-3">
             {/* Confirm Button */}
             <button
-              className={`px-4 cursor-pointer w-full py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2
-                  ${confirmButton.className || 'bg-red-600 text-white hover:bg-red-700'}
-                  ${!actionsEnabled || isConfirming ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
+              className={`px-4 w-full py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
+                ${confirmButton.className || 'bg-red-600 text-white hover:bg-red-700'}
+                ${!actionsEnabled || isConfirming ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
               onClick={handleConfirm}
-              disabled={!actionsEnabled || isConfirming} // Disable based on delay and confirming state
-              aria-label={isConfirming ? 'Confirming action' : confirmButton.text} // Accessibility label
+              disabled={!actionsEnabled || isConfirming}
+              aria-label={isConfirming ? 'Confirming action' : confirmButton.text}
             >
               {isConfirming ? (
-                // Display loader when confirming
                 <>
                   <FiLoader className="w-5 h-5 animate-spin" />
                   <span>Confirming...</span>
                 </>
               ) : (
-                // Display icon, text, and countdown if not confirming
                 <>
                   {confirmButton.icon} {confirmButton.text}
                   {actionDelayMs > 0 && !actionsEnabled && (
-                    // Show countdown if delay is active and actions are not yet enabled
                     <span className="text-sm font-semibold">({countdown}s)</span>
                   )}
                 </>
@@ -179,10 +216,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             {/* Cancel Button */}
             <button
               className={
-                'px-4 cursor-pointer w-full py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-white bg-white/[0.05] border border-white/10 hover:bg-white/10'
+                'px-4 w-full py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 text-white bg-white/[0.05] border border-white/10 hover:bg-white/10 cursor-pointer'
               }
               onClick={onClose}
-              aria-label={cancelButton.text} // Accessibility label
+              aria-label={cancelButton.text}
             >
               {cancelButton.icon} {cancelButton.text}
             </button>

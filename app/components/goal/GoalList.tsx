@@ -12,8 +12,7 @@ import {
   FiCheckCircle,
   FiClock,
   FiDownload,
-  FiEdit, // Still needed for the 'CreateGoalCard'
-  FiTarget,
+  FiEdit,
   FiTrash2,
 } from 'react-icons/fi';
 
@@ -250,18 +249,6 @@ const GoalList: React.FC<GoalListProps> = ({
         return 'text-gray-400';
     }
   }, []);
-
-  // Render a message if no goals are available (excluding the CreateGoalCard)
-  if (allGoals.length === 0 && !searchQuery) {
-    return (
-      <div className="col-span-full py-10 text-center text-white/60">
-        <FiTarget className="mx-auto mb-4 text-4xl" />
-        <h2 className="mb-4 text-2xl font-bold text-white">No Goals Yet!</h2>
-        <p className="mb-6">Start by creating your first goal using the card below.</p>
-        {/* The CreateGoalCard is rendered outside this block */}
-      </div>
-    );
-  }
 
   return (
     // Responsive Grid Layout

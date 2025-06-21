@@ -193,7 +193,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   /** Renders the top display header showing the selected date and time. */
   const renderDisplayHeader = () => (
-    <div className="flex justify-around items-center p-3 text-center rounded-t-xl bg-white/5">
+    <div className="flex justify-around items-center p-3 text-center rounded-t-md bg-white/5">
       <div className="flex gap-2 items-center">
         <FiCalendar className="text-white/60" />
         <span className="font-semibold">{format(internalDate, 'MMM d, yyyy')}</span>
@@ -302,20 +302,20 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
       <div
         ref={pickerRef}
         onClick={e => e.stopPropagation()}
-        className="w-80 bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl text-white animate-fade-in-down"
+        className="w-80 bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-md shadow-2xl text-white animate-fade-in-down"
       >
         {mode === 'datetime' && renderDisplayHeader()}
         {mode === 'datetime' && (
-          <div className="flex p-1 bg-black/20">
+          <div className="flex gap-2 p-2 bg-black/20">
             <button
               onClick={() => setActiveTab('date')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors cursor-pointer ${activeTab === 'date' ? 'bg-white/10' : 'text-white/60 hover:bg-white/5'}`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-sm transition-colors cursor-pointer ${activeTab === 'date' ? 'bg-white/10' : 'text-white/60 hover:bg-white/5'}`}
             >
               Date
             </button>
             <button
               onClick={() => setActiveTab('time')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors cursor-pointer ${activeTab === 'time' ? 'bg-white/10' : 'text-white/60 hover:bg-white/5'}`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-sm transition-colors cursor-pointer ${activeTab === 'time' ? 'bg-white/10' : 'text-white/60 hover:bg-white/5'}`}
             >
               Time
             </button>
@@ -328,7 +328,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full flex items-center justify-center gap-2 py-2.5 text-black bg-white rounded-lg hover:bg-white/90 transition-colors font-semibold cursor-pointer disabled:opacity-70"
+              className="w-full flex items-center justify-center gap-2 py-2.5 text-black bg-white rounded-md hover:bg-white/90 transition-colors font-semibold cursor-pointer disabled:opacity-70"
             >
               {isSaving ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiCheck />}
               <span>{isSaving ? 'Saving...' : mode === 'time' ? 'Set Time' : 'Confirm'}</span>

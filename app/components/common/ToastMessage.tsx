@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FiCheckCircle, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiInfo, FiX } from 'react-icons/fi';
 
 interface ToastMessageProps {
   message: string | null;
@@ -15,7 +15,7 @@ const SingleToast: React.FC<ToastMessageProps> = ({ message, type = 'info', dura
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // When the component mounts, make it visible and play a sound.
+    // When the component mounts, make it visible.
     const showTimeout = setTimeout(() => {
       setIsVisible(true);
     }, 50);
@@ -65,17 +65,17 @@ const SingleToast: React.FC<ToastMessageProps> = ({ message, type = 'info', dura
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 p-4 rounded-xl shadow-xl z-[5000] text-white
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 p-4 rounded-md shadow-xl z-[5000] text-white
             bg-black/50 backdrop-blur-md border ${config.borderColor}
             transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
             w-full max-w-sm sm:max-w-md`}
     >
       <div className="flex gap-3 items-center">
-        <div className={`flex-shrink-0 p-2 rounded-lg ${config.iconBg}`}>{config.icon}</div>
+        <div className={`flex-shrink-0 p-2 rounded-md ${config.iconBg}`}>{config.icon}</div>
         <div className="flex-grow leading-relaxed text-white/90">{message}</div>
         <button
           onClick={handleClose}
-          className="ml-4 flex-shrink-0 p-1.5 rounded-lg transition-colors duration-200 cursor-pointer hover:bg-white/10 group"
+          className="ml-4 flex-shrink-0 p-1.5 rounded-md transition-colors duration-200 cursor-pointer hover:bg-white/10 group"
           aria-label="Close notification"
         >
           <FiX className="w-5 h-5 text-neutral-400 group-hover:text-white" />
@@ -85,14 +85,12 @@ const SingleToast: React.FC<ToastMessageProps> = ({ message, type = 'info', dura
   );
 };
 
-// The main component now acts as a controller.
+// The main component now acts as a controller to re-trigger the toast animation
+// even if the same message is sent multiple times.
 const ToastMessage: React.FC<ToastMessageProps> = ({ message, type = 'info', duration = 5000 }) => {
   const [toastKey, setToastKey] = useState(0);
 
   useEffect(() => {
-    // If a new message is passed (even if it's the same string),
-    // update the key. This tells React to create a new instance of SingleToast,
-    // which will restart its animations and timers.
     if (message) {
       setToastKey(prevKey => prevKey + 1);
     }
