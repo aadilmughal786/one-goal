@@ -12,7 +12,7 @@ import CountdownCard from '@/components/dashboard/CountdownCard';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import RoutineTimeline from '@/components/dashboard/RoutineTimeline'; // Import the RoutineTimeline component
-import { FiDownload, FiEdit, FiPlusCircle, FiTarget, FiUpload } from 'react-icons/fi';
+import { FiTarget } from 'react-icons/fi';
 // NEW: Import useNotificationStore to use showToast and showConfirmation
 
 // No longer importing ToastMessage or ConfirmationModal directly as they are global
@@ -64,12 +64,6 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
   handleDayClick,
   handleSaveProgress,
   setIsDailyProgressModalOpen, // Destructure for direct use
-
-  // Destructure DashboardSettings specific props
-  handleOpenGoalModal,
-  promptForArchiveAndNewGoal,
-  handleExport,
-  handleImportChange,
 }) => {
   // `isDailyProgressModalOpen` and `selectedDate` are now passed as props, no longer local state.
   // `handleDayClick` and `handleSaveProgress` are also passed as props.
@@ -107,56 +101,6 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
               <FiTarget size={20} />
               Go to Settings to Set Goal
             </Link>
-          </div>
-        </section>
-
-        {/* Render settings management actions directly when no goal is set */}
-        {/* These buttons will use the props passed down from the parent (DashboardPageContent) */}
-        <section>
-          <input
-            type="file"
-            id="dashboardImportFile" // ID must be unique
-            accept=".json"
-            style={{ display: 'none' }}
-            onChange={handleImportChange} // Use handleImportChange from props
-          />
-          <div className="p-8 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-            <h3 className="mb-2 text-2xl font-bold">Manage Your Goal</h3>
-            <p className="mx-auto mb-6 max-w-2xl text-white/60">
-              Update your current goal, archive it to start a new one, or manage your data backups.
-            </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <button
-                onClick={() => handleOpenGoalModal(true)} // Use handleOpenGoalModal from props
-                disabled={!activeGoal} // Disable if no goal to edit
-                className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-blue-400/30 hover:bg-blue-400/10 hover:border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiEdit size={24} className="mb-2 text-blue-400" />
-                <span className="font-semibold">Update Goal</span>
-              </button>
-              <button
-                onClick={promptForArchiveAndNewGoal} // Use promptForArchiveAndNewGoal from props
-                className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-green-400/30 hover:bg-green-400/10 hover:border-green-400/50"
-              >
-                <FiPlusCircle size={24} className="mb-2 text-green-400" />
-                <span className="font-semibold">New Goal</span>
-              </button>
-              <button
-                onClick={handleExport} // Use handleExport from props
-                disabled={!activeGoal} // Disable if no goal to export
-                className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiDownload size={24} className="mb-2 text-purple-400" />
-                <span className="font-semibold">Export Data</span>
-              </button>
-              <label
-                htmlFor="dashboardImportFile" // Link to the hidden file input
-                className="flex flex-col justify-center items-center p-4 text-white rounded-lg border transition-all cursor-pointer border-white/20 hover:bg-white/10"
-              >
-                <FiUpload size={24} className="mb-2 text-teal-400" />
-                <span className="font-semibold">Import Data</span>
-              </label>
-            </div>
           </div>
         </section>
       </div>
