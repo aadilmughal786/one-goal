@@ -1,46 +1,46 @@
 // app/components/dashboard/Charts.tsx
 'use client';
 
-import React, { useMemo } from 'react';
-import { DailyProgress, SatisfactionLevel, Goal, StopwatchSession } from '@/types'; // Ensure StopwatchSession is imported
+import { DailyProgress, Goal, SatisfactionLevel, StopwatchSession } from '@/types'; // Ensure StopwatchSession is imported
 import {
+  differenceInDays,
+  eachDayOfInterval,
+  endOfWeek,
   format,
   getDay,
-  differenceInDays,
   startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
 } from 'date-fns';
+import React, { useMemo } from 'react';
 import {
-  ResponsiveContainer,
-  LineChart,
+  FiActivity,
+  FiBarChart,
+  FiCalendar,
+  FiCheckCircle,
+  FiClock,
+  FiStar,
+  FiTarget,
+  FiTrendingUp,
+} from 'react-icons/fi';
+import {
+  Area,
+  Bar,
+  BarChart,
   CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
+  Cell,
+  ComposedChart,
   Legend,
   Line,
-  Bar,
-  PieChart,
+  LineChart,
   Pie,
-  Cell,
-  Area,
-  ComposedChart,
-  BarChart,
-  RadialBarChart,
+  PieChart,
   RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
   TooltipProps,
+  XAxis,
+  YAxis,
 } from 'recharts';
-import {
-  FiTrendingUp,
-  FiCheckCircle,
-  FiActivity,
-  FiStar,
-  FiClock,
-  FiTarget,
-  FiCalendar,
-  FiBarChart,
-} from 'react-icons/fi';
 
 interface ChartsProps {
   dailyProgress: DailyProgress[];

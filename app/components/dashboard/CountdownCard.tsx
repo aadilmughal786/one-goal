@@ -1,10 +1,10 @@
 // app/components/dashboard/CountdownCard.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
 import { Goal } from '@/types'; // Import Goal type
-import { FiClock, FiPlayCircle, FiFlag, FiChevronsRight } from 'react-icons/fi';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FiChevronsRight, FiClock, FiFlag, FiPlayCircle } from 'react-icons/fi';
 
 interface CountdownCardProps {
   goal: Goal; // Expects a Goal object

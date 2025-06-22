@@ -31,11 +31,13 @@ import {
   MdOutlineShower,
   MdOutlineWaterDrop,
 } from 'react-icons/md';
+// NEW: Import useNotificationStore to use showToast
 
 interface ProgressCalendarProps {
   goal: Goal;
   dailyProgress: Record<string, DailyProgress>;
   onDayClick: (date: Date) => void;
+  // REMOVED: showToast is now handled internally via useNotificationStore, so it's removed from props
 }
 
 // Maps routine types to their corresponding icons for the tooltip.

@@ -1,17 +1,18 @@
 // app/components/profile/AvatarSelectionModal.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import Image from 'next/image';
-import { FiX, FiCheck, FiLoader } from 'react-icons/fi';
 import { User } from 'firebase/auth';
+import Image from 'next/image';
+import React, { useMemo, useState } from 'react';
+import { FiCheck, FiLoader, FiX } from 'react-icons/fi';
 
 interface AvatarSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAvatarSelect: (avatarUrl: string) => Promise<void>;
   currentUser: User;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // Change prop name to showToast to match the new convention from useNotificationStore
+  showToast: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const basePath = '/one-goal';
@@ -40,7 +41,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
   onClose,
   onAvatarSelect,
   currentUser,
-  showMessage,
+  showToast, // Destructure showToast from props
 }) => {
   const [selectedAvatar, setSelectedAvatar] = useState<string>(currentUser.photoURL || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +80,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
     setIsSaving(true);
     try {
       await onAvatarSelect(selectedAvatar);
-      showMessage('Profile image updated successfully. Refreshing...', 'success');
+      showToast('Profile image updated successfully. Refreshing...', 'success'); // Use showToast prop
       setTimeout(() => window.location.reload(), 2000);
     } finally {
       setIsSaving(false);
@@ -129,6 +130,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
                     height={100}
                     className="object-cover w-full h-full rounded-full"
                     onError={e => {
+                      // Fallback for image loading errors: display first letter of name
                       e.currentTarget.src = `https://placehold.co/100x100/1a1a1a/ffffff?text=${avatar.name.charAt(0).toUpperCase()}`;
                     }}
                   />

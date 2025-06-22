@@ -1,21 +1,21 @@
 // app/components/dashboard/RoutineTimeline.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { AppState, ScheduledRoutineBase, RoutineType } from '@/types';
-import { parse, differenceInMinutes, addMinutes, isWithinInterval } from 'date-fns';
+import { AppState, RoutineType, ScheduledRoutineBase } from '@/types';
+import { addMinutes, differenceInMinutes, isWithinInterval, parse } from 'date-fns';
+import Link from 'next/link';
+import React, { useEffect, useMemo, useState } from 'react';
+import { IconType } from 'react-icons';
 import { FiClock, FiZap } from 'react-icons/fi';
 import {
-  MdOutlineNightlight,
-  MdOutlineWaterDrop,
-  MdOutlineDirectionsRun,
-  MdOutlineRestaurant, // Changed from MdOutlineRestaurantMenu to MdOutlineRestaurant as per types
+  MdBedtime, // Changed from MdOutlineRestaurantMenu to MdOutlineRestaurant as per types
   MdOutlineCleaningServices,
+  MdOutlineDirectionsRun,
+  MdOutlineNightlight,
+  MdOutlineRestaurant,
   MdOutlineShower,
-  MdBedtime,
+  MdOutlineWaterDrop,
 } from 'react-icons/md';
-import { IconType } from 'react-icons';
-import Link from 'next/link';
 
 // Mapping routine types to icons for display.
 // Note: RoutineType.MEAL is singular as per your types.

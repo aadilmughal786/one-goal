@@ -1,17 +1,18 @@
 // app/components/routine/RoutineSectionCard.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  MdOutlineSettings,
-  MdOutlineNotificationsActive,
-  MdDeleteForever,
-  MdCheckCircle,
-} from 'react-icons/md';
 import { ScheduledRoutineBase } from '@/types'; // Ensure correct import of ScheduledRoutineBase
 import { differenceInMinutes, isPast, parse } from 'date-fns';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FiEdit } from 'react-icons/fi'; // Added FiEdit for a potential edit button
+import {
+  MdCheckCircle,
+  MdDeleteForever,
+  MdOutlineNotificationsActive,
+  MdOutlineSettings,
+} from 'react-icons/md';
 import ScheduleEditModal from './ScheduleEditModal'; // Import the new modal
+// NEW: Import useNotificationStore to use showToast
 
 interface RoutineSectionCardProps {
   sectionTitle: string;
@@ -26,8 +27,8 @@ interface RoutineSectionCardProps {
   onRemoveSchedule: (index: number) => void;
   // This new prop will handle both adding and updating schedules
   onSaveSchedule: (schedule: ScheduledRoutineBase, index: number | null) => Promise<void>;
-  // NEW: Prop for showing toast messages, passed from parent
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: showToast prop is no longer needed
+  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
 
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
@@ -44,8 +45,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
   schedules,
   onToggleCompletion,
   onRemoveSchedule,
-  onSaveSchedule, // Now properly consumed
-  showMessage, // Now properly consumed
+  onSaveSchedule,
+  // REMOVED: showToast from destructuring (it's now accessed directly from store)
   newInputLabelPlaceholder,
   newIconOptions,
   iconComponentsMap,
@@ -261,8 +262,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
         onClose={() => setIsEditModalOpen(false)}
         scheduleToEdit={scheduleToEdit}
         originalIndex={editingIndex}
-        onSave={onSaveSchedule} // Pass the onSaveSchedule function from parent
-        showMessage={showMessage} // Pass the showMessage function from parent
+        onSave={onSaveSchedule}
+        // REMOVED: showToast prop is no longer needed, ScheduleEditModal gets it directly
         newInputLabelPlaceholder={newInputLabelPlaceholder}
         newIconOptions={newIconOptions}
         iconComponentsMap={iconComponentsMap}

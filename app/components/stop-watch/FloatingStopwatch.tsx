@@ -1,31 +1,57 @@
 // app/components/stop-watch/FloatingStopwatch.tsx
 'use client';
 
-import React, { useContext } from 'react';
+import { useTimerStore } from '@/store/useTimerStore';
 import Link from 'next/link';
-import { TimerContext } from '@/contexts/TimerContext';
+import React, { useEffect, useState } from 'react';
 import { GoStopwatch } from 'react-icons/go';
 
 /**
  * FloatingStopwatch Component
  *
  * This component displays a floating stopwatch button at the bottom-right of the screen.
- * It is visible only when the stopwatch managed by the TimerContext is running.
+ * It is visible only when the stopwatch managed by the useTimerStore is running.
  * The elapsed time is formatted and displayed on the button.
  * Clicking the button navigates the user to the "/stop-watch" page.
  */
-const FloatingStopwatch = () => {
-  // Access the TimerContext to get stopwatch state and controls.
-  const context = useContext(TimerContext);
+const FloatingStopwatch: React.FC = () => {
+  // Use local state to store the timer values,
+  // and update this state *after* the component has mounted (client-side).
+  const [stopwatchData, setStopwatchData] = useState({
+    isRunning: false,
+    elapsedTime: 0,
+  });
 
-  // If the context is not available (e.g., provider not mounted)
-  // or the timer isn't running, render nothing to keep the UI clean.
-  if (!context || !context.stopwatchIsRunning) {
+  // Effect to subscribe to the Zustand store only on the client-side.
+  // This effectively delays the getServerSnapshot call until hydration is complete.
+  useEffect(() => {
+    // This is the Zustand listener. It will only run on the client.
+    const unsubscribe = useTimerStore.subscribe(state => {
+      // Update local state with the relevant store state
+      setStopwatchData({
+        isRunning: state.isRunning,
+        elapsedTime: state.elapsedTime,
+      });
+    });
+
+    // Get the initial state once subscribed
+    const currentState = useTimerStore.getState();
+    setStopwatchData({
+      isRunning: currentState.isRunning,
+      elapsedTime: currentState.elapsedTime,
+    });
+
+    // Cleanup subscription on component unmount
+    return () => unsubscribe();
+  }, []); // Empty dependency array means this effect runs once on mount/hydration
+
+  // Destructure from the local state
+  const { isRunning: stopwatchIsRunning, elapsedTime: stopwatchElapsedTime } = stopwatchData;
+
+  // If the timer isn't running, render nothing to keep the UI clean.
+  if (!stopwatchIsRunning) {
     return null;
   }
-
-  // Destructure stopwatchElapsedTime from the context for display.
-  const { stopwatchElapsedTime } = context;
 
   /**
    * Helper function to format milliseconds into HH:MM:SS string.

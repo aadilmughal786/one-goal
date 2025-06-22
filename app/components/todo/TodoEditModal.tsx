@@ -1,19 +1,22 @@
 // app/components/todo/TodoEditModal.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiX, FiSave, FiCalendar, FiLoader, FiTrash2, FiEdit } from 'react-icons/fi';
+import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the new component
 import { TodoItem } from '@/types';
-import { Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the component
+import { Timestamp } from 'firebase/firestore';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FiCalendar, FiEdit, FiLoader, FiSave, FiTrash2, FiX } from 'react-icons/fi';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface TodoEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   todoItem: TodoItem | null;
   onSave: (id: string, updates: Partial<TodoItem>) => Promise<void>;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: showToast prop is no longer needed
+  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const TodoEditModal: React.FC<TodoEditModalProps> = ({
@@ -21,8 +24,11 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   onClose,
   todoItem,
   onSave,
-  showMessage,
+  // REMOVED: showToast from destructuring
 }) => {
+  // NEW: Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
+
   const [editText, setEditText] = useState('');
   const [editDescription, setEditDescription] = useState('');
   // State now holds a Date object or null
@@ -57,7 +63,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   const handleSubmit = async () => {
     if (!todoItem) return;
     if (!editText.trim()) {
-      showMessage('Task text cannot be empty.', 'error');
+      showToast('Task text cannot be empty.', 'error'); // Use global showToast
       return;
     }
 
@@ -71,10 +77,10 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
     try {
       await onSave(todoItem.id, updates);
-      showMessage('Task updated successfully!', 'success');
+      showToast('Task updated successfully!', 'success'); // Use global showToast
       onClose();
     } catch {
-      showMessage('Failed to save task updates.', 'error');
+      showToast('Failed to save task updates.', 'error'); // Use global showToast
     } finally {
       setIsSaving(false);
     }

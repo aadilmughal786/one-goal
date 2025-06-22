@@ -1,13 +1,9 @@
 // app/components/todo/StickyNotes.tsx
-
 'use client';
 
-import ConfirmationModal from '@/components/common/ConfirmationModal'; // Assuming ConfirmationModal is available
-import { firebaseService } from '@/services/firebaseService';
 import { AppState, StickyNote, StickyNoteColor } from '@/types';
-import { format as formatDate } from 'date-fns'; // Renamed to avoid conflict with `format` from `types` if present
-import { User } from 'firebase/auth';
-import Fuse from 'fuse.js'; // Import Fuse.js for search functionality
+import { format as formatDate } from 'date-fns';
+import Fuse from 'fuse.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiCheck,
@@ -21,85 +17,56 @@ import {
   FiTrash2,
   FiX,
 } from 'react-icons/fi';
-import { MdColorLens, MdStickyNote2 } from 'react-icons/md'; // Specific icons for sticky notes and color
+import { MdColorLens, MdStickyNote2 } from 'react-icons/md';
 import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
+
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { User } from 'firebase/auth';
 
 interface StickyNotesProps {
   currentUser: User | null;
   appState: AppState | null;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
-  onAppStateUpdate: (newAppState: AppState) => void;
+  stickyNotes: StickyNote[]; // FIXED: Added stickyNotes to the interface
 }
 
-/**
- * StickyNotes Component
- *
- * This component allows users to manage their sticky notes associated with the active goal.
- * It provides functionality for adding a default note, editing existing notes, deleting notes,
- * searching, and viewing notes in either a list or grid layout.
- */
-const StickyNotes: React.FC<StickyNotesProps> = ({
-  currentUser,
-  appState,
-  showMessage,
-  onAppStateUpdate,
-}) => {
-  // Derive the active goal ID from the appState.
+const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, stickyNotes }) => {
   const activeGoalId = appState?.activeGoalId;
-  // Get sticky notes for the currently active goal.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const currentStickyNotes = appState?.goals[activeGoalId || '']?.stickyNotes || [];
 
-  // State for the list of sticky notes displayed.
-  const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
-  // State for the search query entered by the user.
+  const showToast = useNotificationStore(state => state.showToast);
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+
+  const addStickyNoteAction = useGoalStore(state => state.addStickyNote);
+  const updateStickyNoteAction = useGoalStore(state => state.updateStickyNote);
+  const deleteStickyNoteAction = useGoalStore(state => state.deleteStickyNote);
+
+  const [localStickyNotes, setLocalStickyNotes] = useState<StickyNote[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // State for the current view mode: 'list' or 'grid'.
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid'); // Default to grid view
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
 
-  // States for editing an existing sticky note.
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null); // ID of the note being edited
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editColor, setEditColor] = useState<StickyNoteColor>(StickyNoteColor.YELLOW);
 
-  // States for loading indicators during API calls.
-  // isAddingNote is now only true during the brief API call for adding a default note.
   const [isAddingNote, setIsAddingNote] = useState(false);
-  const [isUpdatingNote, setIsUpdatingNote] = useState<string | null>(null); // ID of the note being updated
+  const [isUpdatingNote, setIsUpdatingNote] = useState<string | null>(null);
 
-  // States for the confirmation modal for deletion.
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [noteToDelete, setNoteToDelete] = useState<StickyNote | null>(null);
-
-  // Ref for closing edit mode color picker dropdown when clicking outside.
+  const [isEditColorDropdownOpen, setEditColorDropdownOpen] = useState(false);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
-  const [isEditColorDropdownOpen, setIsEditColorDropdownOpen] = useState(false);
 
-  // Sync `stickyNotes` state with `currentStickyNotes` from `appState` whenever it changes.
   useEffect(() => {
-    setStickyNotes(currentStickyNotes);
-  }, [currentStickyNotes]);
+    setLocalStickyNotes(stickyNotes);
+  }, [stickyNotes]);
 
-  // Fuse.js options for configuring the search behavior.
-  const fuseOptions = useMemo(
-    () => ({
-      keys: ['title', 'content'], // Fields to search within
-      threshold: 0.3, // Fuzziness: 0.0 means exact match, 1.0 means very loose match
-    }),
-    []
-  );
+  const fuseOptions = useMemo(() => ({ keys: ['title', 'content'], threshold: 0.3 }), []);
 
-  // Memoized list of sticky notes, filtered by search query.
   const filteredNotes = useMemo(() => {
-    if (!searchQuery) {
-      return stickyNotes; // If no search query, return all notes
-    }
-    const fuse = new Fuse(stickyNotes, fuseOptions); // Initialize Fuse with the notes and options
-    return fuse.search(searchQuery).map(result => result.item); // Perform search and return matched items
-  }, [stickyNotes, searchQuery, fuseOptions]); // Re-run when notes, query, or fuse options change
+    if (!searchQuery) return localStickyNotes;
+    const fuse = new Fuse(localStickyNotes, fuseOptions);
+    return fuse.search(searchQuery).map(result => result.item);
+  }, [localStickyNotes, searchQuery, fuseOptions]);
 
-  // Memoized mapping from StickyNoteColor enum to Tailwind CSS background/text/border classes.
   const stickyNoteColorMap = useMemo(
     () => ({
       [StickyNoteColor.YELLOW]: 'bg-yellow-200 text-yellow-900 border-yellow-300',
@@ -114,49 +81,23 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
     []
   );
 
-  // --- CRUD Operations ---
-
-  /**
-   * Creates a new sticky note with default values.
-   */
   const handleCreateDefaultNote = useCallback(async () => {
-    // Validate user/goal presence
     if (!currentUser || !activeGoalId) {
-      showMessage('Please select an active goal to create a sticky note.', 'error');
+      showToast('Please select an active goal to create a sticky note.', 'error');
       return;
     }
-
-    setIsAddingNote(true); // Set loading state for add operation
+    setIsAddingNote(true);
     try {
-      // Define default title, content, and color
-      const defaultTitle = 'New Sticky Note';
-      const defaultContent = 'Start writing your thoughts here...';
-      const defaultColor = StickyNoteColor.YELLOW;
-
-      // Call Firebase service to add the new sticky note
-      await firebaseService.addStickyNote(
-        activeGoalId,
-        currentUser.uid,
-        defaultTitle,
-        defaultContent,
-        defaultColor
-      );
-      // Re-fetch AppState to update local state and trigger UI re-render
-      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
-      onAppStateUpdate(updatedAppState);
-      showMessage('Sticky note created!', 'success');
+      await addStickyNoteAction('New Sticky Note', 'Start writing...', StickyNoteColor.YELLOW);
+      showToast('Sticky note created!', 'success');
     } catch (error) {
       console.error('Failed to create sticky note:', error);
-      showMessage('Failed to create sticky note. Please try again.', 'error');
+      showToast('Failed to create sticky note. Please try again.', 'error');
     } finally {
-      setIsAddingNote(false); // Clear loading state
+      setIsAddingNote(false);
     }
-  }, [currentUser, activeGoalId, showMessage, onAppStateUpdate]);
+  }, [currentUser, activeGoalId, showToast, addStickyNoteAction]);
 
-  /**
-   * Initiates the editing mode for a specific sticky note.
-   * Populates edit states with the note's current values.
-   */
   const handleStartEditing = useCallback((note: StickyNote) => {
     setEditingNoteId(note.id);
     setEditTitle(note.title);
@@ -164,100 +105,83 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
     setEditColor(note.color);
   }, []);
 
-  /**
-   * Saves the edits made to a sticky note.
-   */
   const handleSaveEdit = useCallback(
     async (noteId: string) => {
-      // Validate inputs and user/goal presence
       if (!currentUser || !activeGoalId || !editTitle.trim() || !editContent.trim()) {
-        showMessage('Title and content cannot be empty.', 'error');
+        showToast('Title and content cannot be empty.', 'error');
         return;
       }
-
-      setIsUpdatingNote(noteId); // Set loading state for this specific note
+      setIsUpdatingNote(noteId);
       try {
-        // Call Firebase service to update the sticky note
-        await firebaseService.updateStickyNote(activeGoalId, currentUser.uid, noteId, {
+        await updateStickyNoteAction(noteId, {
           title: editTitle.trim(),
           content: editContent.trim(),
           color: editColor,
         });
-        setEditingNoteId(null); // Exit editing mode
-        // Re-fetch AppState to update local state and trigger UI re-render
-        const updatedAppState = await firebaseService.getUserData(currentUser.uid);
-        onAppStateUpdate(updatedAppState);
-        showMessage('Sticky note updated!', 'success');
+        setEditingNoteId(null);
+        showToast('Sticky note updated!', 'success');
       } catch (error) {
         console.error('Failed to update sticky note:', error);
-        showMessage('Failed to update sticky note. Please try again.', 'error');
+        showToast('Failed to update sticky note. Please try again.', 'error');
       } finally {
-        setIsUpdatingNote(null); // Clear loading state
+        setIsUpdatingNote(null);
       }
     },
-    [currentUser, activeGoalId, editTitle, editContent, editColor, showMessage, onAppStateUpdate]
+    [
+      currentUser,
+      activeGoalId,
+      editTitle,
+      editContent,
+      editColor,
+      showToast,
+      updateStickyNoteAction,
+    ]
   );
 
-  /**
-   * Cancels the current editing session and resets edit states.
-   */
   const handleCancelEdit = useCallback(() => {
     setEditingNoteId(null);
     setEditTitle('');
     setEditContent('');
-    setEditColor(StickyNoteColor.YELLOW); // Reset to default color
+    setEditColor(StickyNoteColor.YELLOW);
   }, []);
 
-  /**
-   * Prepares for deleting a sticky note by opening the confirmation modal.
-   */
-  const handleDeleteConfirmation = useCallback((note: StickyNote) => {
-    setNoteToDelete(note); // Store the note to be deleted
-    setIsConfirmModalOpen(true); // Open the confirmation modal
-  }, []);
+  const handleDeleteConfirmation = useCallback(
+    (note: StickyNote) => {
+      showConfirmation({
+        title: 'Delete Sticky Note?',
+        message: `Are you sure you want to delete the note "${note.title || ''}"? This action cannot be undone.`,
+        action: async () => {
+          if (!currentUser || !activeGoalId) return;
+          setIsUpdatingNote(note.id);
 
-  /**
-   * Confirms and proceeds with deleting the sticky note.
-   */
-  const confirmDeleteNote = useCallback(async () => {
-    if (!currentUser || !activeGoalId || !noteToDelete) return; // Validate necessary data
+          try {
+            await deleteStickyNoteAction(note.id);
+            showToast('Sticky note deleted!', 'info');
+          } catch (error) {
+            console.error('Failed to delete sticky note:', error);
+            showToast('Failed to delete sticky note. Please try again.', 'error');
+          } finally {
+            setIsUpdatingNote(null);
+          }
+        },
+      });
+    },
+    [currentUser, activeGoalId, showToast, showConfirmation, deleteStickyNoteAction]
+  );
 
-    setIsUpdatingNote(noteToDelete.id); // Set loading state for the note being deleted
-    try {
-      // Call Firebase service to delete the sticky note
-      await firebaseService.deleteStickyNote(activeGoalId, currentUser.uid, noteToDelete.id);
-      // Re-fetch AppState to update local state and trigger UI re-render
-      const updatedAppState = await firebaseService.getUserData(currentUser.uid);
-      onAppStateUpdate(updatedAppState);
-      showMessage('Sticky note deleted!', 'info');
-    } catch (error) {
-      console.error('Failed to delete sticky note:', error);
-      showMessage('Failed to delete sticky note. Please try again.', 'error');
-    } finally {
-      setIsConfirmModalOpen(false); // Close modal
-      setNoteToDelete(null); // Clear note to delete
-      setIsUpdatingNote(null); // Clear loading state
-    }
-  }, [currentUser, activeGoalId, noteToDelete, showMessage, onAppStateUpdate]);
-
-  // Effect to close edit mode color picker dropdown when clicking outside.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (colorDropdownRef.current && !colorDropdownRef.current.contains(event.target as Node)) {
-        setIsEditColorDropdownOpen(false);
+        setEditColorDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * Renders a single sticky note card, handling both display and edit modes.
-   */
   const renderNoteCard = (note: StickyNote) => {
     const isEditing = editingNoteId === note.id;
     const isSaving = isUpdatingNote === note.id;
-    // Get color classes based on the note's color, with a fallback
     const colorClasses =
       stickyNoteColorMap[note.color] || 'bg-gray-200 text-gray-900 border-gray-300';
 
@@ -266,17 +190,13 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
         key={note.id}
         className={`relative p-4 rounded-lg shadow-md border ${colorClasses} ${isSaving ? 'opacity-70' : ''}`}
       >
-        {/* Loader overlay when saving/deleting a specific note */}
         {isSaving && (
           <div className="flex absolute inset-0 z-10 justify-center items-center rounded-lg bg-black/50">
             <FiLoader className="text-3xl text-white animate-spin" />
           </div>
         )}
-
-        {/* Title and Content (Conditional based on editing mode) */}
         {isEditing ? (
           <>
-            {/* Edit mode inputs */}
             <input
               type="text"
               value={editTitle}
@@ -294,39 +214,37 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
               disabled={isSaving}
               aria-label="Edit note content"
             />
-            {/* Color picker for edit mode */}
             <div className="inline-block relative" ref={colorDropdownRef}>
               <button
                 type="button"
-                onClick={() => setIsEditColorDropdownOpen(prev => !prev)}
+                onClick={() => setEditColorDropdownOpen(prev => !prev)}
                 className={`flex items-center p-2 rounded-full border ${stickyNoteColorMap[editColor]}`}
                 aria-label="Select note color"
               >
                 <MdColorLens size={20} />
-                <FiInfo size={16} className="ml-2" /> {/* Info icon or dropdown indicator */}
+                <FiInfo size={16} className="ml-2" />
               </button>
               {isEditColorDropdownOpen && (
                 <div className="grid absolute z-20 grid-cols-4 gap-2 p-2 mt-1 rounded-lg border shadow-lg bg-neutral-800 border-white/10">
-                  {Object.keys(StickyNoteColor) // Iterate over keys
-                    .filter(key => isNaN(Number(key))) // Filter out numeric keys to get only string names
+                  {Object.keys(StickyNoteColor)
+                    .filter(key => isNaN(Number(key)))
                     .map(colorName => {
-                      const colorEnum = StickyNoteColor[colorName as keyof typeof StickyNoteColor]; // Get the numeric enum value
+                      const colorEnum = StickyNoteColor[colorName as keyof typeof StickyNoteColor];
                       return (
                         <button
-                          key={colorName} // Use the string name as the key
+                          key={colorName}
                           onClick={() => {
-                            setEditColor(colorEnum as StickyNoteColor); // Set the color using its numeric value
-                            setIsEditColorDropdownOpen(false);
+                            setEditColor(colorEnum);
+                            setEditColorDropdownOpen(false);
                           }}
-                          className={`w-8 h-8 rounded-full border cursor-pointer ${stickyNoteColorMap[colorEnum as StickyNoteColor]}`}
-                          aria-label={`Set color to ${colorName.toLowerCase()}`} // Use colorName.toLowerCase()
+                          className={`w-8 h-8 rounded-full border cursor-pointer ${stickyNoteColorMap[colorEnum]}`}
+                          aria-label={`Set color to ${colorName.toLowerCase()}`}
                         ></button>
                       );
                     })}
                 </div>
               )}
             </div>
-            {/* Action buttons for edit mode */}
             <div className="flex gap-2 justify-end mt-4">
               <button
                 onClick={handleCancelEdit}
@@ -348,23 +266,18 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
           </>
         ) : (
           <>
-            {/* Display mode */}
             <h3 className="mb-2 text-lg font-semibold">{note.title}</h3>
             <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{note.content}</p>
           </>
         )}
-
-        {/* Date and Action Buttons (Always at bottom) */}
         <div className="flex justify-between items-center pt-4 mt-4 text-xs text-gray-700 border-t border-gray-300/30">
-          {' '}
-          {/* Added padding-top and top border */}
-          <span>{formatDate(note.createdAt.toDate(), 'MMM d,yyyy')}</span> {/* Format Timestamp */}
+          <span>{formatDate(note.createdAt.toDate(), 'MMM d,yyyy')}</span>
           <div className="flex gap-2">
             <button
               onClick={() => handleStartEditing(note)}
               className="p-1 text-gray-600 rounded-full hover:bg-gray-300"
               aria-label="Edit note"
-              disabled={isEditing || isSaving || !!editingNoteId} // Disable if editing current, saving current, or editing another
+              disabled={isEditing || isSaving || !!editingNoteId}
             >
               <FiEdit size={16} />
             </button>
@@ -372,7 +285,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
               onClick={() => handleDeleteConfirmation(note)}
               className="p-1 text-red-600 rounded-full hover:bg-red-300"
               aria-label="Delete note"
-              disabled={isEditing || isSaving || !!editingNoteId} // Disable if editing current, saving current, or editing another
+              disabled={isEditing || isSaving || !!editingNoteId}
             >
               <FiTrash2 size={16} />
             </button>
@@ -382,23 +295,17 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
     );
   };
 
-  // Render nothing if no active goal is selected.
-  // This helps prevent errors when trying to access goal-specific data.
   if (!activeGoalId || !appState?.goals[activeGoalId]) {
-    // Use the NoActiveGoalMessage component directly
     return <NoActiveGoalMessage />;
   }
 
   return (
     <div className="space-y-8 text-white">
-      {/* Create New Sticky Note Button and View Mode Controls */}
       <div className="flex flex-col gap-4 justify-between items-center mb-6 sm:flex-row">
-        {' '}
-        {/* Added justify-between */}
         <button
           onClick={handleCreateDefaultNote}
           disabled={isAddingNote}
-          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all hover:bg-white/90 disabled:opacity-50" /* Reduced size and rounded */
+          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all hover:bg-white/90 disabled:opacity-50"
           aria-label="Create new sticky note"
         >
           {isAddingNote ? (
@@ -407,10 +314,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
             <FiPlus className="w-6 h-6" />
           )}
         </button>
-        {/* Search Bar */}
         <div className="relative flex-grow w-full max-w-xl sm:w-auto">
-          {' '}
-          {/* Added max-w-xl */}
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" size={20} />
           <input
             type="text"
@@ -421,10 +325,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
             aria-label="Search sticky notes"
           />
         </div>
-        {/* View Mode Toggle Buttons */}
         <div className="flex flex-shrink-0 gap-2">
-          {' '}
-          {/* Added flex-shrink-0 */}
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-full transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
@@ -444,50 +345,29 @@ const StickyNotes: React.FC<StickyNotesProps> = ({
         </div>
       </div>
 
-      {/* Sticky Notes Display Area */}
       {filteredNotes.length === 0 && searchQuery ? (
-        // Message when search yields no results
         <div className="py-10 text-center text-white/60">
           <FiInfo size={40} className="mx-auto mb-4" />
           <p>No sticky notes match your search query.</p>
         </div>
       ) : filteredNotes.length === 0 && !searchQuery ? (
-        // Message when no notes exist at all
         <div className="py-10 text-center text-white/60">
           <MdStickyNote2 size={40} className="mx-auto mb-4" />
-          <p>No sticky notes created yet. Click the &apos;+&apos; button above to get started!</p>
+          <p>No sticky notes created yet. Click the + button above to get started!</p>
         </div>
       ) : (
-        // Render notes in either grid or list layout
         <div
           className={
             viewMode === 'grid'
               ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
-              : 'space-y-4' // List view uses vertical spacing
+              : 'space-y-4'
           }
         >
           {filteredNotes.map(renderNoteCard)}
         </div>
       )}
 
-      {/* Confirmation Modal for Deletion */}
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        title="Delete Sticky Note?"
-        message={`Are you sure you want to delete the note "${noteToDelete?.title || ''}"? This action cannot be undone.`}
-        confirmButton={{
-          text: 'Delete',
-          onClick: confirmDeleteNote,
-          className: 'bg-red-600 text-white hover:bg-red-700',
-          icon: <FiTrash2 />,
-        }}
-        cancelButton={{
-          text: 'Cancel',
-          onClick: () => setIsConfirmModalOpen(false),
-          icon: <FiX />,
-        }}
-      />
+      {/* ConfirmationModal is now rendered globally and listens to the store, so it is removed from here */}
     </div>
   );
 };

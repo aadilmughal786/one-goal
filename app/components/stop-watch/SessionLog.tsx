@@ -1,7 +1,10 @@
 // app/components/stop-watch/SessionLog.tsx
 'use client';
 
-import { AppState, StopwatchSession } from '@/types'; // Import GoalStatus
+import { deleteStopwatchSession, updateStopwatchSession } from '@/services/stopwatchService';
+import { useGoalStore } from '@/store/useGoalStore'; // Import useGoalStore
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { AppState, StopwatchSession } from '@/types';
 import {
   addMonths,
   eachDayOfInterval,
@@ -32,31 +35,24 @@ import {
 
 interface SessionLogProps {
   appState: AppState | null;
-  // onDeleteSession now takes sessionId (string) instead of startTime (Timestamp)
-  // to align with typical ID-based deletion in lists and prevent issues with exact Timestamp matching.
-  onDeleteSession: (goalId: string, dateKey: string, sessionId: string) => Promise<void>;
-  // onUpdateSession now takes sessionId (string) instead of startTime (Timestamp)
-  // to align with typical ID-based updates in lists.
-  onUpdateSession: (
-    goalId: string,
-    dateKey: string,
-    sessionId: string,
-    newLabel: string
-  ) => Promise<void>;
+  // This prop is now truly optional and can be removed, as the component manages its own loading state.
+  // It's kept here as a 'null' in the parent call, so it doesn't cause a type error, but it's not used.
   isUpdatingId: string | null;
 }
 
 export default function SessionLog({
   appState,
-  onDeleteSession,
-  onUpdateSession,
-  isUpdatingId,
+  // No longer using propIsUpdatingId, as internal state handles this.
+  // isUpdatingId: propIsUpdatingId,
 }: SessionLogProps) {
-  // Ensure we have an active goal and its ID before proceeding
+  const showToast = useNotificationStore(state => state.showToast);
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+
+  const currentUser = useGoalStore(state => state.currentUser);
+
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
   const activeGoalId = appState?.activeGoalId;
 
-  // Derive goal start and end dates if an active goal exists
   const goalStartDate = activeGoal?.startDate?.toDate();
   const goalEndDate = activeGoal?.endDate?.toDate();
 
@@ -64,60 +60,50 @@ export default function SessionLog({
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  // FIXED: Declaring local isUpdatingId state
+  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
 
-  // Memoized set of dates that have logged sessions for the active goal
   const loggedDays = useMemo(() => {
     if (!activeGoal) return new Set<string>();
     return new Set(
       Object.values(activeGoal.dailyProgress || {})
-        .filter(dp => dp.sessions && dp.sessions.length > 0) // Changed from 'stopwatchSessions' to 'sessions'
+        .filter(dp => dp.sessions && dp.sessions.length > 0)
         .map(dp => dp.date)
     );
   }, [activeGoal]);
 
-  // Memoized list of days to display in the calendar view for the current month,
-  // constrained by the active goal's start and end dates.
   const daysInView = useMemo(() => {
-    if (!goalStartDate || !goalEndDate) return []; // Ensure goal dates exist
+    if (!goalStartDate || !goalEndDate) return [];
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const viewStart = max([goalStartDate, monthStart]);
     const viewEnd = min([goalEndDate, monthEnd]);
-    // If the interval is invalid (e.g., viewStart > viewEnd), return empty array
     if (viewStart > viewEnd) return [];
     return eachDayOfInterval({ start: viewStart, end: viewEnd });
   }, [currentMonth, goalStartDate, goalEndDate]);
 
-  // Memoized list of stopwatch sessions for the currently selected day.
-  // Sessions are sorted by start time, most recent first.
   const selectedDaySessions = useMemo(() => {
     if (!selectedDay || !activeGoal?.dailyProgress) return [];
     const dateKey = format(selectedDay, 'yyyy-MM-dd');
-    // Changed from 'stopwatchSessions' to 'sessions'
     const sessions = activeGoal.dailyProgress[dateKey]?.sessions || [];
     return [...sessions].sort((a, b) => b.startTime.toMillis() - a.startTime.toMillis());
   }, [selectedDay, activeGoal?.dailyProgress]);
 
-  // Calculate total time for ONLY the selected day.
   const selectedDayTotalTime = useMemo(() => {
     if (!selectedDaySessions || selectedDaySessions.length === 0) return 0;
-    // Changed from 'durationMs' to 'duration' as per StopwatchSession type
     return selectedDaySessions.reduce((total, session) => total + session.duration, 0);
   }, [selectedDaySessions]);
 
-  // Determine if the "Previous Month" button should be enabled.
   const canGoPrevMonth = useMemo(() => {
     if (!goalStartDate) return false;
     return !isSameMonth(currentMonth, startOfMonth(goalStartDate));
   }, [currentMonth, goalStartDate]);
 
-  // Determine if the "Next Month" button should be enabled.
   const canGoNextMonth = useMemo(() => {
     if (!goalEndDate) return false;
     return !isSameMonth(currentMonth, endOfMonth(goalEndDate));
   }, [currentMonth, goalEndDate]);
 
-  // Handles changing the displayed month in the calendar.
   const handleMonthChange = useCallback(
     (direction: 'prev' | 'next') => {
       const newMonth =
@@ -127,31 +113,24 @@ export default function SessionLog({
     [currentMonth]
   );
 
-  // Navigates the calendar view to the current day, if it's within the goal's active range.
   const handleGoToToday = useCallback(() => {
     const today = new Date();
     if (!goalStartDate || !goalEndDate) {
-      // If goal dates are not set, just go to today's month and select today
       setCurrentMonth(startOfMonth(today));
       setSelectedDay(today);
       return;
     }
 
-    // Check if 'today' is within the active goal's start and end dates
     if (isWithinInterval(today, { start: goalStartDate, end: goalEndDate })) {
       setCurrentMonth(startOfMonth(today));
       setSelectedDay(today);
     } else {
-      // If today is outside the goal range, just go to today's month, but keep current selected day
       setCurrentMonth(startOfMonth(today));
-      // Optionally, you might want to clear selectedDay or set it to null if it's outside the current month view
-      // For now, it will remain as is or be reset by the month change if it's outside.
     }
   }, [goalStartDate, goalEndDate]);
 
-  // Formats duration in milliseconds into a human-readable string (e.g., "1h 30m 5s").
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return '0s'; // Less than a second
+    if (ms < 1000) return '0s';
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -159,28 +138,74 @@ export default function SessionLog({
     return [
       hours > 0 ? `${hours}h` : null,
       minutes > 0 ? `${minutes}m` : null,
-      seconds > 0 || (hours === 0 && minutes === 0) ? `${seconds}s` : null, // Show seconds if total is 0
+      seconds > 0 || (hours === 0 && minutes === 0) ? `${seconds}s` : null,
     ]
-      .filter(Boolean) // Remove nulls
+      .filter(Boolean)
       .join(' ');
   };
 
-  // Initiates the editing state for a specific session.
   const handleStartEditing = (session: StopwatchSession) => {
-    setEditingSessionId(session.id); // Use session.id for editing
+    setEditingSessionId(session.id);
     setEditText(session.label);
   };
 
-  // Saves the updated session label to Firebase.
   const handleSaveUpdate = async (session: StopwatchSession) => {
-    if (!editText.trim() || !selectedDay || !activeGoalId) return; // Ensure all necessary data is present
+    if (!editText.trim() || !selectedDay || !activeGoalId || !currentUser) {
+      showToast('Cannot save session label: Missing data or not logged in.', 'error');
+      return;
+    }
+
     const dateKey = format(selectedDay, 'yyyy-MM-dd');
-    await onUpdateSession(activeGoalId, dateKey, session.id, editText); // Pass goalId and sessionId
-    setEditingSessionId(null); // Exit editing mode
-    setEditText(''); // Clear edit text
+    setIsUpdatingId(session.id); // Set local updating state
+
+    try {
+      await updateStopwatchSession(currentUser.uid, activeGoalId, dateKey, session.id, editText);
+      showToast('Session label updated!', 'success');
+      // After update, manually trigger a re-fetch of goal data to update the UI
+      await useGoalStore.getState().fetchInitialData(currentUser);
+    } catch (error) {
+      console.error('Error updating session:', error);
+      showToast('Failed to update session label.', 'error');
+    } finally {
+      setEditingSessionId(null);
+      setEditText('');
+      setIsUpdatingId(null);
+    }
   };
 
-  // If there's no active goal, display a message and return early.
+  const handleDeleteSession = useCallback(
+    (sessionId: string) => {
+      showConfirmation({
+        title: 'Delete Session?',
+        message:
+          'Are you sure you want to permanently delete this logged session? This action cannot be undone.',
+        action: async () => {
+          if (!currentUser || !activeGoalId || !selectedDay) {
+            console.error('Attempted to delete session without complete info or active goal.');
+            showToast('Cannot delete session: Missing information or no active goal.', 'error');
+            return;
+          }
+
+          const dateKey = format(selectedDay, 'yyyy-MM-dd');
+          setIsUpdatingId(sessionId); // Set local updating state for the item
+
+          try {
+            await deleteStopwatchSession(currentUser.uid, activeGoalId, dateKey, sessionId);
+            showToast('Session deleted.', 'info');
+            // After delete, manually trigger a re-fetch of goal data to update the UI
+            await useGoalStore.getState().fetchInitialData(currentUser);
+          } catch (error) {
+            console.error('Error deleting session:', error);
+            showToast('Failed to delete session.', 'error');
+          } finally {
+            setIsUpdatingId(null);
+          }
+        },
+      });
+    },
+    [showConfirmation, currentUser, activeGoalId, selectedDay, showToast, setIsUpdatingId]
+  );
+
   if (!activeGoal) {
     return (
       <div className="mx-auto mt-12 max-w-4xl text-center text-white/60">
@@ -208,8 +233,7 @@ export default function SessionLog({
         {/* Calendar Header: Month Navigation */}
         <div className="p-6 border-b border-white/10">
           <div className="flex justify-between items-center">
-            <h4 className="text-xl font-bold">{format(currentMonth, 'MMMM yyyy')}</h4>{' '}
-            {/* Added yyyy for clarity */}
+            <h4 className="text-xl font-bold">{format(currentMonth, 'MMMM')}</h4>
             <div className="flex gap-4 items-center">
               <button
                 onClick={handleGoToToday}
@@ -281,18 +305,19 @@ export default function SessionLog({
         <div className="min-h-[250px] p-6">
           <h4 className="mb-4 text-xl font-bold text-white/80">
             {selectedDay
-              ? `Logs for ${format(selectedDay, 'MMMM d, yyyy')}`
+              ? `Logs for ${format(selectedDay, 'MMMM d,yyyy')}`
               : 'Select a day to view logs'}
           </h4>
           {selectedDay &&
             (selectedDaySessions.length > 0 ? (
               <ul className="space-y-3">
                 {selectedDaySessions.map(session => {
-                  const isEditing = editingSessionId === session.id; // Use session.id
-                  const isCurrentlySaving = isUpdatingId === session.id; // Use session.id
+                  const isEditing = editingSessionId === session.id;
+                  // Use the local isUpdatingId state
+                  const isCurrentlySaving = isUpdatingId === session.id;
                   return (
                     <li
-                      key={session.id} // Use session.id as key
+                      key={session.id}
                       className="flex flex-col p-4 rounded-lg sm:flex-row sm:justify-between sm:items-center bg-white/5"
                     >
                       {isEditing ? (
@@ -309,7 +334,7 @@ export default function SessionLog({
                           />
                           <button
                             onClick={() => handleSaveUpdate(session)}
-                            disabled={isCurrentlySaving || !editText.trim()} // Disable if empty
+                            disabled={isCurrentlySaving || !editText.trim()}
                             className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10 disabled:opacity-50"
                             aria-label="Save changes"
                           >
@@ -332,7 +357,6 @@ export default function SessionLog({
                         <div className="flex gap-2 items-center px-3 py-1 font-mono text-sm text-cyan-300 rounded-full bg-cyan-500/10">
                           <FiClock size={14} />
                           {formatDuration(session.duration)}{' '}
-                          {/* Changed from durationMs to duration */}
                         </div>
                         {!isEditing && (
                           <button
@@ -344,15 +368,8 @@ export default function SessionLog({
                           </button>
                         )}
                         <button
-                          onClick={() =>
-                            // Pass activeGoalId, dateKey, and sessionId for deletion
-                            onDeleteSession(
-                              activeGoalId!, // Assert non-null because of initial check
-                              format(selectedDay, 'yyyy-MM-dd'),
-                              session.id
-                            )
-                          }
-                          disabled={isCurrentlySaving} // Disable delete while saving
+                          onClick={() => handleDeleteSession(session.id)}
+                          disabled={isCurrentlySaving}
                           className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
                           aria-label="Delete session"
                         >
@@ -374,18 +391,16 @@ export default function SessionLog({
         {/* Footer: Goal Dates and Daily Total */}
         <div className="flex flex-col gap-4 justify-between items-center p-4 text-sm border-t sm:flex-row border-white/10 text-white/60">
           <div className="flex flex-wrap gap-y-2 gap-x-4 items-center">
-            {' '}
-            {/* Use flex-wrap for small screens */}
             {goalStartDate && (
               <div className="flex gap-2 items-center" title="Goal Start Date">
                 <FiPlayCircle className="text-green-400" />
-                <span>Start: {format(goalStartDate, 'd MMM, yyyy')}</span> {/* Added yyyy */}
+                <span>Start: {format(goalStartDate, 'd MMM,yyyy')}</span>
               </div>
             )}
             {goalEndDate && (
               <div className="flex gap-2 items-center" title="Goal End Date">
                 <FiFlag className="text-red-400" />
-                <span>End: {format(goalEndDate, 'd MMM, yyyy')}</span> {/* Added yyyy */}
+                <span>End: {format(goalEndDate, 'd MMM,yyyy')}</span>
               </div>
             )}
           </div>

@@ -1,24 +1,32 @@
 // app/login/page.tsx
 'use client';
 
-import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
-import { firebaseService } from '@/services/firebaseService';
-import ToastMessage from '@/components/common/ToastMessage';
-import { FirebaseServiceError } from '@/utils/errors';
+// REMOVED: import { FirebaseServiceError } from '@/utils/errors'; // This was the old one
 import { User } from 'firebase/auth';
+
+// NEW: Import ServiceError and ServiceErrorCode from the correct errors module
+import { ServiceError, ServiceErrorCode } from '@/utils/errors';
+
+// NEW: Import the specific auth service functions
+import { onAuthChange, signInWithGoogle } from '@/services/authService';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  // NEW: Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
+
   // On component mount, check the user's authentication state.
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthChange((user: User | null) => {
+    // NEW: Use onAuthChange from authService
+    const unsubscribe = onAuthChange((user: User | null) => {
       if (user) {
         // If the user is already logged in, redirect them to the dashboard.
         router.replace('/dashboard');
@@ -32,24 +40,21 @@ export default function LoginPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const showMessage = useCallback((text: string, type: 'success' | 'error' | 'info') => {
-    setToastMessage(text);
-    setToastType(type);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 6000);
-  }, []);
-
   const handleSignInWithGoogle = useCallback(async () => {
     setIsSigningIn(true);
     try {
-      await firebaseService.signInWithGoogle();
+      // NEW: Use signInWithGoogle from authService
+      await signInWithGoogle();
       // The `onAuthChange` listener will automatically handle the redirect upon successful sign-in.
     } catch (signInError: unknown) {
       let errorMessage = 'Sign-in failed. Please try again.';
-      if (signInError instanceof FirebaseServiceError) {
-        const originalFirebaseError = (signInError.originalError as { code?: string })?.code;
-        if (originalFirebaseError === 'auth/popup-closed-by-user') {
+      // NEW: Use ServiceError for error handling
+      if (signInError instanceof ServiceError) {
+        // Check for specific ServiceError codes if needed (e.g., popup closed)
+        if (
+          signInError.code === ServiceErrorCode.AUTH_SIGN_IN_FAILED &&
+          (signInError.originalError as { code?: string })?.code === 'auth/popup-closed-by-user'
+        ) {
           errorMessage = 'Sign-in cancelled.';
         } else {
           errorMessage = signInError.message;
@@ -57,10 +62,10 @@ export default function LoginPage() {
       } else if (signInError instanceof Error) {
         errorMessage = signInError.message;
       }
-      showMessage(errorMessage, 'error');
+      showToast(errorMessage, 'error'); // Use global showToast
       setIsSigningIn(false);
     }
-  }, [showMessage]);
+  }, [showToast]);
 
   // While checking the authentication state, display a loading indicator.
   if (isLoading) {
@@ -96,7 +101,6 @@ export default function LoginPage() {
   // Once the auth check is complete and there's no user, show the login form.
   return (
     <div className="flex overflow-hidden relative flex-col justify-center items-center p-6 min-h-screen text-white bg-black font-poppins">
-      <ToastMessage message={toastMessage} type={toastType} duration={5000} />
       <div className="relative z-10 p-8 sm:p-10 w-full max-w-md text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
         <h2 className="mb-6 text-3xl font-bold text-white">Join Your Journey</h2>
         <p className="mb-8 leading-relaxed text-white/70">

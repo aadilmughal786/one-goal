@@ -1,25 +1,38 @@
 // app/not-found.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { FiHome, FiGrid, FiArrowRight } from 'react-icons/fi';
-import { firebaseService } from '@/services/firebaseService';
 import { User } from 'firebase/auth';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { FiArrowRight, FiGrid, FiHome } from 'react-icons/fi';
 
+// --- REFLECTING THE REFACTOR ---
+// We now import the specific onAuthChange function from our new, focused authService.
+import { onAuthChange } from '@/services/authService';
+
+/**
+ * A custom 404 "Not Found" page.
+ * It provides a user-friendly message and a context-aware action button that
+ * links to the dashboard for logged-in users or the home page for guests.
+ */
 export default function NotFoundPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // This effect subscribes to authentication state changes using the new authService.
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthChange(user => {
+    const unsubscribe = onAuthChange(user => {
       setCurrentUser(user);
       setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  /**
+   * Renders the primary call-to-action button, which varies based on
+   * the user's authentication status (loading, logged in, or guest).
+   */
   const renderActionLink = () => {
     if (authLoading) {
       return (

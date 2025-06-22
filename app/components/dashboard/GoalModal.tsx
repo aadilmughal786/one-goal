@@ -1,11 +1,13 @@
 // app/components/dashboard/GoalModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FiTarget, FiCalendar, FiX, FiLoader } from 'react-icons/fi';
-import { MdRocketLaunch } from 'react-icons/md';
-import { format } from 'date-fns';
 import { DateTimePicker } from '@/components/common/DateTimePicker'; // Import the new component
+import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { FiCalendar, FiLoader, FiTarget, FiX } from 'react-icons/fi';
+import { MdRocketLaunch } from 'react-icons/md';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface ModalGoalData {
   name: string;
@@ -18,7 +20,7 @@ interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSetGoal: (goalName: string, endDate: Date, description: string) => Promise<void>;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
   initialGoalData: ModalGoalData | null;
   isEditMode?: boolean;
 }
@@ -27,7 +29,6 @@ const GoalModal: React.FC<GoalModalProps> = ({
   isOpen,
   onClose,
   onSetGoal,
-  showMessage,
   initialGoalData,
   isEditMode = false,
 }) => {
@@ -36,6 +37,9 @@ const GoalModal: React.FC<GoalModalProps> = ({
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // NEW: Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
 
   useEffect(() => {
     if (isOpen) {
@@ -55,15 +59,15 @@ const GoalModal: React.FC<GoalModalProps> = ({
 
   const handleSubmit = async () => {
     if (!goalName.trim()) {
-      showMessage('Goal name cannot be empty.', 'error');
+      showToast('Goal name cannot be empty.', 'error'); // Use global showToast
       return;
     }
     if (!endDate) {
-      showMessage('Please select a target date and time.', 'error');
+      showToast('Please select a target date and time.', 'error'); // Use global showToast
       return;
     }
     if (endDate <= new Date()) {
-      showMessage('Target date and time must be in the future.', 'error');
+      showToast('Target date and time must be in the future.', 'error'); // Use global showToast
       return;
     }
 
@@ -71,7 +75,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
     try {
       await onSetGoal(goalName, endDate, goalDescription);
     } catch (error) {
-      showMessage((error as Error).message || 'An unknown error occurred.', 'error');
+      showToast((error as Error).message || 'An unknown error occurred.', 'error'); // Use global showToast
     } finally {
       setIsSubmitting(false);
     }

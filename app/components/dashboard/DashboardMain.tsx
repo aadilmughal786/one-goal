@@ -1,25 +1,35 @@
 // app/components/dashboard/DashboardMain.tsx
 'use client';
 
-import React, { useMemo } from 'react';
-import { User } from 'firebase/auth';
 import { AppState, DailyProgress } from '@/types';
 import { format } from 'date-fns';
-import { MdRocketLaunch } from 'react-icons/md'; // For no-goal message
+import { User } from 'firebase/auth';
 import Link from 'next/link'; // For linking to dashboard settings
+import React, { useMemo } from 'react';
+import { MdRocketLaunch } from 'react-icons/md'; // For no-goal message
 
 import CountdownCard from '@/components/dashboard/CountdownCard';
-import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
+import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import RoutineTimeline from '@/components/dashboard/RoutineTimeline'; // Import the RoutineTimeline component
 import { FiDownload, FiEdit, FiPlusCircle, FiTarget, FiUpload } from 'react-icons/fi';
+// NEW: Import useNotificationStore to use showToast and showConfirmation
 
-// Import DashboardSettings to be rendered directly here when no goal is set.
+// No longer importing ToastMessage or ConfirmationModal directly as they are global
+
 // Let's define the props this component expects from its parent (page.tsx)
 interface DashboardMainProps {
   currentUser: User | null;
   appState: AppState | null;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: UPDATED: Renamed prop to showToast from showMessage
+  // REMOVED: showToast: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: NEW: Add showConfirmation prop
+  // REMOVED: showConfirmation: (props: {
+  // REMOVED:   title: string;
+  // REMOVED:   message: string;
+  // REMOVED:   action: () => void | Promise<void>;
+  // REMOVED:   actionDelayMs?: number;
+  // REMOVED: }) => void;
   onAppStateUpdate: (newAppState: AppState) => void;
   // DashboardMain specific props, managed at page level (passed from DashboardPageContent)
   isDailyProgressModalOpen: boolean;
@@ -29,6 +39,8 @@ interface DashboardMainProps {
   setIsDailyProgressModalOpen: (isOpen: boolean) => void; // Added for modal control
 
   // DashboardSettings specific props, managed at page level (passed from DashboardPageContent)
+  // These props were previously used by a child component that no longer exists here.
+  // We will keep them for now, but they will likely be removed if not used by any actual elements below.
   handleOpenGoalModal: (isEditing?: boolean) => void;
   promptForArchiveAndNewGoal: () => void;
   handleExport: () => Promise<void>;
@@ -44,7 +56,8 @@ interface DashboardMainProps {
 
 const DashboardMain: React.FC<DashboardMainProps> = ({
   appState,
-  showMessage,
+  // REMOVED: showToast, // Destructure showToast from props
+  // REMOVED: showConfirmation, // Destructure showConfirmation from props
   // Destructure DashboardMain specific props
   isDailyProgressModalOpen,
   selectedDate,
@@ -88,7 +101,7 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
               below.
             </p>
             <Link
-              href="/dashboard?tab=settings"
+              href="/dashboard?tab=settings" // Note: This link might need adjustment if settings are moved
               className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
             >
               <FiTarget size={20} />
@@ -98,6 +111,7 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
         </section>
 
         {/* Render settings management actions directly when no goal is set */}
+        {/* These buttons will use the props passed down from the parent (DashboardPageContent) */}
         <section>
           <input
             type="file"
@@ -179,18 +193,20 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
           goal={activeGoal}
           dailyProgress={activeGoal.dailyProgress}
           onDayClick={handleDayClick} // Use handleDayClick from props
+          // REMOVED: showToast prop is no longer needed, ProgressCalendar gets it directly
         />
       </section>
 
       {/* Daily Progress Modal (only rendered if selectedDate is set and modal is open) */}
+      {/* DailyProgressModal's showMessage prop is now handled internally by showToast */}
       {selectedDate && (
         <DailyProgressModal
           isOpen={isDailyProgressModalOpen} // Use isDailyProgressModalOpen from props
           onClose={() => setIsDailyProgressModalOpen(false)} // Use setIsDailyProgressModalOpen from props
           date={selectedDate} // Use selectedDate from props
           initialProgress={initialProgress}
-          onSave={handleSaveProgress} // Use handleSaveProgress from props
-          showMessage={showMessage}
+          onSave={handleSaveProgress}
+          // REMOVED: The DailyProgressModal now gets its showToast internally, so showMessage prop is removed.
         />
       )}
     </div>

@@ -13,6 +13,8 @@ import {
   MdOutlineShower,
   MdOutlineWaterDrop,
 } from 'react-icons/md';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface DailyProgressModalProps {
   isOpen: boolean;
@@ -20,7 +22,7 @@ interface DailyProgressModalProps {
   date: Date;
   initialProgress: DailyProgress | null;
   onSave: (progressData: Partial<DailyProgress>) => Promise<void>;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
 }
 
 const satisfactionOptions = [
@@ -47,7 +49,6 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   date,
   initialProgress,
   onSave,
-  showMessage,
 }) => {
   const [satisfaction, setSatisfaction] = useState<SatisfactionLevel>(SatisfactionLevel.NEUTRAL);
   const [notes, setNotes] = useState('');
@@ -57,6 +58,9 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // NEW: Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,7 +107,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
 
   const handleSubmit = async () => {
     if (satisfaction === null) {
-      showMessage('Please select a satisfaction level.', 'error');
+      showToast('Please select a satisfaction level.', 'error'); // Use global showToast
       return;
     }
     setIsSubmitting(true);
@@ -118,7 +122,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to save daily progress:', error);
-      showMessage('Failed to save daily progress.', 'error');
+      showToast('Failed to save daily progress.', 'error'); // Use global showToast
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +158,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
         {/* Header with reduced vertical padding */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
           <h2 id="daily-progress-modal-title" className="text-xl font-semibold text-white">
-            Log Progress for {format(date, 'MMMM d, yyyy')}
+            Log Progress for {format(date, 'MMMM d,yyyy')}
           </h2>
           <button
             className="p-1.5 text-white/60 rounded-full hover:bg-white/10 cursor-pointer"

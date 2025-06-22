@@ -1,50 +1,44 @@
 // app/components/layout/NavBar.tsx
 'use client';
 
-import { firebaseService } from '@/services/firebaseService'; // Import Firebase service
 import { User } from 'firebase/auth';
-import Image from 'next/image'; // Import Next.js Image component for optimized images
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
-import { FiCheckSquare, FiHome, FiTarget } from 'react-icons/fi'; // Imported FiTarget for Goal link
-import { GoStopwatch } from 'react-icons/go'; // Go icon for stopwatch
-import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md'; // Material Design icons
+import { FiCheckSquare, FiHome, FiTarget } from 'react-icons/fi';
+import { GoStopwatch } from 'react-icons/go';
+import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md';
 import ProfileDropdown from './ProfileDropdown';
 
-// Navigation links updated to remove Archive and add Goal
+// REFLECTING THE REFACTOR:
+// We now import the specific onAuthChange function from our new, focused authService.
+import { onAuthChange } from '@/services/authService';
+
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
   { href: '/todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> },
-  { href: '/goal', label: 'Goals', icon: <FiTarget /> }, // New: Goal Management Page
+  { href: '/goal', label: 'Goals', icon: <FiTarget /> },
 ];
 
 /**
  * NavBar Component
  *
- * This component renders the main navigation bar for the application.
- * It's a fixed-position sidebar on the left, displaying navigation icons
- * and the user's profile picture with a dropdown menu.
- * It handles authentication state to show appropriate loading indicators or user info.
+ * Renders the main fixed-position navigation sidebar. It now uses the dedicated
+ * `authService` to listen for authentication state changes to display the
+ * appropriate user information or loading state.
  */
 export default function NavBar() {
-  // Get the current pathname from Next.js for active link highlighting.
   const pathname = usePathname();
-  // State to store the currently authenticated Firebase user.
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  // State to indicate if the authentication status is still being loaded.
   const [authLoading, setAuthLoading] = useState(true);
-  // State to control the visibility of the user profile dropdown.
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  // Ref to the profile dropdown button to detect clicks outside for closing.
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Effect to close the profile dropdown when a click occurs outside of it.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // If the dropdown ref exists and the click is outside its element, close the dropdown.
       if (
         profileDropdownRef.current &&
         !profileDropdownRef.current.contains(event.target as Node)
@@ -52,59 +46,40 @@ export default function NavBar() {
         setIsProfileDropdownOpen(false);
       }
     };
-    // Attach the event listener when the component mounts.
     document.addEventListener('mousedown', handleClickOutside);
-    // Clean up the event listener when the component unmounts.
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []); // Empty dependency array means this effect runs once on mount.
+  }, []);
 
-  // Effect to listen for changes in Firebase authentication state.
+  // Effect now uses the specific onAuthChange function from authService.
   useEffect(() => {
-    // Subscribe to auth state changes using the firebaseService.
-    const unsubscribe = firebaseService.onAuthChange(user => {
-      setCurrentUser(user); // Update currentUser state
-      setAuthLoading(false); // Set authLoading to false once auth state is determined
+    const unsubscribe = onAuthChange(user => {
+      setCurrentUser(user);
+      setAuthLoading(false);
     });
-    // Return the unsubscribe function for cleanup when the component unmounts.
     return () => unsubscribe();
-  }, []); // Empty dependency array means this effect runs once on mount.
+  }, []);
 
-  /**
-   * Helper function to dynamically apply CSS classes to navigation links
-   * based on the current pathname.
-   * @param navPath The href of the navigation link.
-   * @returns A string of CSS classes.
-   */
   const getNavLinkClasses = (navPath: string) => {
     const baseClasses =
       'flex items-center justify-center w-full h-14 rounded-lg transition-colors duration-200 cursor-pointer';
-    const activeClasses = 'bg-blue-500/80 text-white'; // Classes for the active link
-    const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white'; // Classes for inactive links
-
-    // Compare the current main path (without query parameters) with the navigation link's path.
+    const activeClasses = 'bg-blue-500/80 text-white';
+    const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
     const currentMainPath = pathname.split('?')[0];
-    if (currentMainPath === navPath) {
-      return `${baseClasses} ${activeClasses}`; // Apply active classes if paths match
-    }
-
-    return `${baseClasses} ${inactiveClasses}`; // Apply inactive classes otherwise
+    return currentMainPath === navPath
+      ? `${baseClasses} ${activeClasses}`
+      : `${baseClasses} ${inactiveClasses}`;
   };
 
   return (
-    // Main navigation container.
-    // Fixed positioning, narrow width (w-16), and styled with Tailwind CSS.
     <nav className="flex fixed top-0 left-0 z-40 flex-col justify-between items-center px-2 py-5 w-16 h-screen border-r shadow-lg backdrop-blur-md bg-black/50 border-white/10">
-      {/* Top Section: App Icon/Logo */}
       <div className="flex justify-center">
         {authLoading ? (
-          // Display a pulsating skeleton while authentication is loading.
           <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
         ) : (
-          // Link to the Dashboard, with an app icon.
           <Link
             href="/dashboard"
             className="p-2 rounded-full group hover:bg-white/10"
-            title="One Goal Home" // Tooltip for accessibility
+            title="One Goal Home"
           >
             <MdRocketLaunch
               size={28}
@@ -114,44 +89,37 @@ export default function NavBar() {
         )}
       </div>
 
-      {/* Middle Section: Navigation Links */}
       <div className="flex flex-col gap-2 w-full">
         {authLoading ? (
-          // Display skeleton links while authentication is loading.
           <div className="flex flex-col gap-4 items-center">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="w-14 h-14 rounded-lg animate-pulse bg-white/10"></div>
             ))}
           </div>
         ) : (
-          // Render actual navigation links once authentication is complete.
           navLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
-              className={getNavLinkClasses(link.href)} // Apply dynamic classes
-              title={link.label} // Tooltip for accessibility
+              className={getNavLinkClasses(link.href)}
+              title={link.label}
             >
-              {/* Clone the icon element to pass size prop */}
               {React.cloneElement(link.icon, { size: 24 })}
             </Link>
           ))
         )}
       </div>
 
-      {/* Bottom Section: User Profile Area */}
       <div className="flex relative justify-center" ref={profileDropdownRef}>
         <button
           onClick={() => setIsProfileDropdownOpen(prev => !prev)}
-          disabled={authLoading} // Disable button while auth is loading
+          disabled={authLoading}
           className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
-          aria-label="Open profile menu" // Accessibility label
+          aria-label="Open profile menu"
         >
           {authLoading ? (
-            // Display pulsating skeleton for avatar while loading.
             <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
           ) : currentUser?.photoURL ? (
-            // Display user's profile picture if available.
             <Image
               src={currentUser.photoURL}
               alt="User Avatar"
@@ -160,15 +128,12 @@ export default function NavBar() {
               className="rounded-full"
             />
           ) : (
-            // Fallback: Display user's initial if no photo URL.
             <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
               {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
             </div>
           )}
         </button>
-        {/* Render ProfileDropdown if it's open and user is authenticated. */}
         {isProfileDropdownOpen && currentUser && (
-          // Position the dropdown to the right of the navigation bar.
           <div className="absolute bottom-0 left-full z-50 ml-3">
             <ProfileDropdown user={currentUser} onClose={() => setIsProfileDropdownOpen(false)} />
           </div>

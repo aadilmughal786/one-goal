@@ -1,23 +1,25 @@
 // app/components/stop-watch/Stopwatch.tsx
 'use client';
 
-import React, { useState, useEffect, useRef, useContext } from 'react';
+// Removed useContext and TimerContext as we are now using Zustand store
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  FiPlay,
-  FiPause,
-  FiSave,
   FiLoader,
   FiMaximize,
   FiMinimize,
+  FiPause,
+  FiPlay,
   FiRefreshCw,
+  FiSave,
 } from 'react-icons/fi'; // Updated icon import
-import { TimerContext } from '@/contexts/TimerContext';
+// Import the useTimerStore from our Zustand store
+import { useTimerStore } from '@/store/useTimerStore';
 
 /**
  * Stopwatch Component
  *
  * This component provides the main user interface for the stopwatch functionality.
- * It integrates with the TimerContext to manage the stopwatch's state (running, elapsed time, labeling, saving).
+ * It integrates with the useTimerStore to manage the stopwatch's state (running, elapsed time, labeling, saving).
  * Features include:
  * - Start, pause, and reset controls for the stopwatch.
  * - Input for labeling a completed session before saving.
@@ -25,27 +27,30 @@ import { TimerContext } from '@/contexts/TimerContext';
  * - Visual indicators for stopwatch state (running, saving).
  */
 const Stopwatch: React.FC = () => {
-  // Access the TimerContext to get all necessary stopwatch state and control functions.
-  const context = useContext(TimerContext);
-
-  // Throw an error if the context is not available, indicating a provider setup issue.
-  if (!context) {
-    throw new Error('Stopwatch must be used within a TimerProvider');
-  }
-
-  // Destructure context values for easier access.
+  // Access the stopwatch state and actions directly from the useTimerStore
   const {
-    stopwatchIsRunning,
-    stopwatchElapsedTime,
-    stopwatchIsLabeling,
-    stopwatchSessionLabel,
-    setStopwatchSessionLabel,
-    handleStopwatchStart,
-    handleStopwatchPause,
-    handleStopwatchReset,
-    handleStopwatchSave,
-    isSavingStopwatch,
-  } = context;
+    isRunning: stopwatchIsRunning,
+    elapsedTime: stopwatchElapsedTime,
+    isLabeling: stopwatchIsLabeling,
+    sessionLabel: stopwatchSessionLabel,
+    isSaving: isSavingStopwatch,
+    setSessionLabel: setStopwatchSessionLabel,
+    start: handleStopwatchStart,
+    pause: handleStopwatchPause,
+    reset: handleStopwatchReset,
+    save: handleStopwatchSave,
+  } = useTimerStore(state => ({
+    isRunning: state.isRunning,
+    elapsedTime: state.elapsedTime,
+    isLabeling: state.isLabeling,
+    sessionLabel: state.sessionLabel,
+    isSaving: state.isSaving,
+    setSessionLabel: state.setSessionLabel,
+    start: state.start,
+    pause: state.pause,
+    reset: state.reset,
+    save: state.save,
+  }));
 
   // State to manage the fullscreen mode of the stopwatch container.
   const [isFullScreen, setIsFullScreen] = useState(false);

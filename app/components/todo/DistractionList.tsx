@@ -1,14 +1,16 @@
 // app/components/todo/DistractionList.tsx
 'use client';
 
-import React, { useCallback, useState } from 'react';
-import { FiPlus, FiTrash2, FiEdit, FiSave, FiClock, FiLoader, FiMinus } from 'react-icons/fi';
-import { RiAlarmWarningLine } from 'react-icons/ri';
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp
 import { format } from 'date-fns';
+import { Timestamp } from 'firebase/firestore'; // Import Timestamp
+import React, { useCallback, useState } from 'react';
+import { FiClock, FiEdit, FiLoader, FiMinus, FiPlus, FiSave, FiTrash2 } from 'react-icons/fi';
+import { RiAlarmWarningLine } from 'react-icons/ri';
 
 // Re-import DistractionItem from your types, ensuring it aligns with global definition
 import { DistractionItem } from '@/types';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface DistractionListComponentProps {
   // Renamed interface to be more specific
@@ -23,6 +25,8 @@ interface DistractionListComponentProps {
   setEditText: (text: string) => void;
   isAdding: boolean; // Indicates if an item is currently being added
   isUpdatingId: string | null; // ID of the item currently being updated (for loading state)
+  // REMOVED: showToast prop is no longer needed
+  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 /**
@@ -42,7 +46,12 @@ const DistractionListComponent: React.FC<DistractionListComponentProps> = ({
   setEditText,
   isAdding,
   isUpdatingId,
+  // REMOVED: showToast from destructuring
 }) => {
+  // NEW: Access showToast and showConfirmation from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+
   const [inputValue, setInputValue] = useState(''); // State for the new item input field
 
   /**
@@ -50,10 +59,15 @@ const DistractionListComponent: React.FC<DistractionListComponentProps> = ({
    * Calls the `addToList` prop with the current input value as the title.
    */
   const handleAddItem = useCallback(() => {
-    if (isAdding || !inputValue.trim()) return; // Prevent adding if already adding or input is empty
+    if (isAdding || !inputValue.trim()) {
+      if (!inputValue.trim()) {
+        showToast('Distraction title cannot be empty.', 'error'); // Use global showToast
+      }
+      return; // Prevent adding if already adding or input is empty
+    }
     addToList(inputValue.trim()); // Trim whitespace before adding
     setInputValue(''); // Clear the input field after adding
-  }, [inputValue, addToList, isAdding]);
+  }, [inputValue, addToList, isAdding, showToast]); // Dependency on global showToast
 
   /**
    * Formats a Firebase Timestamp object into a human-readable date string.
@@ -82,8 +96,7 @@ const DistractionListComponent: React.FC<DistractionListComponentProps> = ({
    */
   const handleUpdateItem = (id: string) => {
     if (!editText.trim()) {
-      // Optionally show a message if trying to save an empty item
-      // showMessage("Item cannot be empty.", "error");
+      showToast('Distraction title cannot be empty.', 'error'); // Use global showToast
       return;
     }
     updateItem(id, { title: editText.trim() }); // Update 'title' for DistractionItem
@@ -101,6 +114,16 @@ const DistractionListComponent: React.FC<DistractionListComponentProps> = ({
   const handleUpdateCount = (id: string, currentCount: number, change: 1 | -1) => {
     const newCount = Math.max(0, currentCount + change); // Ensure count is not negative
     updateItem(id, { count: newCount }); // Update the count property
+  };
+
+  const handleDeleteConfirmation = (id: string, title: string) => {
+    showConfirmation({
+      // Use global showConfirmation
+      title: 'Delete Distraction?',
+      message: `Are you sure you want to permanently delete "${title}" from your "What Not To Do" list? This action cannot be undone.`,
+      action: () => removeFromList(id),
+      actionDelayMs: 3000,
+    });
   };
 
   // Fixed theme configuration for Distraction Items (red theme implicitly)
@@ -251,7 +274,7 @@ const DistractionListComponent: React.FC<DistractionListComponentProps> = ({
                   )}
                   {/* Delete button */}
                   <button
-                    onClick={() => removeFromList(item.id)}
+                    onClick={() => handleDeleteConfirmation(item.id, item.title)} // Use the new confirmation handler
                     className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
                     aria-label="Delete item"
                     disabled={isUpdating} // Disable delete while another item is updating

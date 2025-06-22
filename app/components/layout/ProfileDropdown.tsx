@@ -1,82 +1,65 @@
 // app/components/layout/ProfileDropdown.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { User } from 'firebase/auth'; // Import Firebase User type
-import Link from 'next/link'; // Import Next.js Link for client-side navigation
-import { useRouter } from 'next/navigation'; // Import Next.js useRouter
-import Image from 'next/image'; // Import Next.js Image for optimized images
-import { LuBadgeInfo } from 'react-icons/lu'; // Lucide icon for info badge
-import { FiLogOut, FiSettings } from 'react-icons/fi'; // Feather icons for logout and settings
-import { GoBug } from 'react-icons/go'; // Go icon for bug reporting
-import { firebaseService } from '@/services/firebaseService'; // Import Firebase service for sign out
-import ToastMessage from '@/components/common/ToastMessage'; // Import ToastMessage component for feedback
-import { FaGithub, FaLinkedin } from 'react-icons/fa6'; // Font Awesome 6 icons for social links
-import { MdArrowOutward } from 'react-icons/md'; // Material Design icon for external link indicator
+// REMOVED: import ToastMessage from '@/components/common/ToastMessage'; // No longer needed as ToastMessage is global
+import { User } from 'firebase/auth';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React from 'react';
+import { FaGithub, FaLinkedin } from 'react-icons/fa6';
+import { FiLogOut, FiSettings } from 'react-icons/fi';
+import { GoBug } from 'react-icons/go';
+import { LuBadgeInfo } from 'react-icons/lu';
+import { MdArrowOutward } from 'react-icons/md';
+
+// REFLECTING THE REFACTOR:
+// We now import the specific signOutUser function from our new, focused authService.
+import { signOutUser } from '@/services/authService';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface ProfileDropdownProps {
-  user: User; // The authenticated Firebase user object
-  onClose: () => void; // Callback function to close the dropdown
+  user: User;
+  onClose: () => void;
 }
 
 /**
  * ProfileDropdown Component
  *
  * This component displays a dropdown menu for the authenticated user's profile.
- * It shows user information, navigation links to app settings/about, external links
- * to social profiles/bug reports, and a logout option.
- *
- * It uses client-side routing with Next.js Link and `a` tags for external links.
+ * It shows user information and navigation links.
  */
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
-  const router = useRouter(); // Initialize Next.js router for navigation
-  const [toastMessage, setToastMessage] = useState<string | null>(null); // State for toast message text
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('error'); // State for toast message type
+  const router = useRouter();
+  // REMOVED: local toast state (toastMessage, toastType)
+  // Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
+
+  // REMOVED: showMessage function as it's replaced by direct use of global showToast
+  // const showMessage = (text: string, type: 'success' | 'error' | 'info') => {
+  //   setToastMessage(text);
+  //   setToastType(type);
+  //   setTimeout(() => setToastMessage(null), 3000);
+  // };
 
   /**
-   * Displays a toast message to the user.
-   * @param text The message content.
-   * @param type The type of the toast (success, error, info).
-   */
-  const showMessage = (text: string, type: 'success' | 'error' | 'info') => {
-    setToastMessage(text);
-    setToastType(type);
-    // Auto-clear the toast message after a few seconds
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  /**
-   * Handles the user sign-out process.
-   * Calls the Firebase service to sign out and redirects to the login page on success.
-   * Displays an error toast if sign-out fails.
+   * Handles the user sign-out process using the new authService.
    */
   const handleSignOut = async () => {
     try {
-      await firebaseService.signOutUser(); // Call Firebase service to sign out
-      router.push('/login'); // Redirect to login page
+      await signOutUser(); // Using the new service function
+      router.push('/login');
     } catch (error) {
-      // Display error message if sign-out fails
-      showMessage(`Sign-out error: ${(error as Error).message}`, 'error');
+      showToast(`Sign-out error: ${(error as Error).message}`, 'error'); // Use global showToast
     } finally {
-      onClose(); // Always close the dropdown after sign-out attempt
+      onClose();
     }
   };
 
-  // Define the menu items for the dropdown.
-  // Each item has a href, label, icon, and a flag indicating if it's an external link.
   const menuItems = [
-    {
-      href: '/profile',
-      label: 'Settings',
-      icon: <FiSettings />,
-      isExternal: false,
-    },
-    {
-      href: '/about', // Assuming an /about page for app information
-      label: 'About App',
-      icon: <LuBadgeInfo />,
-      isExternal: false,
-    },
+    { href: '/profile', label: 'Settings', icon: <FiSettings /> },
+    { href: '/about', label: 'About App', icon: <LuBadgeInfo /> },
     {
       href: 'https://github.com/aadilmughal786/one-goal',
       label: 'GitHub',
@@ -99,84 +82,64 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
 
   return (
     <>
-      {/* ToastMessage component for displaying feedback */}
-      <ToastMessage message={toastMessage} type={toastType} /> {/* Dynamic type now */}
-      {/* Main dropdown container */}
+      {/* REMOVED: ToastMessage component as it's rendered globally */}
       <div className="relative w-64 animate-fade-in-right">
-        {/* Decorative arrow pointing back to the profile button */}
         <div className="absolute -left-1.5 bottom-3 w-3 h-3 transform rotate-45 bg-neutral-900 border-b border-l border-white/10"></div>
-
-        {/* Dropdown content container with styling */}
         <div className="overflow-hidden rounded-xl border shadow-2xl bg-neutral-900 border-white/10">
-          {/* User information header */}
           <div className="flex gap-3 items-center px-4 py-3 border-b border-white/10">
-            {/* User Avatar - with fallback for photoURL */}
             <Image
-              src={user.photoURL || 'https://placehold.co/40x40/1a1a1a/ffffff?text=U'} // Fallback placeholder image
+              src={user.photoURL || 'https://placehold.co/40x40/1a1a1a/ffffff?text=U'}
               alt="User Avatar"
               width={40}
               height={40}
               className="rounded-full"
             />
             <div className="text-sm">
-              <p className="font-semibold text-white">{user.displayName || 'Anonymous User'}</p>{' '}
-              {/* Fallback for displayName */}
-              <p className="text-white/60">{user.email || 'No Email'}</p> {/* Fallback for email */}
+              <p className="font-semibold text-white">{user.displayName || 'Anonymous User'}</p>
+              <p className="text-white/60">{user.email || 'No Email'}</p>
             </div>
           </div>
-          {/* Internal navigation links */}
           <div className="py-2">
-            {menuItems.slice(0, 2).map(
-              (
-                item // Slicing to get internal links
-              ) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="flex gap-3 items-center px-4 py-2 transition-colors cursor-pointer text-white/90 hover:bg-white/10"
-                  onClick={onClose} // Close dropdown when link is clicked
-                >
-                  {React.cloneElement(item.icon, { size: 18 })} {/* Render icon with size */}
+            {menuItems.slice(0, 2).map(item => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex gap-3 items-center px-4 py-2 transition-colors cursor-pointer text-white/90 hover:bg-white/10"
+                onClick={onClose}
+              >
+                {React.cloneElement(item.icon, { size: 18 })}
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+          <hr className="border-white/10" />
+          <div className="py-2">
+            {menuItems.slice(2).map(item => (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex justify-between items-center px-4 py-2 transition-colors cursor-pointer group text-white/90 hover:bg-white/10"
+                onClick={onClose}
+              >
+                <div className="flex gap-3 items-center">
+                  {React.cloneElement(item.icon, { size: 18 })}
                   <span>{item.label}</span>
-                </Link>
-              )
-            )}
+                </div>
+                <MdArrowOutward
+                  className="opacity-0 transition-opacity group-hover:opacity-100"
+                  size={16}
+                />
+              </a>
+            ))}
           </div>
-          <hr className="border-white/10" /> {/* Separator */}
-          {/* External navigation links */}
-          <div className="py-2">
-            {menuItems.slice(2).map(
-              (
-                item // Slicing to get external links
-              ) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank" // Open in new tab
-                  rel="noopener noreferrer" // Security best practice for target="_blank"
-                  className="flex justify-between items-center px-4 py-2 transition-colors cursor-pointer group text-white/90 hover:bg-white/10"
-                  onClick={onClose} // Close dropdown when link is clicked
-                >
-                  <div className="flex gap-3 items-center">
-                    {React.cloneElement(item.icon, { size: 18 })} {/* Render icon with size */}
-                    <span>{item.label}</span>
-                  </div>
-                  {/* External link indicator, visible on hover */}
-                  <MdArrowOutward
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                    size={16}
-                  />
-                </a>
-              )
-            )}
-          </div>
-          <hr className="border-white/10" /> {/* Separator */}
-          {/* Logout button */}
+          <hr className="border-white/10" />
           <div className="py-2">
             <button
               onClick={handleSignOut}
               className="flex gap-3 items-center px-4 py-2 w-full text-left text-red-400 transition-colors cursor-pointer hover:bg-red-500/10"
-              aria-label="Logout" // Accessibility label
+              aria-label="Logout"
             >
               <FiLogOut size={18} /> Logout
             </button>

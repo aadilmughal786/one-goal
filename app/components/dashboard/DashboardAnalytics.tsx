@@ -1,18 +1,25 @@
 // app/components/dashboard/DashboardAnalytics.tsx
 'use client';
 
-import React, { useMemo } from 'react';
-import { AppState } from '@/types'; // Import Goal type
 import Charts from '@/components/dashboard/Charts';
-import { FiBarChart2 } from 'react-icons/fi';
+import { AppState } from '@/types'; // Import Goal type
 import Link from 'next/link'; // For linking to dashboard main
+import React, { useMemo } from 'react';
+import { FiBarChart2 } from 'react-icons/fi';
+// Import useNotificationStore if needed in the future for toasts from this component
+// import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface DashboardAnalyticsProps {
   appState: AppState | null;
-  // No need for currentUser, showMessage, onAppStateUpdate if only displaying charts
+  // Removed currentUser, showMessage, onAppStateUpdate as they are not directly used here.
+  // showToast is implicitly handled by the parent passing it to Charts if Charts needs it,
+  // but this component itself does not directly show toasts.
 }
 
 const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ appState }) => {
+  // If this component needed to show a toast directly, it would be:
+  // const showToast = useNotificationStore(state => state.showToast);
+
   // Get the currently active goal from appState
   const activeGoal = useMemo(() => {
     if (!appState?.activeGoalId || !appState.goals) return null;

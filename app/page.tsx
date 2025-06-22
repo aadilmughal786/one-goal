@@ -1,28 +1,31 @@
 // app/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { MdRocketLaunch } from 'react-icons/md';
+import React, { useEffect, useState } from 'react';
+import { FaCode, FaGithub, FaLinkedin, FaPencil, FaUserGraduate } from 'react-icons/fa6';
 import {
-  FiTarget,
+  FiArrowRight,
+  FiBarChart2,
   FiCheckCircle,
-  FiShare2,
+  FiClock,
+  FiEye,
+  FiGlobe,
+  FiGrid,
   FiInfo,
   FiMail,
-  FiClock,
-  FiArrowRight,
-  FiGrid,
-  FiGlobe,
-  FiEye,
-  FiBarChart2,
-  FiPlus,
   FiMinus,
+  FiPlus,
+  FiShare2,
+  FiTarget,
 } from 'react-icons/fi';
-import Image from 'next/image';
-import { FaGithub, FaLinkedin, FaUserGraduate, FaCode, FaPencil } from 'react-icons/fa6';
-import { firebaseService } from '@/services/firebaseService';
+import { MdRocketLaunch } from 'react-icons/md';
+// REMOVED: import { firebaseService } from '@/services/firebaseService'; // No longer using this
 import { User } from 'firebase/auth';
+
+// NEW: Import the specific auth service function
+import { onAuthChange } from '@/services/authService';
 
 // --- Data for Features Section ---
 const featuresData = [
@@ -93,7 +96,7 @@ const useCasesData = [
     persona: 'The Developer',
     goal: 'Ship the new feature.',
     description:
-      'Focuses the entire team on a single sprint objective, tracks daily progress, and identifies blockers before they derail the project.',
+      'Manages a high-stakes project by setting a clear deadline and tracking daily effort to ensure timely delivery and client satisfaction.',
   },
   {
     icon: <FaPencil className="w-10 h-10 text-white" />,
@@ -242,8 +245,8 @@ export default function LandingPage() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    // Listen for Firebase auth state changes
-    const unsubscribe = firebaseService.onAuthChange(user => {
+    // NEW: Use onAuthChange from authService
+    const unsubscribe = onAuthChange(user => {
       setCurrentUser(user);
       setAuthLoading(false);
     });

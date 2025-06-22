@@ -1,22 +1,11 @@
 // app/types/index.ts
-
 import { Timestamp } from 'firebase/firestore';
 
 // =================================================================//
-//
-// ENUMS
-//
-// Defines the constant sets of values used throughout the application's
-// data model. Using enums enhances readability and prevents errors
-// from using invalid string values.
-//
+//                            ENUMS
 // =================================================================//
 
-/**
- * Defines the lifecycle status of a goal, allowing the application
- * to track whether a goal is currently being pursued, has been
- * completed, is on hold, or has been abandoned.
- */
+/** Represents the lifecycle status of a user's goal. */
 export enum GoalStatus {
   ACTIVE = 0,
   COMPLETED = 1,
@@ -24,10 +13,7 @@ export enum GoalStatus {
   CANCELLED = 3,
 }
 
-/**
- * Defines the available background colors for Sticky Notes, enabling
- * users to visually categorize or prioritize their thoughts and ideas.
- */
+/** Defines the available background colors for Sticky Notes. */
 export enum StickyNoteColor {
   YELLOW = 0,
   BLUE = 1,
@@ -39,10 +25,7 @@ export enum StickyNoteColor {
   GRAY = 7,
 }
 
-/**
- * Defines the distinct types of daily routines a user can establish
- * and track within a goal, such as sleep, meals, or exercise.
- */
+/** Represents the distinct types of daily routines a user can track. */
 export enum RoutineType {
   SLEEP = 'sleep',
   WATER = 'water',
@@ -52,22 +35,14 @@ export enum RoutineType {
   EXERCISE = 'exercise',
 }
 
-/**
- * Defines the completion status for a daily routine log entry,
- * providing a more descriptive state than a simple boolean.
- */
+/** Defines the completion status for a daily routine log entry. */
 export enum RoutineLogStatus {
-  /** The default state, indicating no data has been entered for the day. */
   NOT_LOGGED = 0,
-  /** The user successfully completed the routine. */
   DONE = 1,
-  /** The user intentionally skipped the routine for the day. */
   SKIPPED = 2,
 }
 
-/**
- * Defines the levels of satisfaction a user can log for their daily progress.
- */
+/** Represents the user's subjective satisfaction level for a given day. */
 export enum SatisfactionLevel {
   VERY_UNSATISFIED = 1,
   UNSATISFIED = 2,
@@ -77,83 +52,51 @@ export enum SatisfactionLevel {
 }
 
 // =================================================================//
-//
-// BASE INTERFACES
-//
-// These are the fundamental, composable building blocks for the core
-// data entities. They promote code reuse and consistency.
-//
+//                      COMPOSABLE INTERFACES
 // =================================================================//
 
-/**
- * A foundational interface for all database entities, ensuring each
- * has a unique identifier and automatic timestamps for creation
- * and last modification.
- */
+/** A foundational interface for all database entities. */
 export interface BaseEntity {
   id: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
-/**
- * A composable interface for any item that can be marked as complete.
- * It tracks not only the completion state but also when it was completed.
- */
+/** An interface for any item that can be marked as complete. */
 export interface Completable {
   completed: boolean;
   completedAt: Timestamp | null;
 }
 
-/**
- * A composable interface for any item that can be manually sorted or
- * ordered by the user within a list.
- */
+/** An interface for any item that can be manually ordered. */
 export interface Orderable {
   order: number;
 }
 
-/**
- * A composable interface for any item where a numerical count is
- * relevant, such as tracking the frequency of a distraction.
- */
+/** An interface for any item that tracks a numerical count. */
 export interface Countable {
   count: number;
 }
 
 // =================================================================//
-//
-// CORE GOAL ENTITIES
-//
-// These interfaces define the primary objects that a user interacts
-// with directly to build and manage their goal.
-//
+//                      CORE DOMAIN ENTITIES
 // =================================================================//
 
-/**
- * Represents a single, actionable task or to-do item that contributes
- * to the completion of a goal.
- */
+/** A single, actionable task that contributes to a goal. */
 export interface TodoItem extends BaseEntity, Completable, Orderable {
   text: string;
   description: string | null;
   deadline: Timestamp | null;
 }
 
-/**
- * Represents a habit, activity, or behavior that the user has
- * identified as a distraction from their goal.
- */
+/** A habit or behavior the user wants to avoid. */
 export interface DistractionItem extends BaseEntity, Countable {
   title: string;
   description: string | null;
   triggerPatterns: string[];
 }
 
-/**
- * Represents a virtual "sticky note" for capturing quick thoughts,
- * ideas, or reminders related to a goal.
- */
+/** A virtual "sticky note" for capturing quick thoughts. */
 export interface StickyNote extends BaseEntity {
   title: string;
   content: string;
@@ -161,95 +104,67 @@ export interface StickyNote extends BaseEntity {
 }
 
 // =================================================================//
-//
-// ROUTINES & PROGRESS TRACKING
-//
-// These interfaces are used to define the structure for user routines,
-// daily progress logs, and other time-based tracking features.
-//
+//                   ROUTINES & PROGRESS TRACKING
 // =================================================================//
 
-/**
- * Represents a focused work session that has been timed and logged
- * by the user via the stopwatch feature. Now includes a unique ID.
- */
+/** A focused work session logged by the user via the stopwatch. */
 export interface StopwatchSession extends BaseEntity {
   startTime: Timestamp;
   label: string;
-  duration: number; // Stored in milliseconds for precision
+  /** Duration of the session, stored in milliseconds. */
+  duration: number;
 }
 
-/**
- * A comprehensive log that tracks the user's subjective satisfaction,
- * notes, work sessions, and routine adherence for a single calendar day.
- */
+/** A log that tracks user progress for a single calendar day. */
 export interface DailyProgress {
-  /** The date of the log in `YYYY-MM-DD` format to ensure unique, queryable keys. */
+  /** The date of the log in `YYYY-MM-DD` format. */
   date: string;
-  /** A user-provided rating indicating their satisfaction with the day's progress. */
   satisfaction: SatisfactionLevel;
   notes: string;
   sessions: StopwatchSession[];
   routines: Record<RoutineType, RoutineLogStatus>;
+  /** A denormalized sum of all session durations for this day (in ms) for performance. */
+  totalSessionDuration: number;
 }
 
-/**
- * A base interface for any user-defined, schedulable routine,
- * ensuring it has core properties like time, duration, and completion status.
- */
+/** A base interface for any user-defined, schedulable routine. */
 export interface ScheduledRoutineBase extends BaseEntity, Completable {
-  /** The scheduled time for the routine in `HH:mm` format. */
+  /** The scheduled time in `HH:mm` (24-hour) format. */
   time: string;
-  /** The expected duration of the routine in minutes. */
+  /** The expected duration in minutes. */
   duration: number;
   label: string;
   icon: string;
 }
 
-/**
- * Defines the user's primary sleep schedule, including main sleep/wake
- * times and any planned naps.
- */
+/** The user's primary sleep schedule and planned naps. */
 export interface SleepRoutineSettings {
-  wakeTime: string; // HH:mm
-  sleepTime: string; // HH:mm
+  wakeTime: string; // HH:mm (24-hour)
+  sleepTime: string; // HH:mm (24-hour)
   naps: ScheduledRoutineBase[];
 }
 
-/**
- * Defines the user's daily water intake goal and tracks the current
- * progress against that goal.
- */
+/** The user's daily water intake goal and progress. */
 export interface WaterRoutineSettings {
-  /** The daily hydration goal in milliliters. */
+  /** The daily hydration goal in number of glasses. */
   goal: number;
-  /** The current amount of water consumed today in milliliters. */
+  /** The current number of glasses consumed today. */
   current: number;
 }
 
-/**
- * A centralized object for configuring all user-defined routines, both
- * simple (like sleep/water) and complex scheduled events.
- */
+/** A centralized object for configuring all user-defined routines. */
 export interface UserRoutineSettings {
   sleep: SleepRoutineSettings | null;
   water: WaterRoutineSettings | null;
-
-  // Specific lists for different categories of scheduled routines
   bath: ScheduledRoutineBase[];
   exercise: ScheduledRoutineBase[];
   meal: ScheduledRoutineBase[];
   teeth: ScheduledRoutineBase[];
-
-  /**
-   * Tracks the last date on which the daily `completed` status of all
-   * scheduled routines was reset to ensure a fresh start each day.
-   */
+  /** Tracks the last date on which daily routines were reset. */
   lastRoutineResetDate: Timestamp | null;
 }
 
-// ---
-
+/** Represents a single motivational quote. */
 export interface Quote {
   id: number;
   text: string;
@@ -257,41 +172,31 @@ export interface Quote {
 }
 
 // =================================================================//
-//
-// TOP-LEVEL STATE
-//
-// These interfaces represent the highest level of the application's
-// data structure, defining the overall shape of the user's data
-// as it would be stored in Firestore.
-//
+//                        TOP-LEVEL STATE
 // =================================================================//
 
 /**
- * Represents a primary user goal, which serves as a container for all
- * associated tasks, notes, routines, and progress data. This is the
- * central and most important entity in the data model.
+ * Represents a primary user goal, serving as a container for all related data.
+ * This is the central entity in the data model.
  */
-
 export interface Goal extends BaseEntity {
   name: string;
   description: string;
   startDate: Timestamp;
   endDate: Timestamp;
   status: GoalStatus;
-
   /** A record of all daily progress logs, keyed by date (`YYYY-MM-DD`). */
   dailyProgress: Record<string, DailyProgress>;
   toDoList: TodoItem[];
   notToDoList: DistractionItem[];
   stickyNotes: StickyNote[];
   routineSettings: UserRoutineSettings;
-  starredQuotes: number[]; // Stores an array of quote IDs
+  /** An array of IDs for the user's favorite quotes for this goal. */
+  starredQuotes: number[];
 }
 
 /**
- * The root data structure for the entire application state. It manages
- * which goal is currently active and holds the complete collection of all
- * goals for the user.
+ * The root data structure for the entire application state, as stored in Firestore.
  */
 export interface AppState {
   /** The `id` of the goal that is currently active in the UI. */

@@ -8,6 +8,8 @@ import { Timestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { FiCheck, FiLoader, FiX } from 'react-icons/fi';
 import { MdOutlineSettings } from 'react-icons/md';
+// NEW: Import useNotificationStore to use showToast
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface ScheduleEditModalProps {
   isOpen: boolean;
@@ -15,7 +17,8 @@ interface ScheduleEditModalProps {
   scheduleToEdit: ScheduledRoutineBase | null;
   originalIndex: number | null;
   onSave: (schedule: ScheduledRoutineBase, originalIndex: number | null) => Promise<void>;
-  showMessage: (text: string, type: 'success' | 'error' | 'info') => void;
+  // REMOVED: showToast prop is no longer needed
+  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
   iconComponentsMap: { [key: string]: React.ElementType };
@@ -30,12 +33,15 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   scheduleToEdit,
   originalIndex,
   onSave,
-  showMessage,
+  // REMOVED: showToast from destructuring
   newInputLabelPlaceholder,
   newIconOptions,
   iconComponentsMap,
   buttonLabel,
 }) => {
+  // NEW: Access showToast from the global notification store
+  const showToast = useNotificationStore(state => state.showToast);
+
   const [label, setLabel] = useState('');
   const [duration, setDuration] = useState<number | ''>(30);
   const [icon, setIcon] = useState(newIconOptions[0]);
@@ -76,7 +82,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   const handleSubmit = async () => {
     const parsedDuration = Number(duration);
     if (!label.trim() || !scheduleTime || isNaN(parsedDuration) || parsedDuration < 1) {
-      showMessage('Please provide a valid label, time, and duration (min 1 min).', 'error');
+      showToast('Please provide a valid label, time, and duration (min 1 min).', 'error'); // Use global showToast
       return;
     }
 
@@ -114,7 +120,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error saving schedule:', error);
-      showMessage('Failed to save schedule. Please try again.', 'error');
+      showToast('Failed to save schedule. Please try again.', 'error'); // Use global showToast
     } finally {
       setIsSubmitting(false);
     }

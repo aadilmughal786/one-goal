@@ -1,27 +1,18 @@
 // app/(root)/stop-watch/page.tsx
 'use client';
 
-import ConfirmationModal from '@/components/common/ConfirmationModal';
-import ToastMessage from '@/components/common/ToastMessage';
 import SessionLog from '@/components/stop-watch/SessionLog';
 import Stopwatch from '@/components/stop-watch/Stopwatch';
-import { firebaseService } from '@/services/firebaseService';
-import { AppState } from '@/types';
-import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiCalendar, FiTrash2, FiX } from 'react-icons/fi'; // FiTarget and FiEdit removed as they are in NoActiveGoalMessage
+import { FiCalendar } from 'react-icons/fi';
 import { GoStopwatch } from 'react-icons/go';
 
-// Import the new common component
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-
-// Updated interface to reflect the change from sessionStartTime (Timestamp) to sessionId (string)
-interface SessionToDeleteInfo {
-  dateKey: string;
-  sessionId: string; // Changed from sessionStartTime: Timestamp
-}
+import { onAuthChange } from '@/services/authService';
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface TabItem {
   id: string;
@@ -34,137 +25,83 @@ const tabItems: TabItem[] = [
   { id: 'log', label: 'Session Log', icon: FiCalendar },
 ];
 
+// Page-level Skeleton Loader for main content area
+const PageMainContentSkeletonLoader = () => (
+  <div className="space-y-8 animate-pulse">
+    <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
+      <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
+      <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
+      <div className="space-y-3">
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
+        <div className="w-full h-12 rounded-lg bg-white/5"></div>
+      </div>
+    </div>
+  </div>
+);
+
 const StopwatchPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // isLoading for the initial page load (auth + initial data fetch)
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setUser] = useState<User | null>(null);
-  const [appState, setAppState] = useState<AppState | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // isTabContentLoading for when switching between internal tabs.
+  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
 
-  // --- SESSION LOG LOGIC (Remains local to this page) ---
-  const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [sessionToDeleteInfo, setSessionToDeleteInfo] = useState<SessionToDeleteInfo | null>(null);
+  const currentUser = useGoalStore(state => state.currentUser);
+  const appState = useGoalStore(state => state.appState);
+  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+  const showToast = useNotificationStore(state => state.showToast);
 
-  // --- TABS & GENERIC LOGIC ---
   const [activeTab, setActiveTabInternal] = useState<string>(() => {
     const tabFromUrl = searchParams.get('tab');
     return tabFromUrl || 'stopwatch';
   });
 
-  const showMessage = useCallback((text: string, _: 'success' | 'error' | 'info') => {
-    setToastMessage(text);
-    setTimeout(() => setToastMessage(null), 3000);
-  }, []);
-
-  const fetchUserData = useCallback(
-    async (uid: string) => {
-      try {
-        const data = await firebaseService.getUserData(uid);
-        setAppState(data);
-      } catch (error) {
-        console.error("Error fetching user's active goal:", error);
-        showMessage('Failed to load user data.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [showMessage]
-  );
-
+  // Effect for initial page load and authentication
   useEffect(() => {
-    const unsubscribe = firebaseService.onAuthChange(user => {
+    const unsubscribe = onAuthChange(async user => {
       if (user) {
-        setUser(user);
-        fetchUserData(user.uid);
+        await fetchInitialData(user);
       } else {
+        setIsLoading(false);
         router.replace('/login');
       }
     });
-    return () => unsubscribe();
-  }, [router, fetchUserData]);
 
-  /**
-   * Handles the initiation of a session deletion.
-   * Stores the session info and opens the confirmation modal.
-   * @param goalId The ID of the goal the session belongs to.
-   * @param dateKey The date string (YYYY-MM-DD) of the daily progress.
-   * @param sessionId The ID of the session to delete.
-   */
-  const handleDeleteSession = useCallback(
-    async (goalId: string, dateKey: string, sessionId: string) => {
-      setSessionToDeleteInfo({ dateKey, sessionId });
-      setIsConfirmModalOpen(true);
-    },
-    []
-  );
-
-  /**
-   * Handles the update of a stopwatch session's label.
-   * @param goalId The ID of the goal the session belongs to.
-   * @param dateKey The date string (YYYY-MM-DD) of the daily progress.
-   * @param sessionId The ID of the session to update.
-   * @param newLabel The new label for the session.
-   */
-  const handleUpdateSession = useCallback(
-    async (goalId: string, dateKey: string, sessionId: string, newLabel: string) => {
-      if (!currentUser) {
-        showMessage('Authentication required to update session.', 'error');
-        return;
+    const initialLoadTimeout = setTimeout(() => {
+      if (isLoading && currentUser === undefined && appState === undefined) {
+        setIsLoading(false);
       }
-      setIsUpdatingId(sessionId);
-      try {
-        await firebaseService.updateStopwatchSession(goalId, currentUser.uid, dateKey, sessionId, {
-          label: newLabel,
-        });
-        await fetchUserData(currentUser.uid); // Re-fetch for consistency
-        showMessage('Session updated.', 'success');
-      } catch (error) {
-        console.error('Error updating session:', error);
-        showMessage('Failed to update session.', 'error');
-      } finally {
-        setIsUpdatingId(null);
-      }
-    },
-    [currentUser, fetchUserData, showMessage]
-  );
+    }, 2000);
 
-  /**
-   * Confirms and proceeds with deleting the stored session.
-   */
-  const confirmDeleteSession = async () => {
-    // Get the active goal from the current appState
-    const activeGoalId = appState?.activeGoalId;
+    return () => {
+      unsubscribe();
+      clearTimeout(initialLoadTimeout);
+    };
+  }, [router, fetchInitialData, showToast, currentUser, isLoading, appState]);
 
-    if (!currentUser || !sessionToDeleteInfo || !activeGoalId) {
-      console.error('Attempted to delete session without complete info or active goal.');
-      showMessage('Cannot delete session: Missing information or no active goal.', 'error');
-      setIsConfirmModalOpen(false);
-      setSessionToDeleteInfo(null);
-      return;
+  // Effect to manage the main 'isLoading' state based on currentUser and appState being loaded from the store
+  useEffect(() => {
+    if (currentUser !== undefined && appState !== undefined) {
+      setIsLoading(false);
     }
+  }, [currentUser, appState]);
 
-    try {
-      await firebaseService.deleteStopwatchSession(
-        activeGoalId, // Pass activeGoalId
-        currentUser.uid,
-        sessionToDeleteInfo.dateKey,
-        sessionToDeleteInfo.sessionId // Use sessionId here
-      );
-      await fetchUserData(currentUser.uid); // Re-fetch data to update UI
-      showMessage('Session deleted.', 'info');
-    } catch (error) {
-      console.error('Error deleting session:', error);
-      showMessage('Failed to delete session.', 'error');
-    } finally {
-      setIsConfirmModalOpen(false); // Close the modal
-      setSessionToDeleteInfo(null); // Clear session info
+  // Effect to manage 'isTabContentLoading' when the activeTab changes
+  useEffect(() => {
+    // Only trigger this effect if the main page has finished its initial loading
+    if (!isLoading) {
+      setIsTabContentLoading(true); // Immediately set loading to true for the new tab content
+      const timer = setTimeout(() => {
+        setIsTabContentLoading(false); // Reset loading state after a short delay
+      }, 300); // Simulate a brief loading period (adjust as needed)
+
+      return () => clearTimeout(timer); // Cleanup timer on unmount or tab change
     }
-  };
+  }, [activeTab, isLoading]);
 
-  // --- TABS & RENDER LOGIC ---
   const handleTabChange = useCallback(
     (tabId: string) => {
       setActiveTabInternal(tabId);
@@ -176,31 +113,30 @@ const StopwatchPageContent = () => {
   );
 
   const renderActiveComponent = () => {
-    // Get the active goal for conditional rendering within the tabs' content
     const activeGoal = appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null;
 
+    // Show initial full page loader (for the entire page content)
     if (isLoading) {
-      return <div className="text-center text-white/70">Loading...</div>;
+      return <PageMainContentSkeletonLoader />;
     }
 
-    // If no active goal, display the reusable NoActiveGoalMessage component
+    // Show tab content loader ONLY when switching tabs (after initial page load)
+    // The tabs themselves remain stable.
+    if (isTabContentLoading) {
+      return <PageMainContentSkeletonLoader />;
+    }
+
+    // If no active goal and not loading, show the No Active Goal message
     if (!activeGoal) {
       return <NoActiveGoalMessage />;
     }
 
-    // Render the active tab content if an active goal exists
+    // Render the actual tab content
     switch (activeTab) {
       case 'stopwatch':
         return <Stopwatch />;
       case 'log':
-        return (
-          <SessionLog
-            appState={appState} // Pass appState (which contains the active goal)
-            onDeleteSession={handleDeleteSession}
-            onUpdateSession={handleUpdateSession}
-            isUpdatingId={isUpdatingId}
-          />
-        );
+        return <SessionLog appState={appState} isUpdatingId={null} />;
       default:
         return null;
     }
@@ -208,16 +144,10 @@ const StopwatchPageContent = () => {
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <ToastMessage
-        message={toastMessage}
-        type={
-          toastMessage?.includes('saved') || toastMessage?.includes('updated') ? 'success' : 'info'
-        }
-      />
-
-      {/* Navigation tabs always visible */}
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex space-x-2">
+          {/* MODIFIED: Tab buttons now only show skeleton during initial page load (isLoading) */}
+          {/* They remain stable and interactive when only isTabContentLoading (content area) is true. */}
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
                 <div key={i} className="px-4 py-4 animate-pulse">
@@ -236,7 +166,7 @@ const StopwatchPageContent = () => {
                     aria-label={item.label}
                   >
                     <Icon size={18} />
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <span>{item.label}</span>
                   </button>
                 );
               })}
@@ -246,31 +176,19 @@ const StopwatchPageContent = () => {
       <div className="container flex-grow p-4 mx-auto max-w-4xl">
         <section className="py-8 w-full">{renderActiveComponent()}</section>
       </div>
-
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        title="Delete Session?"
-        message="Are you sure you want to permanently delete this logged session? This action cannot be undone."
-        confirmButton={{
-          text: 'Delete',
-          onClick: confirmDeleteSession,
-          className: 'bg-red-600 text-white hover:bg-red-700',
-          icon: <FiTrash2 />,
-        }}
-        cancelButton={{
-          text: 'Cancel',
-          onClick: () => setIsConfirmModalOpen(false),
-          icon: <FiX />,
-        }}
-      />
     </main>
   );
 };
 
 export default function StopwatchPage() {
   return (
-    <Suspense fallback={<div>Loading Focus Timers...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen text-white/70">
+          <div className="animate-pulse">Loading Focus Timers...</div>
+        </div>
+      }
+    >
       <StopwatchPageContent />
     </Suspense>
   );
