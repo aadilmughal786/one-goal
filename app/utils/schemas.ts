@@ -83,7 +83,7 @@ export const dailyProgressSchema = z.object({
   satisfaction: z.nativeEnum(SatisfactionLevel),
   notes: z.string(),
   sessions: z.array(stopwatchSessionSchema),
-  routines: routinesSchema,
+  routines: routinesSchema, // FIX: Added routines to the schema for React Hook Form to track
   totalSessionDuration: z.number().min(0),
 });
 
@@ -119,7 +119,11 @@ export const userRoutineSettingsSchema = z.object({
 export const goalSchema = baseEntitySchema
   .extend({
     name: z.string().min(1, 'Goal name cannot be empty'),
-    description: z.string().min(1, 'Goal description cannot be empty.'), // FIX: Enforced non-empty description
+    // FIX: Reverted to mandatory non-empty description
+    description: z
+      .string()
+      .min(1, 'Goal description cannot be empty.')
+      .max(500, 'Description is too long.'),
     startDate: timestampSchema,
     endDate: timestampSchema,
     status: z.nativeEnum(GoalStatus),
@@ -182,10 +186,11 @@ export const scheduleEditFormSchema = z.object({
 // Zod Schema for GoalModal form fields
 export const goalFormSchema = z.object({
   name: z.string().min(1, 'Goal name cannot be empty.').max(100, 'Goal name is too long.'),
+  // FIX: Reverted to mandatory non-empty and max length
   description: z
     .string()
     .min(1, 'Goal description cannot be empty.')
-    .max(500, 'Description is too long.'), // FIX: Enforced non-empty and max length
+    .max(500, 'Description is too long.'),
   endDate: z
     .date()
     .nullable()

@@ -36,7 +36,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting, isDirty, isValid }, // FIX: Added isValid to formState destructuring
   } = useForm<TodoEditFormData>({
     resolver: zodResolver(todoEditFormSchema),
     defaultValues: {
@@ -44,6 +44,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
       description: '',
       deadline: null,
     },
+    mode: 'onTouched', // FIX: Set validation mode to 'onTouched'
   });
 
   // Watch the deadline field to pass it to DateTimePicker
@@ -55,18 +56,24 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
     if (isOpen) {
       if (todoItem) {
         // Set form values when modal opens and todoItem is provided
-        reset({
-          text: todoItem.text,
-          description: todoItem.description || '',
-          deadline: todoItem.deadline ? todoItem.deadline.toDate() : null,
-        });
+        reset(
+          {
+            text: todoItem.text,
+            description: todoItem.description || '',
+            deadline: todoItem.deadline ? todoItem.deadline.toDate() : null,
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       } else {
         // Reset form to default values if no todoItem (e.g., if used for new todo in future)
-        reset({
-          text: '',
-          description: '',
-          deadline: null,
-        });
+        reset(
+          {
+            text: '',
+            description: '',
+            deadline: null,
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       }
     }
   }, [isOpen, todoItem, reset]);
@@ -97,7 +104,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
   }, [onClose]);
 
   const handleClearDeadline = useCallback(() => {
-    setValue('deadline', null, { shouldDirty: true }); // Clear deadline and mark form as dirty
+    setValue('deadline', null, { shouldDirty: true, shouldValidate: true }); // Clear deadline and mark form as dirty
   }, [setValue]);
 
   // Handle saving the form data
@@ -210,7 +217,8 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
             <div className="p-6 border-t border-white/10">
               <button
                 type="submit" // Set type="submit" for form submission
-                disabled={isSubmitting || !isDirty} // Disable if submitting or no changes
+                // FIX: Button disabled when submitting OR not dirty OR not valid
+                disabled={isSubmitting || !isDirty || !isValid}
                 className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
               >
                 {isSubmitting ? (

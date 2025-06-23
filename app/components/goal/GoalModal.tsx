@@ -43,6 +43,9 @@ const GoalModal: React.FC<GoalModalProps> = ({
 }) => {
   const showToast = useNotificationStore(state => state.showToast);
 
+  // Define the maximum length for the description based on the Zod schema
+  const MAX_DESCRIPTION_LENGTH = 500;
+
   // Initialize react-hook-form
   const {
     register,
@@ -50,15 +53,20 @@ const GoalModal: React.FC<GoalModalProps> = ({
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting, isDirty, isValid },
   } = useForm<GoalFormData>({
     resolver: zodResolver(goalFormSchema),
     defaultValues: {
       name: '',
-      description: '', // Set initial default to empty string, not null
+      description: '',
       endDate: null,
     },
+    mode: 'onTouched',
   });
+
+  // Watch the description field to track its length for the counter
+  const descriptionValue = watch('description');
+  const currentDescriptionLength = descriptionValue ? descriptionValue.length : 0;
 
   // Watch the endDate field to pass it to DateTimePicker
   const currentEndDate = watch('endDate');
@@ -69,20 +77,26 @@ const GoalModal: React.FC<GoalModalProps> = ({
     if (isOpen) {
       if (isEditMode && initialGoalData) {
         // Set form values when modal opens in edit mode
-        reset({
-          name: initialGoalData.name,
-          description: initialGoalData.description || '', // Ensure empty string for null
-          endDate: new Date(initialGoalData.endDate), // Convert string to Date
-        });
+        reset(
+          {
+            name: initialGoalData.name,
+            description: initialGoalData.description || '', // Ensure empty string for null
+            endDate: new Date(initialGoalData.endDate), // Convert string to Date
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       } else {
         // Reset form to default values for new goal creation
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        reset({
-          name: '',
-          description: '',
-          endDate: tomorrow, // Default to tomorrow
-        });
+        reset(
+          {
+            name: '',
+            description: '',
+            endDate: tomorrow, // Default to tomorrow
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       }
     }
   }, [isOpen, isEditMode, initialGoalData, reset]);
@@ -163,16 +177,26 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="goalDescription"
-                    className="block mb-2 text-sm font-medium text-white/70"
-                  >
-                    Description <span className="text-red-400">*</span> {/* Mark as required */}
-                  </label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label htmlFor="goalDescription" className="text-sm font-medium text-white/70">
+                      Description <span className="text-red-400">*</span>
+                    </label>
+                    {/* Character counter for description */}
+                    <span
+                      className={`text-xs ${
+                        currentDescriptionLength > MAX_DESCRIPTION_LENGTH
+                          ? 'text-red-400'
+                          : 'text-white/50'
+                      }`}
+                    >
+                      {currentDescriptionLength}/{MAX_DESCRIPTION_LENGTH}
+                    </span>
+                  </div>
                   <textarea
                     id="goalDescription"
                     placeholder="Describe what success looks like..."
                     rows={3}
+                    maxLength={MAX_DESCRIPTION_LENGTH} // Enforce max length in UI
                     {...register('description')} // Register the textarea
                     className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
                   />
@@ -200,7 +224,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
             <div className="p-6 border-t border-white/10">
               <button
                 type="submit"
-                disabled={isSubmitting || !isDirty} // Disable if submitting or no changes
+                disabled={isSubmitting || !isDirty || !isValid}
                 className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
               >
                 {isSubmitting ? (

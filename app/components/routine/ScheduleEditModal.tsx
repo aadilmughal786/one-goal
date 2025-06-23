@@ -55,7 +55,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting, isDirty, isValid }, // FIX: Added isValid to formState destructuring
   } = useForm<ScheduleEditFormData>({
     resolver: zodResolver(scheduleEditFormSchema),
     defaultValues: {
@@ -64,6 +64,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
       duration: 30,
       icon: newIconOptions[0], // Default to the first icon option
     },
+    mode: 'onTouched', // FIX: Set validation mode to 'onTouched'
   });
 
   // Watch the time field for DateTimePicker
@@ -76,24 +77,27 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
     if (isOpen) {
       if (scheduleToEdit) {
         // Set form values when modal opens and scheduleToEdit is provided
-        reset({
-          label: scheduleToEdit.label,
-          time: parse(scheduleToEdit.time, 'HH:mm', new Date()), // Parse string time to Date
-          duration: scheduleToEdit.duration,
-          icon: scheduleToEdit.icon,
-        });
+        reset(
+          {
+            label: scheduleToEdit.label,
+            time: parse(scheduleToEdit.time, 'HH:mm', new Date()), // Parse string time to Date
+            duration: scheduleToEdit.duration,
+            icon: scheduleToEdit.icon,
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       } else {
         // Reset form to default values if adding a new schedule
-        reset({
-          label: '',
-          time: new Date(),
-          duration: 30,
-          icon: newIconOptions[0],
-        });
+        reset(
+          {
+            label: '',
+            time: new Date(),
+            duration: 30,
+            icon: newIconOptions[0],
+          },
+          { keepDirty: false }
+        ); // Reset dirty state on modal open
       }
-      // Ensure submitting state is reset on open
-      // This is handled by isSubmitting from formState, but also to be safe.
-      // setIsSubmitting(false); // No longer needed as formState.isSubmitting covers this.
       setIsTimePickerOpen(false); // Close time picker when modal opens
     }
   }, [isOpen, scheduleToEdit, newIconOptions, reset]);
@@ -122,9 +126,6 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
 
   // Handle form submission
   const onSubmit: SubmitHandler<ScheduleEditFormData> = async data => {
-    // isSubmitting from formState covers button disabled state
-    // Manual validation check for empty label, time, duration no longer needed due to Zod schema
-
     const now = Timestamp.now();
     const finalTime = format(data.time, 'HH:mm'); // Format Date object back to HH:mm string
 
@@ -269,7 +270,8 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
             <div className="p-6 border-t border-white/10">
               <button
                 type="submit"
-                disabled={isSubmitting || !isDirty} // Disable if submitting or no changes
+                // FIX: Button disabled when submitting OR not dirty OR not valid
+                disabled={isSubmitting || !isDirty || !isValid}
                 className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
                 aria-label={buttonLabel}
               >
