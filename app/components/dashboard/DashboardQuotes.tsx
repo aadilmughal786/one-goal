@@ -4,22 +4,21 @@
 import { quotes as allQuotes } from '@/data/quotes';
 import { AppState, Quote } from '@/types';
 import { User } from 'firebase/auth';
-import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiLoader, FiRefreshCw, FiStar } from 'react-icons/fi';
-import { MdRocketLaunch } from 'react-icons/md';
 
-// --- REFLECTING THE REFACTOR ---
 // We now import specific functions from our new, focused service module.
 import { addStarredQuote, removeStarredQuote } from '@/services/quoteService';
 // NEW: Import useNotificationStore to use showToast
 import { useNotificationStore } from '@/store/useNotificationStore';
 
+// NEW: Import the common NoActiveGoalMessage component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
+
 // The props interface remains the same as its parent (dashboard/page.tsx) is not yet refactored.
 interface DashboardQuotesProps {
   currentUser: User | null;
   appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
   onAppStateUpdate: (newAppState: AppState) => void;
 }
 
@@ -39,7 +38,6 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
   const [isFetchingNew, setIsFetchingNew] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  // NEW: Access showToast from the global notification store
   const showToast = useNotificationStore(state => state.showToast);
 
   const activeGoal = useMemo(() => {
@@ -74,18 +72,15 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
     try {
       let updatedStarredQuoteIds: number[];
       if (isCurrentQuoteStarred) {
-        // Use the new, specific service function
         await removeStarredQuote(uid, goalId, quoteId);
         updatedStarredQuoteIds = activeGoal.starredQuotes.filter(qId => qId !== quoteId);
-        showToast('Quote unstarred.', 'info'); // Use global showToast
+        showToast('Quote unstarred.', 'info');
       } else {
-        // Use the new, specific service function
         await addStarredQuote(uid, goalId, quoteId);
         updatedStarredQuoteIds = [...activeGoal.starredQuotes, quoteId];
-        showToast('Quote starred!', 'success'); // Use global showToast
+        showToast('Quote starred!', 'success');
       }
 
-      // Optimistically update parent state to avoid a full re-fetch
       const newAppState = {
         ...appState!,
         goals: {
@@ -96,7 +91,7 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
       onAppStateUpdate(newAppState);
     } catch (error) {
       console.error('Failed to update quote status:', error);
-      showToast('Failed to update quote status.', 'error'); // Use global showToast
+      showToast('Failed to update quote status.', 'error');
     } finally {
       setIsUpdating(false);
     }
@@ -110,7 +105,6 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
     const { uid } = currentUser;
 
     try {
-      // Use the new, specific service function
       await removeStarredQuote(uid, goalId, quoteId);
       const updatedStarredQuoteIds = activeGoal.starredQuotes.filter(qId => qId !== quoteId);
 
@@ -122,10 +116,10 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
         },
       };
       onAppStateUpdate(newAppState);
-      showToast('Quote unstarred.', 'info'); // Use global showToast
+      showToast('Quote unstarred.', 'info');
     } catch (error) {
       console.error('Failed to unstar quote from list:', error);
-      showToast('Failed to unstar quote.', 'error'); // Use global showToast
+      showToast('Failed to unstar quote.', 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -138,15 +132,7 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
   const starButtonText = isCurrentQuoteStarred ? 'Starred' : 'Star this Quote';
 
   if (!activeGoal) {
-    return (
-      <div className="p-10 text-center text-white/60 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-        <MdRocketLaunch className="mx-auto mb-4 text-4xl" />
-        <p>Please select an active goal from your Dashboard to manage your starred quotes.</p>
-        <Link href="/dashboard" className="inline-block mt-4 text-sm text-blue-400 hover:underline">
-          Go to Dashboard
-        </Link>
-      </div>
-    );
+    return <NoActiveGoalMessage />;
   }
 
   return (

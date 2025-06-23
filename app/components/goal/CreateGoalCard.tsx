@@ -10,17 +10,14 @@ import { setUserData } from '@/services/goalService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// FIX: The component no longer needs currentUser, appState, or onAppStateUpdate from props.
 interface CreateGoalCardProps {
   onOpenGoalModal: (goal: Goal | null, isEditMode: boolean) => void;
 }
 
 const CreateGoalCard: React.FC<CreateGoalCardProps> = ({ onOpenGoalModal }) => {
-  // FIX: Get necessary state and actions directly from the store.
-  const { currentUser, appState } = useGoalStore(state => ({
-    currentUser: state.currentUser,
-    appState: state.appState,
-  }));
+  // FIX: Select state individually to prevent infinite loops.
+  const currentUser = useGoalStore(state => state.currentUser);
+  const appState = useGoalStore(state => state.appState);
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
@@ -59,14 +56,13 @@ const CreateGoalCard: React.FC<CreateGoalCardProps> = ({ onOpenGoalModal }) => {
                 activeGoalId: newActiveGoalId,
               };
 
-              // FIX: Now uses setUserData from the imported service.
               await setUserData(currentUser.uid, newAppState);
-
-              // We no longer call onAppStateUpdate. The store will trigger re-renders.
               showToast(
                 `Goal "${importedGoal.name}" imported successfully as a new goal!`,
                 'success'
               );
+              // Re-fetch data to update the store state correctly after import
+              await useGoalStore.getState().fetchInitialData(currentUser);
             } catch (error) {
               console.error('Failed to import goal:', error);
               showToast(`Failed to import goal: ${(error as Error).message}`, 'error');

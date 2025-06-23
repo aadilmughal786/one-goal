@@ -1,9 +1,15 @@
 // app/components/routine/SleepSchedule.tsx
 'use client';
 
-import { AppState, RoutineType, ScheduledRoutineBase, SleepRoutineSettings } from '@/types';
+import { DateTimePicker } from '@/components/common/DateTimePicker';
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
+import RoutineCalendar from '@/components/routine/RoutineCalendar';
+import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { RoutineType, ScheduledRoutineBase, SleepRoutineSettings } from '@/types';
 import { addDays, differenceInMinutes, format, isAfter, isBefore, parse } from 'date-fns';
-import { User } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FaMoon, FaSun } from 'react-icons/fa';
@@ -16,26 +22,6 @@ import {
   MdOutlineWbSunny,
 } from 'react-icons/md';
 
-// --- REFLECTING THE REFACTOR ---
-import { getUserData } from '@/services/goalService';
-import { updateRoutineSettings } from '@/services/routineService';
-// NEW: Import useNotificationStore to use showToast
-import { useNotificationStore } from '@/store/useNotificationStore';
-
-// Import the reusable components
-import { DateTimePicker } from '@/components/common/DateTimePicker';
-import RoutineCalendar from '@/components/routine/RoutineCalendar';
-import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
-
-interface SleepScheduleProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
-  onAppStateUpdate: (newAppState: AppState) => void;
-}
-
-const generateUUID = () => crypto.randomUUID();
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineWbSunny,
   MdOutlineNightlight,
@@ -54,37 +40,76 @@ const sleepTips = [
  * SleepSchedule Component
  * This component has been refactored to use the new dedicated services and contains full implementation.
  */
-const SleepSchedule: React.FC<SleepScheduleProps> = ({
-  currentUser,
-  appState,
-  onAppStateUpdate,
-}) => {
-  const [, setCurrentTime] = useState(new Date());
-  const activeGoalId = appState?.activeGoalId;
-
-  // NEW: Access showToast from the global notification store
+const SleepSchedule: React.FC = () => {
+  // --- REFACTOR: Get all necessary state and actions from the stores ---
+  const { appState, updateRoutineSettings } = useGoalStore(state => ({
+    currentUser: state.currentUser,
+    appState: state.appState,
+    updateRoutineSettings: state.updateRoutineSettings,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoalSleepSettings = useMemo(() => {
-    return appState?.goals[activeGoalId || '']?.routineSettings?.sleep;
-  }, [appState, activeGoalId]);
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
 
-  const [bedtime, setBedtime] = useState(activeGoalSleepSettings?.sleepTime || '22:00');
-  const [wakeTime, setWakeTime] = useState(activeGoalSleepSettings?.wakeTime || '06:00');
-  const [napSchedule, setNapSchedule] = useState<ScheduledRoutineBase[]>(
-    activeGoalSleepSettings?.naps || []
-  );
-
+  const [bedtime, setBedtime] = useState('22:00');
+  const [wakeTime, setWakeTime] = useState('06:00');
+  const [napSchedule, setNapSchedule] = useState<ScheduledRoutineBase[]>([]);
+  const [, setCurrentTime] = useState(new Date());
   const [isBedtimePickerOpen, setIsBedtimePickerOpen] = useState(false);
   const [isWakeTimePickerOpen, setIsWakeTimePickerOpen] = useState(false);
-  const [randomTip, setRandomTip] = useState<string>('');
+  const [randomTip, setRandomTip] = useState('');
   const [isRefreshingTip, setIsRefreshingTip] = useState(false);
   const isInitialDebounceMount = useRef(true);
+
+  useEffect(() => {
+    if (activeGoal?.routineSettings?.sleep) {
+      const { sleepTime, wakeTime, naps } = activeGoal.routineSettings.sleep;
+      setBedtime(sleepTime);
+      setWakeTime(wakeTime);
+      setNapSchedule(naps || []);
+    } else {
+      setBedtime('22:00');
+      setWakeTime('06:00');
+      setNapSchedule([]);
+    }
+  }, [activeGoal]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const { isSleepTime, timeUntilNextEvent, nextEventLabel, totalSleepDurationMinutes } =
+    useMemo(() => {
+      const now = new Date();
+      let bed = parse(bedtime, 'HH:mm', now);
+      let wake = parse(wakeTime, 'HH:mm', now);
+      const isOvernight = isAfter(bed, wake);
+      if (isOvernight) {
+        if (isBefore(now, wake)) bed = addDays(bed, -1);
+        else wake = addDays(wake, 1);
+      }
+      const isCurrentlySleepTime = isAfter(now, bed) && isBefore(now, wake);
+      let nextBedEvent = parse(bedtime, 'HH:mm', now);
+      if (isAfter(now, nextBedEvent)) nextBedEvent = addDays(nextBedEvent, 1);
+      let nextWakeEvent = parse(wakeTime, 'HH:mm', now);
+      if (isAfter(nextBedEvent, nextWakeEvent) && isAfter(now, nextWakeEvent)) {
+        nextWakeEvent = addDays(nextWakeEvent, 1);
+      } else if (isAfter(now, nextWakeEvent)) {
+        nextWakeEvent = addDays(nextWakeEvent, 1);
+      }
+      const timeToBed = differenceInMinutes(nextBedEvent, now);
+      const timeToWake = differenceInMinutes(nextWakeEvent, now);
+      const timeUntilNextEventMinutes = timeToBed < timeToWake ? timeToBed : timeToWake;
+      const nextEventDisplayLabel = timeToBed < timeToWake ? 'Bedtime' : 'Wake Up';
+      const totalDuration = Math.max(0, differenceInMinutes(wake, bed));
+      return {
+        isSleepTime: isCurrentlySleepTime,
+        timeUntilNextEvent: timeUntilNextEventMinutes,
+        nextEventLabel: nextEventDisplayLabel,
+        totalSleepDurationMinutes: totalDuration,
+      };
+    }, [bedtime, wakeTime]);
 
   const refreshTip = useCallback(() => {
     setIsRefreshingTip(true);
@@ -95,111 +120,24 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
   }, []);
 
   useEffect(() => {
-    if (activeGoalSleepSettings) {
-      setBedtime(activeGoalSleepSettings.sleepTime);
-      setWakeTime(activeGoalSleepSettings.wakeTime);
-      setNapSchedule(activeGoalSleepSettings.naps || []);
-    } else {
-      setBedtime('22:00');
-      setWakeTime('06:00');
-      setNapSchedule([]);
-    }
-  }, [activeGoalSleepSettings]);
-
-  useEffect(() => {
     refreshTip();
   }, [refreshTip]);
 
-  const { isSleepTime, timeUntilNextEvent, nextEventLabel, totalSleepDurationMinutes } =
-    useMemo(() => {
-      const now = new Date(); // Use a fresh `now` for calculation
-      let bed = parse(bedtime, 'HH:mm', now);
-      let wake = parse(wakeTime, 'HH:mm', now);
-      const isOvernight = isAfter(bed, wake);
-
-      if (isOvernight) {
-        if (isBefore(now, wake)) {
-          bed = addDays(bed, -1);
-        } else {
-          wake = addDays(wake, 1);
-        }
-      }
-
-      const isCurrentlySleepTime = isAfter(now, bed) && isBefore(now, wake);
-
-      let nextBedEvent = parse(bedtime, 'HH:mm', now);
-      let nextWakeEvent = parse(wakeTime, 'HH:mm', now);
-
-      if (isAfter(nextBedEvent, nextWakeEvent) && isAfter(now, nextWakeEvent)) {
-        nextWakeEvent = addDays(nextWakeEvent, 1);
-      }
-      if (isAfter(now, nextBedEvent)) {
-        nextBedEvent = addDays(nextBedEvent, 1);
-      }
-
-      const timeToBed = differenceInMinutes(nextBedEvent, now);
-      const timeToWake = differenceInMinutes(nextWakeEvent, now);
-
-      let timeUntilNextEventMinutes: number;
-      let nextEventDisplayLabel: string;
-
-      if (timeToBed < timeToWake) {
-        timeUntilNextEventMinutes = timeToBed;
-        nextEventDisplayLabel = 'Bedtime';
-      } else {
-        timeUntilNextEventMinutes = timeToWake;
-        nextEventDisplayLabel = 'Wake Up';
-      }
-
-      let totalDuration = differenceInMinutes(wake, bed);
-      if (isOvernight && totalDuration < 0) {
-        totalDuration += 24 * 60;
-      }
-
-      return {
-        isSleepTime: isCurrentlySleepTime,
-        timeUntilNextEvent: timeUntilNextEventMinutes,
-        nextEventLabel: nextEventDisplayLabel,
-        totalSleepDurationMinutes: Math.max(0, totalDuration),
-      };
-    }, [bedtime, wakeTime]);
-
-  const callUpdateRoutineSettings = useCallback(
-    async (updatedSleepSettings: SleepRoutineSettings) => {
-      if (!currentUser || !activeGoalId || !appState)
-        throw new Error('User or goal not available.');
-      const currentSettings = appState.goals[activeGoalId]?.routineSettings;
-      if (!currentSettings) throw new Error('Routine settings not found.');
-
-      const newSettings = { ...currentSettings, sleep: updatedSleepSettings };
-      await updateRoutineSettings(currentUser.uid, activeGoalId, newSettings);
-      const newAppState = await getUserData(currentUser.uid);
-      onAppStateUpdate(newAppState);
-    },
-    [appState, currentUser, activeGoalId, onAppStateUpdate]
-  );
-
   const saveMainSleepSettings = useCallback(async () => {
-    if (!currentUser || !activeGoalId) {
-      showToast('Authentication or active goal required.', 'error'); // Use global showToast
-      return;
-    }
-    const newSettings: SleepRoutineSettings = { sleepTime: bedtime, wakeTime, naps: napSchedule };
+    if (!activeGoal) return;
+    const newSleepSettings: SleepRoutineSettings = {
+      sleepTime: bedtime,
+      wakeTime,
+      naps: napSchedule,
+    };
+    const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
     try {
-      await callUpdateRoutineSettings(newSettings);
-      showToast('Main sleep schedule updated!', 'success'); // Use global showToast
-    } catch {
-      showToast('Failed to save main sleep settings.', 'error'); // Use global showToast
+      await updateRoutineSettings(newSettings);
+    } catch (error) {
+      showToast('Failed to save sleep settings.', 'error');
+      console.error(error);
     }
-  }, [
-    currentUser,
-    activeGoalId,
-    bedtime,
-    wakeTime,
-    napSchedule,
-    showToast, // Dependency on global showToast
-    callUpdateRoutineSettings,
-  ]);
+  }, [activeGoal, bedtime, wakeTime, napSchedule, updateRoutineSettings, showToast]);
 
   useEffect(() => {
     if (isInitialDebounceMount.current) {
@@ -210,6 +148,26 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
     return () => clearTimeout(handler);
   }, [bedtime, wakeTime, saveMainSleepSettings]);
 
+  const updateNapSchedules = useCallback(
+    async (updatedNaps: ScheduledRoutineBase[], successMessage: string) => {
+      if (!activeGoal) return;
+      // FIX: Explicitly create the new SleepRoutineSettings object to ensure type safety.
+      const newSleepSettings: SleepRoutineSettings = {
+        sleepTime: bedtime,
+        wakeTime: wakeTime,
+        naps: updatedNaps,
+      };
+      const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
+      try {
+        await updateRoutineSettings(newSettings);
+        showToast(successMessage, 'success');
+      } catch (error) {
+        console.error('Failed to update nap schedule:', error);
+      }
+    },
+    [activeGoal, bedtime, wakeTime, updateRoutineSettings, showToast]
+  );
+
   const toggleNapCompletion = useCallback(
     async (index: number) => {
       const updatedNaps = napSchedule.map((nap, i) =>
@@ -217,92 +175,38 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
           ? {
               ...nap,
               completed: !nap.completed,
-              updatedAt: Timestamp.now(),
               completedAt: !nap.completed ? Timestamp.now() : null,
             }
           : nap
       );
       setNapSchedule(updatedNaps);
-      try {
-        await callUpdateRoutineSettings({ sleepTime: bedtime, wakeTime, naps: updatedNaps });
-        showToast('Nap schedule updated!', 'success'); // Use global showToast
-      } catch {
-        showToast('Failed to save nap settings.', 'error'); // Use global showToast
-        onAppStateUpdate(await getUserData(currentUser!.uid));
-      }
+      await updateNapSchedules(updatedNaps, 'Nap schedule updated!');
     },
-    [
-      bedtime,
-      wakeTime,
-      napSchedule,
-      showToast, // Dependency on global showToast
-      callUpdateRoutineSettings,
-      currentUser,
-      onAppStateUpdate,
-    ]
+    [napSchedule, updateNapSchedules]
   );
 
   const handleSaveNapSchedule = useCallback(
     async (schedule: ScheduledRoutineBase, index: number | null) => {
       let updatedNaps: ScheduledRoutineBase[];
+      const message = index !== null ? 'Nap updated!' : 'Nap added!';
       if (index !== null) {
-        updatedNaps = napSchedule.map((n, i) =>
-          i === index ? { ...schedule, updatedAt: Timestamp.now() } : n
-        );
+        updatedNaps = napSchedule.map((n, i) => (i === index ? schedule : n));
       } else {
-        updatedNaps = [
-          ...napSchedule,
-          {
-            ...schedule,
-            id: generateUUID(),
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-            completed: false,
-            completedAt: null,
-          },
-        ];
+        updatedNaps = [...napSchedule, schedule];
       }
       setNapSchedule(updatedNaps);
-      try {
-        await callUpdateRoutineSettings({ sleepTime: bedtime, wakeTime, naps: updatedNaps });
-        showToast(index !== null ? 'Nap updated!' : 'Nap added!', 'success'); // Use global showToast
-      } catch {
-        showToast('Failed to save nap schedule.', 'error'); // Use global showToast
-        onAppStateUpdate(await getUserData(currentUser!.uid));
-      }
+      await updateNapSchedules(updatedNaps, message);
     },
-    [
-      bedtime,
-      wakeTime,
-      napSchedule,
-      showToast, // Dependency on global showToast
-      callUpdateRoutineSettings,
-      currentUser,
-      onAppStateUpdate,
-    ]
+    [napSchedule, updateNapSchedules]
   );
 
   const handleRemoveNapSchedule = useCallback(
     async (indexToRemove: number) => {
       const updatedNaps = napSchedule.filter((_, index) => index !== indexToRemove);
       setNapSchedule(updatedNaps);
-      try {
-        await callUpdateRoutineSettings({ sleepTime: bedtime, wakeTime, naps: updatedNaps });
-        showToast('Nap schedule removed.', 'info'); // Use global showToast
-      } catch {
-        showToast('Failed to remove nap schedule.', 'error'); // Use global showToast
-        onAppStateUpdate(await getUserData(currentUser!.uid));
-      }
+      await updateNapSchedules(updatedNaps, 'Nap schedule removed.');
     },
-    [
-      bedtime,
-      wakeTime,
-      napSchedule,
-      showToast, // Dependency on global showToast
-      callUpdateRoutineSettings,
-      currentUser,
-      onAppStateUpdate,
-    ]
+    [napSchedule, updateNapSchedules]
   );
 
   const formatTimeLeft = (minutes: number) => {
@@ -312,7 +216,7 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
     return `${h > 0 ? `${h}h ` : ''}${m}m`;
   };
 
-  if (!activeGoalId || !appState?.goals[activeGoalId]) {
+  if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
 
@@ -354,7 +258,7 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
                   onClick={() => setIsBedtimePickerOpen(true)}
                   className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  {format(parse(bedtime, 'HH:mm', new Date()), 'HH:mm')}
+                  {bedtime}
                 </button>
               </div>
               <div className="flex flex-col items-center p-4 rounded-xl bg-white/5">
@@ -367,7 +271,7 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
                   onClick={() => setIsWakeTimePickerOpen(true)}
                   className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
-                  {format(parse(wakeTime, 'HH:mm', new Date()), 'HH:mm')}
+                  {wakeTime}
                 </button>
               </div>
             </div>
@@ -399,9 +303,6 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
         </div>
 
         <RoutineCalendar
-          appState={appState}
-          currentUser={currentUser}
-          onAppStateUpdate={onAppStateUpdate}
           routineType={RoutineType.SLEEP}
           title="Sleep Log"
           icon={MdOutlineNightlight}
@@ -422,7 +323,6 @@ const SleepSchedule: React.FC<SleepScheduleProps> = ({
           onToggleCompletion={toggleNapCompletion}
           onRemoveSchedule={handleRemoveNapSchedule}
           onSaveSchedule={handleSaveNapSchedule}
-          // REMOVED: showToast prop is no longer needed, RoutineSectionCard gets it directly
           newInputLabelPlaceholder="e.g., Afternoon Power Nap"
           newIconOptions={napIcons}
           iconComponentsMap={IconComponents}

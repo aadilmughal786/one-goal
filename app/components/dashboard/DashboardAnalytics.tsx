@@ -2,35 +2,33 @@
 'use client';
 
 import Charts from '@/components/dashboard/Charts';
-import { AppState } from '@/types'; // Import Goal type
-import Link from 'next/link'; // For linking to dashboard main
+import { AppState } from '@/types';
+import Link from 'next/link';
 import React, { useMemo } from 'react';
 import { FiBarChart2 } from 'react-icons/fi';
-// Import useNotificationStore if needed in the future for toasts from this component
-// import { useNotificationStore } from '@/store/useNotificationStore';
+
+// NEW: Import the common NoActiveGoalMessage component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 interface DashboardAnalyticsProps {
   appState: AppState | null;
-  // Removed currentUser, showMessage, onAppStateUpdate as they are not directly used here.
-  // showToast is implicitly handled by the parent passing it to Charts if Charts needs it,
-  // but this component itself does not directly show toasts.
 }
 
 const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ appState }) => {
-  // If this component needed to show a toast directly, it would be:
-  // const showToast = useNotificationStore(state => state.showToast);
-
-  // Get the currently active goal from appState
   const activeGoal = useMemo(() => {
     if (!appState?.activeGoalId || !appState.goals) return null;
     return appState.goals[appState.activeGoalId];
   }, [appState]);
 
-  // Extract daily progress data as an array for the Charts component
   const dailyProgressArray = activeGoal ? Object.values(activeGoal.dailyProgress) : [];
 
-  // Render a message if no active goal or no daily progress data is available for analysis.
-  if (!activeGoal || dailyProgressArray.length === 0) {
+  // FIX: Use the common NoActiveGoalMessage component for consistency.
+  if (!activeGoal) {
+    return <NoActiveGoalMessage />;
+  }
+
+  // Display a different message if there is a goal but no data to analyze yet.
+  if (dailyProgressArray.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center p-10 h-full text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
         <FiBarChart2 className="mx-auto mb-6 w-20 h-20 text-white/70" />
@@ -57,7 +55,6 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ appState }) => 
           Analyze trends in your effort and satisfaction to understand what works best for you.
         </p>
       </div>
-      {/* Render Charts component, passing the filtered daily progress and the active goal */}
       <Charts dailyProgress={dailyProgressArray} goal={activeGoal} />
     </section>
   );

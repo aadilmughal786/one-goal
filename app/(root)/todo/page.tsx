@@ -1,24 +1,20 @@
 // app/(root)/todo/page.tsx
 'use client';
 
-import { User } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { FiList } from 'react-icons/fi';
 import { MdStickyNote2, MdWarning } from 'react-icons/md';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-import TodoEditModal from '@/components/todo/TodoEditModal';
-import { AppState, DistractionItem, TodoItem } from '@/types';
-
-import { onAuthChange } from '@/services/authService';
-
-import { useGoalStore } from '@/store/useGoalStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
-
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import DistractionList from '@/components/todo/DistractionList';
 import StickyNotes from '@/components/todo/StickyNotes';
+import TodoEditModal from '@/components/todo/TodoEditModal';
 import TodoList from '@/components/todo/TodoList';
+import { useAuth } from '@/hooks/useAuth';
+import { useGoalStore } from '@/store/useGoalStore';
+import { TodoItem } from '@/types';
 
 interface TabItem {
   id: string;
@@ -39,150 +35,42 @@ const tabItems: TabItem[] = [
   { id: 'notes', label: 'Sticky Notes', icon: <MdStickyNote2 size={18} />, component: StickyNotes },
 ];
 
-const TodoPageSkeletonLoader = () => (
-  <div className="space-y-8 animate-pulse">
-    <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
-      <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
-      <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
-      <div className="space-y-3">
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-      </div>
-    </div>
-  </div>
-);
-
 const TodoPageContent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isLoading } = useAuth();
+  const appState = useGoalStore(state => state.appState);
+  const updateTodo = useGoalStore(state => state.updateTodo);
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [appState, setAppState] = useState<AppState | null>(null);
-  // NEW: isTabContentLoading for when switching between internal tabs.
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const showToast = useNotificationStore(state => state.showToast);
-
-  const activeGoalId = useGoalStore(state => state.appState?.activeGoalId);
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
-  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
-  const addTodoAction = useGoalStore(state => state.addTodo);
-  const updateTodoAction = useGoalStore(state => state.updateTodo);
-  const deleteTodoAction = useGoalStore(state => state.deleteTodo);
-  const reorderTodosAction = useGoalStore(state => state.reorderTodos);
-  const addDistractionAction = useGoalStore(state => state.addDistraction);
-  const updateDistractionAction = useGoalStore(state => state.updateDistraction);
-  const deleteDistractionAction = useGoalStore(state => state.deleteDistraction);
-
-  const [activeTab, setActiveTab] = useState('todo');
+  const [activeTab, setActiveTabInternal] = useState(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabItems.find(item => item.id === tabFromUrl)?.id || 'todo';
+  });
   const [isTodoEditModalOpen, setIsTodoEditModalOpen] = useState(false);
   const [selectedTodoForEdit, setSelectedTodoForEdit] = useState<TodoItem | null>(null);
-  const [isAddingTodo, setIsAddingTodo] = useState(false);
-  const [isAddingDistraction, setIsAddingDistraction] = useState(false);
 
-  // Effect for initial page load and authentication
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+
+  // RE-ADD: Effect to show skeleton on tab switch for a smooth transition.
   useEffect(() => {
-    const unsubscribe = onAuthChange(async user => {
-      if (user) {
-        setCurrentUser(user);
-        await fetchInitialData(user);
-        setAppState(useGoalStore.getState().appState);
-        setIsLoading(false); // Once initial data is fetched, set main loading to false
-      } else {
-        router.replace('/login');
-      }
-    });
-
-    const initialLoadTimeout = setTimeout(() => {
-      if (isLoading && currentUser === undefined && appState === undefined) {
-        setIsLoading(false); // Fallback for very slow/failed initial auth
-      }
-    }, 2000); // Increased timeout for robustness
-
-    return () => {
-      unsubscribe();
-      clearTimeout(initialLoadTimeout);
-    };
-  }, [router, fetchInitialData, isLoading, currentUser, appState]); // Added dependencies
-
-  // Effect to manage 'isTabContentLoading' when the activeTab changes
-  useEffect(() => {
-    // Only trigger this effect if the main page has finished its initial loading
     if (!isLoading) {
-      setIsTabContentLoading(true); // Immediately set loading to true for the new tab content
+      setIsTabContentLoading(true);
       const timer = setTimeout(() => {
-        setIsTabContentLoading(false); // Reset loading state after a short delay
-      }, 300); // Simulate a brief loading period (adjust as needed)
-
-      return () => clearTimeout(timer); // Cleanup timer on unmount or tab change
+        setIsTabContentLoading(false);
+      }, 300); // 300ms delay for the transition
+      return () => clearTimeout(timer);
     }
-  }, [activeTab, isLoading]); // Trigger when activeTab changes, but only if main isLoading is false
+  }, [activeTab, isLoading]);
 
-  const handleAddTodo = useCallback(
-    async (text: string) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Please select an active goal to add tasks.', 'error');
-        return;
-      }
-      setIsAddingTodo(true);
-      try {
-        await addTodoAction(text);
-        showToast('Task added successfully!', 'success');
-      } catch {
-        showToast('Failed to add task.', 'error');
-      } finally {
-        setIsAddingTodo(false);
-      }
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTabInternal(tabId);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('tab', tabId);
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
-    [currentUser, activeGoalId, showToast, addTodoAction]
-  );
-
-  const handleUpdateTodo = useCallback(
-    async (id: string, updates: Partial<TodoItem>) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Authentication or active goal required to update tasks.', 'error');
-        return;
-      }
-      try {
-        await updateTodoAction(id, updates);
-        showToast('Task updated!', 'success');
-      } catch {
-        showToast('Failed to update task.', 'error');
-      }
-    },
-    [currentUser, activeGoalId, showToast, updateTodoAction]
-  );
-
-  const handleDeleteTodo = useCallback(
-    async (id: string) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Authentication or active goal required to delete tasks.', 'error');
-        return;
-      }
-      try {
-        await deleteTodoAction(id);
-        showToast('Task deleted.', 'info');
-      } catch {
-        showToast('Failed to delete task.', 'error');
-      }
-    },
-    [currentUser, activeGoalId, showToast, deleteTodoAction]
-  );
-
-  const handleReorderTodos = useCallback(
-    async (reorderedList: TodoItem[]) => {
-      if (!currentUser || !activeGoalId) return;
-      try {
-        await reorderTodosAction(reorderedList);
-        showToast('Tasks reordered!', 'success');
-      } catch {
-        showToast('Failed to reorder tasks.', 'error');
-      }
-    },
-    [currentUser, activeGoalId, showToast, reorderTodosAction]
+    [router, searchParams]
   );
 
   const handleOpenTodoEditModal = useCallback((todo: TodoItem) => {
@@ -190,73 +78,17 @@ const TodoPageContent = () => {
     setIsTodoEditModalOpen(true);
   }, []);
 
-  const handleAddDistraction = useCallback(
-    async (title: string) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Please select an active goal to add distractions.', 'error');
-        return;
-      }
-      setIsAddingDistraction(true);
-      try {
-        await addDistractionAction(title);
-        showToast('Distraction added!', 'success');
-      } catch {
-        showToast('Failed to add distraction.', 'error');
-      } finally {
-        setIsAddingDistraction(false);
-      }
+  const handleSaveTodoUpdates = useCallback(
+    async (id: string, updates: Partial<TodoItem>) => {
+      await updateTodo(id, updates);
     },
-    [currentUser, activeGoalId, showToast, addDistractionAction]
+    [updateTodo]
   );
-
-  const handleUpdateDistraction = useCallback(
-    async (id: string, updates: Partial<DistractionItem>) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Authentication or active goal required to update distractions.', 'error');
-        return;
-      }
-      try {
-        await updateDistractionAction(id, updates);
-        showToast('Distraction updated!', 'success');
-      } catch {
-        showToast('Failed to update distraction.', 'error');
-      }
-    },
-    [currentUser, activeGoalId, showToast, updateDistractionAction]
-  );
-
-  const handleDeleteDistraction = useCallback(
-    async (id: string) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('Authentication or active goal required to delete distractions.', 'error');
-        return;
-      }
-      try {
-        await deleteDistractionAction(id);
-        showToast('Distraction deleted.', 'info');
-      } catch {
-        showToast('Failed to delete distraction.', 'error');
-      }
-    },
-    [currentUser, activeGoalId, showToast, deleteDistractionAction]
-  );
-
-  const toDoList = useMemo(
-    () => (activeGoal?.toDoList || []).sort((a, b) => a.order - b.order),
-    [activeGoal?.toDoList]
-  );
-  const notToDoList = useMemo(() => activeGoal?.notToDoList || [], [activeGoal?.notToDoList]);
-  const stickyNotes = useMemo(() => activeGoal?.stickyNotes || [], [activeGoal?.stickyNotes]);
 
   const renderActiveTabContent = () => {
-    // Show initial full page loader (for the entire page content)
-    if (isLoading) {
-      return <TodoPageSkeletonLoader />;
-    }
-
-    // Show tab content loader ONLY when switching tabs (after initial page load)
-    if (isTabContentLoading) {
-      return <TodoPageSkeletonLoader />;
+    // FIX: Show skeleton if initial load is happening OR if tab content is loading.
+    if (isLoading || isTabContentLoading) {
+      return <PageContentSkeleton />;
     }
 
     if (!activeGoal) {
@@ -266,47 +98,10 @@ const TodoPageContent = () => {
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
 
     if (ActiveComponent) {
-      const commonProps = {
-        currentUser,
-        appState,
-      };
-
-      switch (activeTab) {
-        case 'todo':
-          return (
-            <TodoList
-              {...commonProps}
-              toDoList={toDoList}
-              onAddTodo={handleAddTodo}
-              onUpdateTodo={handleUpdateTodo}
-              onDeleteTodo={handleDeleteTodo}
-              onReorderTodos={handleReorderTodos}
-              onEditTodo={handleOpenTodoEditModal}
-              isAdding={isAddingTodo}
-            />
-          );
-        case 'distractions':
-          return (
-            <DistractionList
-              {...commonProps}
-              list={notToDoList}
-              addToList={handleAddDistraction}
-              removeFromList={handleDeleteDistraction}
-              updateItem={handleUpdateDistraction}
-              placeholder="Add a distraction"
-              editingItemId={null}
-              setEditingItemId={() => {}}
-              editText={''}
-              setEditText={() => {}}
-              isAdding={isAddingDistraction}
-              isUpdatingId={null}
-            />
-          );
-        case 'notes':
-          return <StickyNotes {...commonProps} stickyNotes={stickyNotes} />;
-        default:
-          return null;
+      if (activeTab === 'todo') {
+        return <TodoList onEditTodo={handleOpenTodoEditModal} />;
       }
+      return <ActiveComponent />;
     }
     return null;
   };
@@ -315,10 +110,9 @@ const TodoPageContent = () => {
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex space-x-2">
-          {/* Tabs: Apply skeleton loader only during initial page load (isLoading) */}
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
-                <div key={i} className="px-4 py-4 animate-pulse">
+                <div key={i} className="px-4 py-3 animate-pulse">
                   <div className="w-24 h-6 rounded-md bg-white/10"></div>
                 </div>
               ))
@@ -327,7 +121,7 @@ const TodoPageContent = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
                     ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
                     aria-label={`Switch to ${item.label} tab`}
@@ -347,7 +141,7 @@ const TodoPageContent = () => {
         isOpen={isTodoEditModalOpen}
         onClose={() => setIsTodoEditModalOpen(false)}
         todoItem={selectedTodoForEdit}
-        onSave={handleUpdateTodo}
+        onSave={handleSaveTodoUpdates}
       />
     </main>
   );
@@ -355,7 +149,13 @@ const TodoPageContent = () => {
 
 export default function TodoPage() {
   return (
-    <Suspense fallback={<TodoPageSkeletonLoader />}>
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen text-white/70">
+          <div className="animate-pulse">Loading Tasks...</div>
+        </div>
+      }
+    >
       <TodoPageContent />
     </Suspense>
   );

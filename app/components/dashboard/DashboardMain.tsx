@@ -3,12 +3,10 @@
 
 import { DailyProgress } from '@/types';
 import { format } from 'date-fns';
-import Link from 'next/link';
 import React, { useMemo } from 'react';
-import { FiTarget } from 'react-icons/fi';
-import { MdRocketLaunch } from 'react-icons/md';
 
-// Import the global store to get data directly
+// REFACTOR: Import the common 'No Active Goal' component
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { useGoalStore } from '@/store/useGoalStore';
 
 import CountdownCard from '@/components/dashboard/CountdownCard';
@@ -16,7 +14,6 @@ import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import RoutineTimeline from '@/components/dashboard/RoutineTimeline';
 
-// The props are simplified as this component now fetches its own data.
 interface DashboardMainProps {
   isDailyProgressModalOpen: boolean;
   selectedDate: Date | null;
@@ -32,7 +29,6 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
   handleSaveProgress,
   setIsDailyProgressModalOpen,
 }) => {
-  // Get appState directly from the Zustand store.
   const appState = useGoalStore(state => state.appState);
 
   const activeGoal = useMemo(() => {
@@ -46,27 +42,9 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
       : null;
   }, [selectedDate, activeGoal]);
 
+  // FIX: Use the common NoActiveGoalMessage component for consistency.
   if (!activeGoal) {
-    return (
-      <div className="space-y-12">
-        <section>
-          <div className="p-10 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
-            <MdRocketLaunch className="mx-auto mb-6 w-20 h-20 text-white/70" />
-            <h2 className="mb-4 text-3xl font-bold text-white">Start Your Journey</h2>
-            <p className="mx-auto mb-8 max-w-2xl text-lg text-white/70">
-              Define your primary objective by heading over to the Goals page.
-            </p>
-            <Link
-              href="/goal" // Link directly to the goal management page
-              className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105"
-            >
-              <FiTarget size={20} />
-              Go to Goals
-            </Link>
-          </div>
-        </section>
-      </div>
-    );
+    return <NoActiveGoalMessage />;
   }
 
   return (

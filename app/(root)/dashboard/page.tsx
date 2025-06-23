@@ -3,15 +3,17 @@
 
 import { format } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
 import { FiBarChart2, FiFeather, FiGrid } from 'react-icons/fi';
 
-import { onAuthChange } from '@/services/authService';
+import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { DailyProgress } from '@/types';
+import { AppState, DailyProgress } from '@/types';
 
+// REFACTOR: Import the new common skeleton component
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import DashboardMain from '@/components/dashboard/DashboardMain';
@@ -39,20 +41,6 @@ const tabItems: TabItem[] = [
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
 ];
 
-const PageMainContentSkeletonLoader = () => (
-  <div className="space-y-8 animate-pulse">
-    <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
-      <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
-      <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
-      <div className="space-y-3">
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-      </div>
-    </div>
-  </div>
-);
-
 const PageSkeletonLoader = () => (
   <div className="flex justify-center items-center h-screen text-white/70">
     <div className="animate-pulse">Loading Dashboard...</div>
@@ -63,11 +51,9 @@ const ConsolidatedDashboardPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const { isLoading } = useAuth();
   const appState = useGoalStore(state => state.appState);
-  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
-  const isLoading = useGoalStore(state => state.isLoading);
   const saveDailyProgressAction = useGoalStore(state => state.saveDailyProgress);
-
   const showToast = useNotificationStore(state => state.showToast);
 
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
@@ -78,17 +64,6 @@ const ConsolidatedDashboardPageContent = () => {
     const tabFromUrl = searchParams.get('tab');
     return tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
   });
-
-  useEffect(() => {
-    const unsubscribe = onAuthChange(async user => {
-      if (user) {
-        await fetchInitialData(user);
-      } else {
-        router.replace('/login');
-      }
-    });
-    return () => unsubscribe();
-  }, [router, fetchInitialData]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -122,7 +97,7 @@ const ConsolidatedDashboardPageContent = () => {
 
   const handleSaveProgress = useCallback(
     async (progressData: Partial<DailyProgress>) => {
-      const { currentUser } = useGoalStore.getState(); // Get fresh state inside callback
+      const { currentUser } = useGoalStore.getState();
       if (!currentUser) {
         showToast('Authentication required to save progress.', 'error');
         return;
@@ -139,7 +114,7 @@ const ConsolidatedDashboardPageContent = () => {
         console.error(error);
       }
     },
-    [saveDailyProgressAction, showToast] // Dependencies are now stable
+    [saveDailyProgressAction, showToast]
   );
 
   const initialProgress = useMemo(() => {
@@ -150,7 +125,8 @@ const ConsolidatedDashboardPageContent = () => {
 
   const renderActiveTabContent = () => {
     if (isLoading || isTabContentLoading) {
-      return <PageMainContentSkeletonLoader />;
+      // REFACTOR: Use the common skeleton component.
+      return <PageContentSkeleton />;
     }
 
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
@@ -163,7 +139,20 @@ const ConsolidatedDashboardPageContent = () => {
         handleSaveProgress,
         setIsDailyProgressModalOpen,
       };
-      return <ActiveComponent {...commonProps} />;
+
+      const componentProps = {
+        ...commonProps,
+        ...(ActiveComponent.name === 'DashboardMain' && { appState }),
+        ...(ActiveComponent.name === 'DashboardAnalytics' && { appState }),
+        ...(ActiveComponent.name === 'DashboardQuotes' && {
+          currentUser: useGoalStore.getState().currentUser,
+          appState,
+          onAppStateUpdate: (newAppState: AppState) =>
+            useGoalStore.setState({ appState: newAppState }),
+        }),
+      };
+
+      return <ActiveComponent {...componentProps} />;
     }
     return <DashboardMain {...({} as DashboardTabProps)} />;
   };
@@ -174,7 +163,8 @@ const ConsolidatedDashboardPageContent = () => {
         <div className="flex space-x-2">
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
-                <div key={i} className="px-4 py-4 animate-pulse">
+                // FIX: Changed padding from py-4 to py-3 to match the real tabs
+                <div key={i} className="px-4 py-3 animate-pulse">
                   <div className="w-24 h-6 rounded-md bg-white/10"></div>
                 </div>
               ))

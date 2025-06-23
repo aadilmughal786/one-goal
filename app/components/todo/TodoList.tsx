@@ -2,36 +2,28 @@
 'use client';
 
 import { TodoItem } from '@/types';
-import { formatDate, formatRelativeTime, formatTime } from '@/utils/dateUtils'; // Import from our new utility file
+import { formatDate, formatRelativeTime, formatTime } from '@/utils/dateUtils';
 import { Timestamp } from 'firebase/firestore';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiClock, FiEdit, FiLoader, FiPlus, FiTrash2 } from 'react-icons/fi';
-// NEW: Import useNotificationStore to use showToast and showConfirmation
+
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// --- PROPS INTERFACE ---
+// --- REFACTOR: The props interface is simplified. ---
+// It only needs a callback to open the edit modal, as that's a UI concern managed by the parent page.
 interface TodoListProps {
-  toDoList: TodoItem[];
-  onAddTodo: (text: string) => Promise<void>;
-  onUpdateTodo: (id: string, updates: Partial<TodoItem>) => Promise<void>;
-  /** This prop now accepts either a sync or async function for more flexibility. */
-  onDeleteTodo: (id: string) => void | Promise<void>;
-  onReorderTodos: (reorderedList: TodoItem[]) => Promise<void>;
   onEditTodo: (item: TodoItem) => void;
-  // REMOVED: showToast prop is no longer needed
-  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
-  isAdding: boolean;
 }
 
 // --- SUB-COMPONENT FOR A SINGLE TODO ITEM ---
-// By breaking this out, the main TodoList component becomes much cleaner.
 const TodoListItem: React.FC<{
   item: TodoItem;
   index: number;
   updatingTodoId: string | null;
   onToggleComplete: (id: string, completed: boolean) => void;
   onEditTodo: (item: TodoItem) => void;
-  /** The prop type is updated here to match the parent's flexible type. */
   onDeleteTodo: (id: string) => void | Promise<void>;
   onDragStart: (e: React.DragEvent<HTMLLIElement>, index: number) => void;
   onDragEnter: (e: React.DragEvent<HTMLLIElement>, index: number) => void;
@@ -49,9 +41,7 @@ const TodoListItem: React.FC<{
   onDragEnd,
   onDrop,
 }) => {
-  // NEW: Access showConfirmation from the global notification store (for delete)
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
-
   const now = new Date();
   const createdAtDate = item.createdAt.toDate();
   const deadlineDate = item.deadline?.toDate();
@@ -100,11 +90,9 @@ const TodoListItem: React.FC<{
             <FiClock size={10} /> Created: {formatDate(item.createdAt)}
           </span>
         </div>
-
         {item.description && item.description.trim() !== '' && (
           <p className="mb-2 text-sm italic text-white/80">{item.description}</p>
         )}
-
         {item.deadline && !item.completed && (
           <>
             <div className="flex justify-between items-center mb-2 text-sm text-white/70">
@@ -127,7 +115,6 @@ const TodoListItem: React.FC<{
           </>
         )}
       </div>
-
       <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
         <div className="flex items-center">
           <label className={`flex items-center group ${isUpdating ? '' : 'cursor-pointer'}`}>
@@ -161,7 +148,7 @@ const TodoListItem: React.FC<{
             <FiEdit />
           </button>
           <button
-            onClick={handleDeleteClick} // Use the new handleDeleteClick
+            onClick={handleDeleteClick}
             className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
             aria-label="Delete item"
           >
@@ -174,23 +161,29 @@ const TodoListItem: React.FC<{
 };
 
 // --- MAIN TODO LIST COMPONENT ---
-const TodoList: React.FC<TodoListProps> = ({
-  toDoList,
-  onAddTodo,
-  onUpdateTodo,
-  onDeleteTodo,
-  onReorderTodos,
-  onEditTodo,
-  // REMOVED: showToast from destructuring
-  isAdding,
-}) => {
-  // NEW: Access showToast from the global notification store
+const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
+  // --- REFACTOR: Get data and actions from stores ---
+  const { appState, addTodo, updateTodo, deleteTodo, reorderTodos } = useGoalStore(state => ({
+    appState: state.appState,
+    addTodo: state.addTodo,
+    updateTodo: state.updateTodo,
+    deleteTodo: state.deleteTodo,
+    reorderTodos: state.reorderTodos,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+  const toDoList = React.useMemo(
+    () => (activeGoal?.toDoList || []).sort((a, b) => a.order - b.order),
+    [activeGoal?.toDoList]
+  );
+
+  // --- Local UI State ---
   const [newTodoText, setNewTodoText] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
   const [updatingTodoId, setUpdatingTodoId] = useState<string | null>(null);
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
+  const dragItem = React.useRef<number | null>(null);
+  const dragOverItem = React.useRef<number | null>(null);
 
   const handleDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
     dragItem.current = index;
@@ -218,7 +211,7 @@ const TodoList: React.FC<TodoListProps> = ({
     newTodoList.splice(dragOverItem.current, 0, draggedItem);
 
     const reorderedList = newTodoList.map((item, index) => ({ ...item, order: index }));
-    await onReorderTodos(reorderedList);
+    await reorderTodos(reorderedList);
 
     dragItem.current = null;
     dragOverItem.current = null;
@@ -226,20 +219,19 @@ const TodoList: React.FC<TodoListProps> = ({
 
   const handleAddTodoLocal = async () => {
     if (!newTodoText.trim()) {
-      showToast('Task cannot be empty.', 'error'); // Use global showToast
+      showToast('Task cannot be empty.', 'error');
       return;
     }
-    await onAddTodo(newTodoText.trim());
+    setIsAdding(true);
+    await addTodo(newTodoText.trim());
     setNewTodoText('');
+    setIsAdding(false);
   };
 
   const handleToggleComplete = async (id: string, completed: boolean) => {
     setUpdatingTodoId(id);
-    try {
-      await onUpdateTodo(id, { completed, completedAt: completed ? Timestamp.now() : null });
-    } finally {
-      setUpdatingTodoId(null);
-    }
+    await updateTodo(id, { completed, completedAt: completed ? Timestamp.now() : null });
+    setUpdatingTodoId(null);
   };
 
   return (
@@ -256,7 +248,7 @@ const TodoList: React.FC<TodoListProps> = ({
         />
         <button
           onClick={handleAddTodoLocal}
-          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 5 disabled:opacity-60"
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
           disabled={isAdding}
         >
           {isAdding ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiPlus />}
@@ -280,7 +272,7 @@ const TodoList: React.FC<TodoListProps> = ({
               updatingTodoId={updatingTodoId}
               onToggleComplete={handleToggleComplete}
               onEditTodo={onEditTodo}
-              onDeleteTodo={onDeleteTodo} // This prop is still needed for the action itself
+              onDeleteTodo={deleteTodo}
               onDragStart={handleDragStart}
               onDragEnter={handleDragEnter}
               onDragEnd={handleDragEnd}

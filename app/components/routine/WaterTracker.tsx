@@ -1,92 +1,65 @@
 // app/components/routine/WaterTracker.tsx
 'use client';
 
-import { AppState, RoutineType, WaterRoutineSettings } from '@/types';
-import { User } from 'firebase/auth';
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
+import RoutineCalendar from '@/components/routine/RoutineCalendar';
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { RoutineType, WaterRoutineSettings } from '@/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import { MdAdd, MdOutlineWaterDrop, MdRemove } from 'react-icons/md';
-
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
-import { updateRoutineSettings } from '@/services/routineService';
-// NEW: Import useNotificationStore to use showToast
-import { useNotificationStore } from '@/store/useNotificationStore';
-
-// Import the reusable calendar
-import RoutineCalendar from '@/components/routine/RoutineCalendar';
-import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
-
-interface WaterTrackerProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
-  onAppStateUpdate: (newAppState: AppState) => void;
-}
 
 /**
  * WaterTracker Component
  *
  * Manages the user's daily water intake goal and tracks current consumption.
- * This component has been refactored to use the new dedicated services.
+ * This component has been refactored to use the new dedicated services and global store.
  */
-const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, onAppStateUpdate }) => {
-  const activeGoalId = appState?.activeGoalId;
-
-  // NEW: Access showToast from the global notification store
+const WaterTracker: React.FC = () => {
+  // --- REFACTOR: Get all necessary state and actions from the stores ---
+  const { appState, updateRoutineSettings } = useGoalStore(state => ({
+    currentUser: state.currentUser,
+    appState: state.appState,
+    updateRoutineSettings: state.updateRoutineSettings,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoalWaterSettings = appState?.goals[activeGoalId || '']?.routineSettings?.water;
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
 
-  const [waterGoal, setWaterGoal] = useState(activeGoalWaterSettings?.goal ?? 8);
-  const [currentWater, setCurrentWater] = useState(activeGoalWaterSettings?.current ?? 0);
+  const [waterGoal, setWaterGoal] = useState(8);
+  const [currentWater, setCurrentWater] = useState(0);
 
   useEffect(() => {
-    if (activeGoalId && appState?.goals[activeGoalId]?.routineSettings?.water) {
-      const newSettings = appState.goals[activeGoalId].routineSettings.water;
-      setWaterGoal(newSettings.goal);
-      setCurrentWater(newSettings.current);
-    } else {
-      setWaterGoal(8);
-      setCurrentWater(0);
-    }
-  }, [appState, activeGoalId]);
+    // Update local state when the global store changes
+    const settings = activeGoal?.routineSettings?.water;
+    setWaterGoal(settings?.goal ?? 8);
+    setCurrentWater(settings?.current ?? 0);
+  }, [activeGoal]);
 
   /**
-   * Debounced function to save water settings to Firebase.
-   * This is wrapped in useCallback to memoize the function.
+   * Debounced function to save water settings to Firestore.
    */
   const saveWaterSettings = useCallback(async () => {
-    if (!currentUser || !activeGoalId || !appState) {
-      console.warn('Attempted to save water settings without user or active goal.');
-      return;
-    }
-
-    const currentSettings = appState.goals[activeGoalId]?.routineSettings;
-    if (!currentSettings) {
-      showToast('Could not find routine settings for the active goal.', 'error'); // Use global showToast
-      return;
-    }
+    if (!activeGoal) return;
 
     const newWaterSettings: WaterRoutineSettings = {
       goal: waterGoal,
       current: currentWater,
     };
 
-    const newSettings = { ...currentSettings, water: newWaterSettings };
+    const newSettings = { ...activeGoal.routineSettings, water: newWaterSettings };
 
     try {
-      // Use the generic routine service to update the settings object.
-      await updateRoutineSettings(currentUser.uid, activeGoalId, newSettings);
-      // Optional: A success message can be shown, but it's often omitted for debounced
-      // saves to avoid spamming the user with notifications.
+      await updateRoutineSettings(newSettings);
+      // Success toast is omitted for debounced saves to avoid spamming the user.
     } catch (error) {
       console.error('Failed to save water settings:', error);
-      showToast('Failed to save water settings.', 'error'); // Use global showToast
+      showToast('Failed to save water settings.', 'error');
     }
-  }, [currentUser, activeGoalId, waterGoal, currentWater, showToast, appState]); // Dependency on global showToast
+  }, [activeGoal, waterGoal, currentWater, showToast, updateRoutineSettings]);
 
   // Effect to trigger `saveWaterSettings` with a debounce.
-  // This saves data automatically 1 second after the user stops making changes.
   useEffect(() => {
     const handler = setTimeout(() => {
       saveWaterSettings();
@@ -100,13 +73,13 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, onAp
   const handleWaterChange = (increment: number) => {
     setCurrentWater(prev => {
       const newValue = prev + increment;
-      if (newValue < 0) return 0; // Prevent negative consumption
-      if (newValue > waterGoal + 10) return waterGoal + 10; // Cap at a reasonable limit
+      if (newValue < 0) return 0;
+      if (newValue > waterGoal + 10) return waterGoal + 10;
       return newValue;
     });
   };
 
-  if (!activeGoalId || !appState?.goals[activeGoalId]) {
+  if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
 
@@ -187,9 +160,6 @@ const WaterTracker: React.FC<WaterTrackerProps> = ({ currentUser, appState, onAp
       </div>
 
       <RoutineCalendar
-        appState={appState}
-        currentUser={currentUser}
-        onAppStateUpdate={onAppStateUpdate}
         routineType={RoutineType.WATER}
         title="Water Intake Log"
         icon={MdOutlineWaterDrop}

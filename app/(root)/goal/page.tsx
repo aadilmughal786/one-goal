@@ -1,12 +1,11 @@
 // app/(root)/goal/page.tsx
 'use client';
 
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp
-import { useRouter } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Timestamp } from 'firebase/firestore';
+import { Suspense, useCallback, useMemo, useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
-import { onAuthChange } from '@/services/authService';
+import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal, GoalStatus } from '@/types';
@@ -31,39 +30,21 @@ const GoalPageSkeletonLoader = () => (
 );
 
 const GoalPageContent = () => {
-  const router = useRouter();
+  const { isLoading } = useAuth();
 
-  // FIX: Destructure state and actions from the store using individual selectors
-  // This prevents re-renders from creating new objects in the selector.
-  const currentUser = useGoalStore(state => state.currentUser);
-  const isLoading = useGoalStore(state => state.isLoading);
-  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+  // FIX: Select actions individually to prevent infinite loops.
   const createGoal = useGoalStore(state => state.createGoal);
   const updateGoal = useGoalStore(state => state.updateGoal);
-
   const showToast = useNotificationStore(state => state.showToast);
 
-  // Modal states are local UI concerns
+  // Local UI State
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [selectedGoalForModal, setSelectedGoalForModal] = useState<Goal | null>(null);
   const [isGoalModalEditMode, setIsGoalModalEditMode] = useState(false);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedGoalForSummary, setSelectedGoalForSummary] = useState<Goal | null>(null);
-
-  // Search and filter states are also local UI concerns
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
-
-  useEffect(() => {
-    const unsubscribe = onAuthChange(user => {
-      if (user) {
-        fetchInitialData(user);
-      } else {
-        router.replace('/login');
-      }
-    });
-    return () => unsubscribe();
-  }, [router, fetchInitialData]);
 
   const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
     setSelectedGoalForModal(goal);
@@ -73,7 +54,6 @@ const GoalPageContent = () => {
 
   const handleSetGoal = useCallback(
     async (name: string, endDate: Date, description: string) => {
-      if (!currentUser) return;
       try {
         if (isGoalModalEditMode && selectedGoalForModal) {
           const updates = { name, description, endDate: Timestamp.fromDate(endDate) };
@@ -88,7 +68,7 @@ const GoalPageContent = () => {
         showToast('Failed to save goal.', 'error');
       }
     },
-    [currentUser, isGoalModalEditMode, selectedGoalForModal, createGoal, updateGoal, showToast]
+    [isGoalModalEditMode, selectedGoalForModal, createGoal, updateGoal, showToast]
   );
 
   const handleOpenSummaryModal = useCallback((goal: Goal) => {
@@ -131,8 +111,6 @@ const GoalPageContent = () => {
       </main>
     );
   }
-
-  if (!currentUser) return null;
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">

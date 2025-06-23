@@ -59,7 +59,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
 
   const menuItems = [
     { href: '/profile', label: 'Settings', icon: <FiSettings /> },
-    { href: '/about', label: 'About App', icon: <LuBadgeInfo /> },
+    { href: '/', label: 'About App', icon: <LuBadgeInfo /> },
     {
       href: 'https://github.com/aadilmughal786/one-goal',
       label: 'GitHub',

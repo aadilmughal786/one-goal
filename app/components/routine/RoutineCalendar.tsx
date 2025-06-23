@@ -1,9 +1,7 @@
 // app/components/routine/RoutineCalendar.tsx
 'use client';
 
-import { AppState, DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
-// --- REFLECTING THE REFACTOR ---
-// We now import the correct, modern ServiceError class.
+import { DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
 import { ServiceError } from '@/utils/errors';
 import {
   addMonths,
@@ -17,22 +15,15 @@ import {
   startOfMonth,
   subMonths,
 } from 'date-fns';
-import { User } from 'firebase/auth';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiCheckCircle, FiChevronLeft, FiChevronRight, FiLoader, FiXCircle } from 'react-icons/fi';
 
-// We import specific functions from our new, focused service modules.
-import { getUserData } from '@/services/goalService';
-import { saveDailyProgress } from '@/services/routineService';
-// Import useNotificationStore to use showToast
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
+// --- REFACTOR: The props interface is simplified. ---
 interface RoutineCalendarProps {
-  appState: AppState | null;
-  currentUser: User | null;
-  // showToast is now handled internally via useNotificationStore or passed from parent (if the parent also uses showToast directly)
-  // Removed showMessage from props as it's being replaced with showToast.
-  onAppStateUpdate: (newAppState: AppState) => void;
   routineType: RoutineType;
   title: string;
   icon: React.ElementType;
@@ -110,17 +101,18 @@ const CustomTooltip = ({
  * This component has been refactored to use the new dedicated services and error types.
  */
 const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
-  appState,
-  currentUser,
-  onAppStateUpdate,
   routineType,
   title,
   icon: IconComponent,
 }) => {
-  // Access showToast from the global notification store
+  // --- REFACTOR: Get all necessary state and actions from the stores ---
+  const { appState, saveDailyProgress } = useGoalStore(state => ({
+    appState: state.appState,
+    saveDailyProgress: state.saveDailyProgress,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoal = appState?.goals[appState.activeGoalId || ''];
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
   const goalStartDate = activeGoal?.startDate?.toDate();
   const goalEndDate = activeGoal?.endDate?.toDate();
 
@@ -176,8 +168,8 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
 
   const handleToggleRoutineStatus = useCallback(
     async (date: Date) => {
-      if (!currentUser || !appState?.activeGoalId) {
-        showToast('You must be logged in and have an active goal to update routines.', 'error');
+      if (!activeGoal) {
+        showToast('Active goal not found.', 'error');
         return;
       }
       if (isFutureDate(date)) {
@@ -187,14 +179,6 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
 
       setIsToggling(true);
       const dateKey = format(date, 'yyyy-MM-dd');
-      const activeGoal = appState.goals[appState.activeGoalId];
-
-      if (!activeGoal) {
-        showToast('Active goal not found.', 'error');
-        setIsToggling(false);
-        return;
-      }
-
       const existingDailyProgress = activeGoal.dailyProgress?.[dateKey];
       const currentStatus = existingDailyProgress?.routines?.[routineType];
 
@@ -218,13 +202,10 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
       };
 
       try {
-        await saveDailyProgress(currentUser.uid, activeGoal.id, updatedProgress);
+        // --- REFACTOR: Use the saveDailyProgress action from the store ---
+        await saveDailyProgress(updatedProgress);
         showToast(`${title} status updated!`, 'success');
-
-        const updatedAppState = await getUserData(currentUser.uid);
-        onAppStateUpdate(updatedAppState);
       } catch (error: unknown) {
-        // Now using the correct, modern ServiceError type
         const errorMessage =
           error instanceof ServiceError ? error.message : 'An unknown error occurred.';
         console.error(`Error updating ${title} status:`, error);
@@ -233,7 +214,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
         setIsToggling(false);
       }
     },
-    [currentUser, appState, isFutureDate, routineType, showToast, title, onAppStateUpdate]
+    [activeGoal, isFutureDate, routineType, showToast, title, saveDailyProgress]
   );
 
   if (!activeGoal) {
@@ -256,7 +237,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           {title}
         </h3>
         <div className="text-lg font-semibold text-center text-white">
-          {format(currentMonth, 'MMMM yyyy')}
+          {format(currentMonth, 'MMMM<y_bin_46>')}
         </div>
         <div className="flex gap-1 sm:gap-2">
           <button

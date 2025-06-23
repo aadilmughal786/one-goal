@@ -2,23 +2,17 @@
 'use client';
 
 import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal';
-import { AppState } from '@/types';
-import { format as formatDate } from 'date-fns';
-import { User } from 'firebase/auth';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useState } from 'react';
-import { FiCalendar, FiDownload, FiEdit, FiMail, FiTrash2, FiUpload } from 'react-icons/fi';
-
-// --- REFLECTING THE REFACTOR ---
-// Import the new specific service functions
-import { onAuthChange, updateUserProfile } from '@/services/authService';
+import { useAuth } from '@/hooks/useAuth';
+import { updateUserProfile } from '@/services/authService';
 import { deserializeAppStateForImport, serializeAppStateForExport } from '@/services/dataService';
-import { getUserData, resetUserData, setUserData } from '@/services/goalService';
-import { serializableAppStateSchema } from '@/utils/schemas';
-
-// Import the Zustand notification store
+import { resetUserData, setUserData } from '@/services/goalService';
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { serializableAppStateSchema } from '@/utils/schemas';
+import { format as formatDate } from 'date-fns';
+import Image from 'next/image';
+import React, { useCallback, useState } from 'react';
+import { FiCalendar, FiDownload, FiEdit, FiMail, FiTrash2, FiUpload } from 'react-icons/fi';
 
 const ProfilePageSkeleton = () => (
   <div className="space-y-8 animate-pulse">
@@ -41,50 +35,24 @@ const ProfilePageSkeleton = () => (
 );
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [appState, setAppState] = useState<AppState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { isLoading } = useAuth();
 
-  // No more local state for confirmation modal or toast messages
-  // Access showToast and showConfirmation from the Zustand store
+  const currentUser = useGoalStore(state => state.currentUser);
+  const appState = useGoalStore(state => state.appState);
+  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+
+  // FIX: Select actions individually to prevent infinite loops.
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  const fetchUserAndData = useCallback(
-    async (user: User) => {
-      try {
-        const userData = await getUserData(user.uid);
-        setAppState(userData);
-      } catch {
-        showToast('Failed to load user data.', 'error'); // Use store's showToast
-      } finally {
-        setLoading(false);
-      }
-    },
-    [showToast] // Dependency on showToast from store
-  );
-
-  useEffect(() => {
-    const unsubscribe = onAuthChange(async user => {
-      if (user) {
-        setCurrentUser(user);
-        fetchUserAndData(user);
-      } else {
-        router.push('/login');
-      }
-    });
-    return () => unsubscribe();
-  }, [router, fetchUserAndData]);
 
   const handleImportData = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file || !currentUser) return;
       if (file.size > 5 * 1024 * 1024) {
-        showToast('File is too large (max 5MB).', 'error'); // Use store's showToast
+        showToast('File is too large (max 5MB).', 'error');
         return;
       }
       event.target.value = '';
@@ -93,43 +61,37 @@ export default function ProfilePage() {
       reader.onload = async e => {
         try {
           const importedRawData = JSON.parse(e.target?.result as string);
-
           const validation = serializableAppStateSchema.safeParse(importedRawData);
           if (!validation.success) {
-            showToast('Import failed. Invalid file format.', 'error'); // Use store's showToast
+            showToast('Import failed. Invalid file format.', 'error');
             return;
           }
-
           const deserializedData = deserializeAppStateForImport(validation.data);
 
-          const performImport = async () => {
-            if (!currentUser) return;
-            // Now calls the dedicated service function to overwrite data
-            await setUserData(currentUser.uid, deserializedData);
-            setAppState(deserializedData);
-            showToast('Data imported successfully! The page will now refresh.', 'success'); // Use store's showToast
-            setTimeout(() => window.location.reload(), 2000);
-          };
-
           showConfirmation({
-            // Use store's showConfirmation
             title: 'Overwrite All Data?',
             message: 'Importing will replace all your current data. This action is irreversible.',
-            action: performImport,
+            action: async () => {
+              if (!currentUser) return;
+              await setUserData(currentUser.uid, deserializedData);
+              await fetchInitialData(currentUser);
+              showToast('Data imported successfully! The page will now refresh.', 'success');
+              setTimeout(() => window.location.reload(), 2000);
+            },
             actionDelayMs: 10000,
           });
         } catch {
-          showToast('Import failed. Please check file format.', 'error'); // Use store's showToast
+          showToast('Import failed. Please check file format.', 'error');
         }
       };
       reader.readAsText(file);
     },
-    [currentUser, showToast, showConfirmation] // Dependencies include store actions
+    [currentUser, showToast, showConfirmation, fetchInitialData]
   );
 
   const handleExportData = useCallback(async () => {
     if (!appState || Object.keys(appState.goals).length === 0) {
-      showToast('No data to export.', 'info'); // Use store's showToast
+      showToast('No data to export.', 'info');
       return;
     }
     try {
@@ -144,51 +106,44 @@ export default function ProfilePage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast('Data exported successfully.', 'success'); // Use store's showToast
+      showToast('Data exported successfully.', 'success');
     } catch (error) {
-      showToast(`Failed to export data: ${(error as Error).message}`, 'error'); // Use store's showToast
+      showToast(`Failed to export data: ${(error as Error).message}`, 'error');
     }
-  }, [appState, showToast]); // Dependency on showToast
+  }, [appState, showToast]);
 
-  // The handleResetData function is now fully implemented.
   const handleResetData = useCallback(() => {
     showConfirmation({
-      // Use store's showConfirmation
       title: 'Reset All Data?',
       message:
         'This will permanently erase all your goals, lists, and progress. This action cannot be undone.',
       action: async () => {
         if (!currentUser) return;
         try {
-          // Calls the new, specific service function.
-          const resetData = await resetUserData(currentUser.uid);
-          setAppState(resetData);
-          showToast('All data has been reset.', 'info'); // Use store's showToast
+          await resetUserData(currentUser.uid);
+          await fetchInitialData(currentUser);
+          showToast('All data has been reset.', 'info');
         } catch {
-          showToast('Failed to reset data. Please try again.', 'error'); // Use store's showToast
+          showToast('Failed to reset data. Please try again.', 'error');
         }
       },
       actionDelayMs: 10000,
     });
-  }, [currentUser, showToast, showConfirmation]); // Dependencies on store actions
+  }, [currentUser, showToast, showConfirmation, fetchInitialData]);
 
   const handleAvatarSelect = async (avatarUrl: string) => {
+    if (!currentUser) return;
     try {
       await updateUserProfile({ photoURL: avatarUrl });
-      setCurrentUser(prevUser => {
-        if (!prevUser) return null;
-        const updatedUser = Object.assign(Object.create(Object.getPrototypeOf(prevUser)), prevUser);
-        updatedUser.photoURL = avatarUrl;
-        return updatedUser;
-      });
-      showToast('Avatar updated successfully!', 'success'); // Use store's showToast
+      showToast('Avatar updated! Refreshing to see changes...', 'success');
       setIsAvatarModalOpen(false);
+      setTimeout(() => window.location.reload(), 1500);
     } catch {
-      showToast('Failed to update avatar. Please try again.', 'error'); // Use store's showToast
+      showToast('Failed to update avatar. Please try again.', 'error');
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <main className="relative px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
         <ProfilePageSkeleton />
@@ -200,8 +155,6 @@ export default function ProfilePage() {
 
   return (
     <main className="relative px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
-      {/* ToastMessage and ConfirmationModal are now rendered globally in RootLayout,
-          so they are removed from here. */}
       <input
         type="file"
         id="import-file-profile"
@@ -209,13 +162,11 @@ export default function ProfilePage() {
         onChange={handleImportData}
         className="hidden"
       />
-
-      {/* User Profile Header Section */}
       <div className="p-8 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
         <div className="flex flex-col gap-6 items-center md:flex-row md:items-start">
           <div className="relative group">
             <Image
-              src={currentUser.photoURL || `https://placehold.co/120x120/1a1a1a/ffffff?text=User`}
+              src={currentUser.photoURL || `https://placehold.co/120x120/1a1a1a/ffffff?text=U`}
               alt="Profile picture"
               width={120}
               height={120}
@@ -291,39 +242,6 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-          <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-2">
-              <span className="text-white/60">User ID</span>
-              <span className="font-mono text-sm text-white/80">{currentUser.uid}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-white/60">Account Created</span>
-              <span className="text-white/80">
-                {currentUser.metadata.creationTime
-                  ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d,yyyy')
-                  : 'Unknown'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-white/60">Last Sign In</span>
-              <span className="text-white/80">
-                {currentUser.metadata.lastSignInTime
-                  ? formatDate(new Date(currentUser.metadata.lastSignInTime), 'MMM d,yyyy')
-                  : 'Unknown'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
-                Email Verified
-              </span>
-              <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
-                {currentUser.emailVerified ? 'Yes' : 'No'}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {isAvatarModalOpen && (
@@ -332,11 +250,9 @@ export default function ProfilePage() {
           onClose={() => setIsAvatarModalOpen(false)}
           onAvatarSelect={handleAvatarSelect}
           currentUser={currentUser}
-          showToast={showToast} // Pass showToast to AvatarSelectionModal if it needs it
+          showToast={showToast}
         />
       )}
-
-      {/* ConfirmationModal is now rendered globally and listens to the store, so it is removed from here */}
     </main>
   );
 }

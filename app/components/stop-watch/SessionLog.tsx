@@ -2,7 +2,7 @@
 'use client';
 
 import { deleteStopwatchSession, updateStopwatchSession } from '@/services/stopwatchService';
-import { useGoalStore } from '@/store/useGoalStore'; // Import useGoalStore
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { AppState, StopwatchSession } from '@/types';
 import {
@@ -33,18 +33,13 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 
+// --- REFACTOR: The props interface is simplified. ---
+// The unused isUpdatingId prop has been removed.
 interface SessionLogProps {
   appState: AppState | null;
-  // This prop is now truly optional and can be removed, as the component manages its own loading state.
-  // It's kept here as a 'null' in the parent call, so it doesn't cause a type error, but it's not used.
-  isUpdatingId: string | null;
 }
 
-export default function SessionLog({
-  appState,
-  // No longer using propIsUpdatingId, as internal state handles this.
-  // isUpdatingId: propIsUpdatingId,
-}: SessionLogProps) {
+export default function SessionLog({ appState }: SessionLogProps) {
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
@@ -60,7 +55,7 @@ export default function SessionLog({
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  // FIXED: Declaring local isUpdatingId state
+  // This local state now correctly manages the loading status for updates.
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
 
   const loggedDays = useMemo(() => {
@@ -156,12 +151,11 @@ export default function SessionLog({
     }
 
     const dateKey = format(selectedDay, 'yyyy-MM-dd');
-    setIsUpdatingId(session.id); // Set local updating state
+    setIsUpdatingId(session.id);
 
     try {
       await updateStopwatchSession(currentUser.uid, activeGoalId, dateKey, session.id, editText);
       showToast('Session label updated!', 'success');
-      // After update, manually trigger a re-fetch of goal data to update the UI
       await useGoalStore.getState().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Error updating session:', error);
@@ -181,18 +175,16 @@ export default function SessionLog({
           'Are you sure you want to permanently delete this logged session? This action cannot be undone.',
         action: async () => {
           if (!currentUser || !activeGoalId || !selectedDay) {
-            console.error('Attempted to delete session without complete info or active goal.');
             showToast('Cannot delete session: Missing information or no active goal.', 'error');
             return;
           }
 
           const dateKey = format(selectedDay, 'yyyy-MM-dd');
-          setIsUpdatingId(sessionId); // Set local updating state for the item
+          setIsUpdatingId(sessionId);
 
           try {
             await deleteStopwatchSession(currentUser.uid, activeGoalId, dateKey, sessionId);
             showToast('Session deleted.', 'info');
-            // After delete, manually trigger a re-fetch of goal data to update the UI
             await useGoalStore.getState().fetchInitialData(currentUser);
           } catch (error) {
             console.error('Error deleting session:', error);
@@ -230,7 +222,6 @@ export default function SessionLog({
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-sm">
-        {/* Calendar Header: Month Navigation */}
         <div className="p-6 border-b border-white/10">
           <div className="flex justify-between items-center">
             <h4 className="text-xl font-bold">{format(currentMonth, 'MMMM')}</h4>
@@ -242,7 +233,7 @@ export default function SessionLog({
               >
                 Today
               </button>
-              <div className="w-px h-5 bg-white/20"></div> {/* Vertical Separator */}
+              <div className="w-px h-5 bg-white/20"></div>
               <div className="flex gap-1 items-center">
                 <button
                   onClick={() => handleMonthChange('prev')}
@@ -265,7 +256,6 @@ export default function SessionLog({
           </div>
         </div>
 
-        {/* Calendar Grid: Day Selection */}
         <div className="p-6 border-b border-white/10">
           <div className="flex flex-wrap gap-2 justify-center">
             {daysInView.length > 0 ? (
@@ -301,7 +291,6 @@ export default function SessionLog({
           </div>
         </div>
 
-        {/* Session List for Selected Day */}
         <div className="min-h-[250px] p-6">
           <h4 className="mb-4 text-xl font-bold text-white/80">
             {selectedDay
@@ -313,7 +302,6 @@ export default function SessionLog({
               <ul className="space-y-3">
                 {selectedDaySessions.map(session => {
                   const isEditing = editingSessionId === session.id;
-                  // Use the local isUpdatingId state
                   const isCurrentlySaving = isUpdatingId === session.id;
                   return (
                     <li
@@ -388,7 +376,6 @@ export default function SessionLog({
             ))}
         </div>
 
-        {/* Footer: Goal Dates and Daily Total */}
         <div className="flex flex-col gap-4 justify-between items-center p-4 text-sm border-t sm:flex-row border-white/10 text-white/60">
           <div className="flex flex-wrap gap-y-2 gap-x-4 items-center">
             {goalStartDate && (

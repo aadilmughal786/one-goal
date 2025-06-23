@@ -19,7 +19,6 @@ import { serializeGoalForExport } from '@/services/dataService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// Props are simplified. This component no longer needs to receive appState or currentUser.
 interface GoalListProps {
   onOpenGoalModal: (goal: Goal | null, isEditMode: boolean) => void;
   onOpenSummaryModal: (goal: Goal) => void;
@@ -33,14 +32,11 @@ const GoalList: React.FC<GoalListProps> = ({
   searchQuery,
   filterStatus,
 }) => {
-  // Get state and actions directly from the Zustand stores.
-  const { appState, setActiveGoal, deleteGoal, updateGoal } = useGoalStore(state => ({
-    appState: state.appState,
-    setActiveGoal: state.setActiveGoal,
-    deleteGoal: state.deleteGoal,
-    updateGoal: state.updateGoal,
-  }));
-
+  // FIX: Select state and actions individually from the Zustand stores.
+  const appState = useGoalStore(state => state.appState);
+  const setActiveGoal = useGoalStore(state => state.setActiveGoal);
+  const deleteGoal = useGoalStore(state => state.deleteGoal);
+  const updateGoal = useGoalStore(state => state.updateGoal);
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 

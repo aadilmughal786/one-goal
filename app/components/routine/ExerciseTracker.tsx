@@ -1,8 +1,7 @@
 // app/components/routine/ExerciseTracker.tsx
 'use client';
 
-import { AppState, RoutineType, ScheduledRoutineBase } from '@/types';
-import { User } from 'firebase/auth';
+import { RoutineType, ScheduledRoutineBase } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -14,23 +13,13 @@ import {
   MdOutlineSportsSoccer,
 } from 'react-icons/md';
 
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
-import { getUserData } from '@/services/goalService';
-import { updateRoutineSettings } from '@/services/routineService';
-// NEW: Import useNotificationStore to use showToast
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 // Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-
-interface ExerciseTrackerProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
-  onAppStateUpdate: (newAppState: AppState) => void;
-}
 
 // Map of icon names (strings) to their actual React component imports
 const IconComponents: { [key: string]: React.ElementType } = {
@@ -56,62 +45,30 @@ const exerciseIcons: string[] = [
  * ExerciseTracker Component
  *
  * Manages the display and functionality for user's exercise routines.
- * This component has been refactored to use the new dedicated services.
+ * This component has been refactored to fetch its own data from the useGoalStore.
  */
-const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
-  currentUser,
-  appState,
-  onAppStateUpdate,
-}) => {
-  const activeGoalId = appState?.activeGoalId;
-
-  // NEW: Access showToast from the global notification store
+const ExerciseTracker: React.FC = () => {
+  // --- REFACTOR: Get all necessary state and actions from the stores ---
+  const { appState, updateRoutineSettings } = useGoalStore(state => ({
+    currentUser: state.currentUser,
+    appState: state.appState,
+    updateRoutineSettings: state.updateRoutineSettings,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
-  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>(
-    appState?.goals[activeGoalId || '']?.routineSettings?.exercise || []
-  );
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+
+  const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
 
   useEffect(() => {
-    if (activeGoalId && appState?.goals[activeGoalId]?.routineSettings) {
-      setSchedules(appState.goals[activeGoalId].routineSettings.exercise || []);
-    } else {
-      setSchedules([]);
-    }
-  }, [appState, activeGoalId]);
-
-  /**
-   * A helper function to construct the new settings object and call the update service.
-   * This avoids repeating logic in every handler.
-   */
-  const callUpdateRoutineSettings = useCallback(
-    async (updatedSchedules: ScheduledRoutineBase[]) => {
-      if (!currentUser || !activeGoalId || !appState) {
-        throw new Error('User or goal not available for updating settings.');
-      }
-      const currentSettings = appState.goals[activeGoalId]?.routineSettings;
-      if (!currentSettings) {
-        throw new Error('Routine settings not found for the active goal.');
-      }
-
-      const newSettings = {
-        ...currentSettings,
-        exercise: updatedSchedules,
-      };
-
-      await updateRoutineSettings(currentUser.uid, activeGoalId, newSettings);
-      const newAppState = await getUserData(currentUser.uid);
-      onAppStateUpdate(newAppState);
-    },
-    [appState, currentUser, activeGoalId, onAppStateUpdate]
-  );
+    // Update local schedules state when the global store changes
+    setSchedules(activeGoal?.routineSettings?.exercise || []);
+  }, [activeGoal]);
 
   const toggleExerciseCompletion = useCallback(
     async (index: number) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to update schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
+
       const updatedSchedules = schedules.map((schedule, i) =>
         i === index
           ? {
@@ -122,27 +79,26 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
             }
           : schedule
       );
-      setSchedules(updatedSchedules); // Optimistic UI update
+
+      const newSettings = {
+        ...activeGoal.routineSettings,
+        exercise: updatedSchedules,
+      };
 
       try {
-        await callUpdateRoutineSettings(updatedSchedules);
-        showToast('Exercise schedule updated!', 'success'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast('Exercise schedule updated!', 'success');
       } catch (error) {
-        console.error('Failed to save exercise settings:', error);
-        showToast('Failed to save exercise settings.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
+        console.error('Failed to update exercise schedule:', error);
       }
     },
-    [currentUser, activeGoalId, schedules, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [schedules, activeGoal, updateRoutineSettings, showToast]
   );
 
   const handleSaveSchedule = useCallback(
     async (schedule: ScheduledRoutineBase, index: number | null) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to save schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
+
       let updatedSchedules: ScheduledRoutineBase[];
       const messageType = index !== null ? 'updated' : 'added';
 
@@ -151,41 +107,38 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
       } else {
         updatedSchedules = [...schedules, schedule];
       }
-      setSchedules(updatedSchedules); // Optimistic update
+
+      const newSettings = {
+        ...activeGoal.routineSettings,
+        exercise: updatedSchedules,
+      };
 
       try {
-        await callUpdateRoutineSettings(updatedSchedules);
-        showToast(messageType === 'updated' ? 'Workout updated!' : 'Workout added!', 'success'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast(messageType === 'updated' ? 'Workout updated!' : 'Workout added!', 'success');
       } catch (error) {
         console.error('Failed to save workout schedule:', error);
-        showToast('Failed to save workout schedule.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, activeGoalId, schedules, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [schedules, activeGoal, updateRoutineSettings, showToast]
   );
 
   const handleRemoveSchedule = useCallback(
     async (indexToRemove: number) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to remove schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
       const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
-      setSchedules(updatedSchedules); // Optimistic update
-
+      const newSettings = {
+        ...activeGoal.routineSettings,
+        exercise: updatedSchedules,
+      };
       try {
-        await callUpdateRoutineSettings(updatedSchedules);
-        showToast('Workout schedule removed.', 'info'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast('Workout schedule removed.', 'info');
       } catch (error) {
         console.error('Failed to remove workout schedule:', error);
-        showToast('Failed to remove workout schedule.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, activeGoalId, schedules, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [schedules, activeGoal, updateRoutineSettings, showToast]
   );
 
   const completedSchedulesCount = schedules.filter(s => s.completed).length;
@@ -205,15 +158,11 @@ const ExerciseTracker: React.FC<ExerciseTrackerProps> = ({
         onToggleCompletion={toggleExerciseCompletion}
         onRemoveSchedule={handleRemoveSchedule}
         onSaveSchedule={handleSaveSchedule}
-        // REMOVED: showToast prop is no longer needed, RoutineSectionCard gets it directly
         newInputLabelPlaceholder="e.g., Morning Run"
         newIconOptions={exerciseIcons}
         iconComponentsMap={IconComponents}
       />
       <RoutineCalendar
-        appState={appState}
-        currentUser={currentUser}
-        onAppStateUpdate={onAppStateUpdate}
         routineType={RoutineType.EXERCISE}
         title="Exercise Log"
         icon={MdOutlineDirectionsRun}

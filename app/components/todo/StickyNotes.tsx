@@ -1,7 +1,7 @@
 // app/components/todo/StickyNotes.tsx
 'use client';
 
-import { AppState, StickyNote, StickyNoteColor } from '@/types';
+import { StickyNote, StickyNoteColor } from '@/types';
 import { format as formatDate } from 'date-fns';
 import Fuse from 'fuse.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,50 +22,42 @@ import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { User } from 'firebase/auth';
 
-interface StickyNotesProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  stickyNotes: StickyNote[]; // FIXED: Added stickyNotes to the interface
-}
+const StickyNotes: React.FC = () => {
+  const { appState, addStickyNote, updateStickyNote, deleteStickyNote } = useGoalStore(state => ({
+    appState: state.appState,
+    addStickyNote: state.addStickyNote,
+    updateStickyNote: state.updateStickyNote,
+    deleteStickyNote: state.deleteStickyNote,
+  }));
+  const { showToast, showConfirmation } = useNotificationStore(state => ({
+    showToast: state.showToast,
+    showConfirmation: state.showConfirmation,
+  }));
 
-const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, stickyNotes }) => {
-  const activeGoalId = appState?.activeGoalId;
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
 
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  // FIX: Memoize the stickyNotes array to prevent unnecessary re-renders.
+  const stickyNotes = useMemo(() => activeGoal?.stickyNotes || [], [activeGoal]);
 
-  const addStickyNoteAction = useGoalStore(state => state.addStickyNote);
-  const updateStickyNoteAction = useGoalStore(state => state.updateStickyNote);
-  const deleteStickyNoteAction = useGoalStore(state => state.deleteStickyNote);
-
-  const [localStickyNotes, setLocalStickyNotes] = useState<StickyNote[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
-
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editColor, setEditColor] = useState<StickyNoteColor>(StickyNoteColor.YELLOW);
-
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isUpdatingNote, setIsUpdatingNote] = useState<string | null>(null);
-
   const [isEditColorDropdownOpen, setEditColorDropdownOpen] = useState(false);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setLocalStickyNotes(stickyNotes);
-  }, [stickyNotes]);
 
   const fuseOptions = useMemo(() => ({ keys: ['title', 'content'], threshold: 0.3 }), []);
 
   const filteredNotes = useMemo(() => {
-    if (!searchQuery) return localStickyNotes;
-    const fuse = new Fuse(localStickyNotes, fuseOptions);
+    if (!searchQuery) return stickyNotes;
+    const fuse = new Fuse(stickyNotes, fuseOptions);
     return fuse.search(searchQuery).map(result => result.item);
-  }, [localStickyNotes, searchQuery, fuseOptions]);
+  }, [stickyNotes, searchQuery, fuseOptions]);
 
   const stickyNoteColorMap = useMemo(
     () => ({
@@ -82,21 +74,10 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, sticky
   );
 
   const handleCreateDefaultNote = useCallback(async () => {
-    if (!currentUser || !activeGoalId) {
-      showToast('Please select an active goal to create a sticky note.', 'error');
-      return;
-    }
     setIsAddingNote(true);
-    try {
-      await addStickyNoteAction('New Sticky Note', 'Start writing...', StickyNoteColor.YELLOW);
-      showToast('Sticky note created!', 'success');
-    } catch (error) {
-      console.error('Failed to create sticky note:', error);
-      showToast('Failed to create sticky note. Please try again.', 'error');
-    } finally {
-      setIsAddingNote(false);
-    }
-  }, [currentUser, activeGoalId, showToast, addStickyNoteAction]);
+    await addStickyNote('New Sticky Note', 'Start writing...', StickyNoteColor.YELLOW);
+    setIsAddingNote(false);
+  }, [addStickyNote]);
 
   const handleStartEditing = useCallback((note: StickyNote) => {
     setEditingNoteId(note.id);
@@ -107,35 +88,20 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, sticky
 
   const handleSaveEdit = useCallback(
     async (noteId: string) => {
-      if (!currentUser || !activeGoalId || !editTitle.trim() || !editContent.trim()) {
+      if (!editTitle.trim() || !editContent.trim()) {
         showToast('Title and content cannot be empty.', 'error');
         return;
       }
       setIsUpdatingNote(noteId);
-      try {
-        await updateStickyNoteAction(noteId, {
-          title: editTitle.trim(),
-          content: editContent.trim(),
-          color: editColor,
-        });
-        setEditingNoteId(null);
-        showToast('Sticky note updated!', 'success');
-      } catch (error) {
-        console.error('Failed to update sticky note:', error);
-        showToast('Failed to update sticky note. Please try again.', 'error');
-      } finally {
-        setIsUpdatingNote(null);
-      }
+      await updateStickyNote(noteId, {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        color: editColor,
+      });
+      setEditingNoteId(null);
+      setIsUpdatingNote(null);
     },
-    [
-      currentUser,
-      activeGoalId,
-      editTitle,
-      editContent,
-      editColor,
-      showToast,
-      updateStickyNoteAction,
-    ]
+    [editTitle, editContent, editColor, showToast, updateStickyNote]
   );
 
   const handleCancelEdit = useCallback(() => {
@@ -151,22 +117,13 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, sticky
         title: 'Delete Sticky Note?',
         message: `Are you sure you want to delete the note "${note.title || ''}"? This action cannot be undone.`,
         action: async () => {
-          if (!currentUser || !activeGoalId) return;
           setIsUpdatingNote(note.id);
-
-          try {
-            await deleteStickyNoteAction(note.id);
-            showToast('Sticky note deleted!', 'info');
-          } catch (error) {
-            console.error('Failed to delete sticky note:', error);
-            showToast('Failed to delete sticky note. Please try again.', 'error');
-          } finally {
-            setIsUpdatingNote(null);
-          }
+          await deleteStickyNote(note.id);
+          setIsUpdatingNote(null);
         },
       });
     },
-    [currentUser, activeGoalId, showToast, showConfirmation, deleteStickyNoteAction]
+    [showConfirmation, deleteStickyNote]
   );
 
   useEffect(() => {
@@ -295,7 +252,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, sticky
     );
   };
 
-  if (!activeGoalId || !appState?.goals[activeGoalId]) {
+  if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
 
@@ -366,8 +323,6 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ currentUser, appState, sticky
           {filteredNotes.map(renderNoteCard)}
         </div>
       )}
-
-      {/* ConfirmationModal is now rendered globally and listens to the store, so it is removed from here */}
     </div>
   );
 };

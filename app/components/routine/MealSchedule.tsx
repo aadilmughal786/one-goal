@@ -1,8 +1,7 @@
 // app/components/routine/MealSchedule.tsx
 'use client';
 
-import { AppState, RoutineType, ScheduledRoutineBase } from '@/types';
-import { User } from 'firebase/auth';
+import { RoutineType, ScheduledRoutineBase } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -21,23 +20,13 @@ import {
   MdOutlineSetMeal,
 } from 'react-icons/md';
 
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
-import { getUserData } from '@/services/goalService';
-import { updateRoutineSettings } from '@/services/routineService';
-// NEW: Import useNotificationStore to use showToast
+// --- REFACTOR: Import the global Zustand stores ---
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 // Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-
-interface MealScheduleProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore, so it's removed from props
-  onAppStateUpdate: (newAppState: AppState) => void;
-}
 
 // Map of icon names (strings) to their actual React component imports
 const IconComponents: { [key: string]: React.ElementType } = {
@@ -62,57 +51,29 @@ const mealIcons: string[] = Object.keys(IconComponents);
  * MealSchedule Component
  *
  * Manages the display and functionality for user's meal routines.
- * This component has been refactored to use the new dedicated services.
+ * This component has been refactored to fetch its own data from the useGoalStore.
  */
-const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, onAppStateUpdate }) => {
-  const activeGoalId = appState?.activeGoalId;
-
-  // NEW: Access showToast from the global notification store
+const MealSchedule: React.FC = () => {
+  // --- REFACTOR: Get all necessary state and actions from the stores ---
+  const { appState, updateRoutineSettings } = useGoalStore(state => ({
+    currentUser: state.currentUser,
+    appState: state.appState,
+    updateRoutineSettings: state.updateRoutineSettings,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
 
-  const [meals, setMeals] = useState<ScheduledRoutineBase[]>(
-    appState?.goals[activeGoalId || '']?.routineSettings?.meal || []
-  );
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+
+  const [meals, setMeals] = useState<ScheduledRoutineBase[]>([]);
 
   useEffect(() => {
-    if (activeGoalId && appState?.goals[activeGoalId]?.routineSettings) {
-      setMeals(appState.goals[activeGoalId].routineSettings.meal || []);
-    } else {
-      setMeals([]);
-    }
-  }, [appState, activeGoalId]);
-
-  /**
-   * A helper function to construct the new settings object and call the update service.
-   */
-  const callUpdateRoutineSettings = useCallback(
-    async (updatedSchedules: ScheduledRoutineBase[]) => {
-      if (!currentUser || !activeGoalId || !appState) {
-        throw new Error('User or goal not available for updating settings.');
-      }
-      const currentSettings = appState.goals[activeGoalId]?.routineSettings;
-      if (!currentSettings) {
-        throw new Error('Routine settings not found for the active goal.');
-      }
-
-      const newSettings = {
-        ...currentSettings,
-        meal: updatedSchedules,
-      };
-
-      await updateRoutineSettings(currentUser.uid, activeGoalId, newSettings);
-      const newAppState = await getUserData(currentUser.uid);
-      onAppStateUpdate(newAppState);
-    },
-    [appState, currentUser, activeGoalId, onAppStateUpdate]
-  );
+    // Update local schedules state when the global store changes
+    setMeals(activeGoal?.routineSettings?.meal || []);
+  }, [activeGoal]);
 
   const toggleMealCompletion = useCallback(
     async (index: number) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to update schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
       const updatedMeals = meals.map((meal, i) =>
         i === index
           ? {
@@ -123,27 +84,20 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, onAp
             }
           : meal
       );
-      setMeals(updatedMeals); // Optimistic UI update
-
+      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
       try {
-        await callUpdateRoutineSettings(updatedMeals);
-        showToast('Meal schedule updated!', 'success'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast('Meal schedule updated!', 'success');
       } catch (error) {
         console.error('Failed to save meal settings:', error);
-        showToast('Failed to save meal settings.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, activeGoalId, meals, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [meals, activeGoal, updateRoutineSettings, showToast]
   );
 
   const handleSaveSchedule = useCallback(
     async (schedule: ScheduledRoutineBase, index: number | null) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to save schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
       let updatedMeals: ScheduledRoutineBase[];
       const messageType = index !== null ? 'updated' : 'added';
 
@@ -152,41 +106,30 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, onAp
       } else {
         updatedMeals = [...meals, schedule];
       }
-      setMeals(updatedMeals); // Optimistic update
-
+      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
       try {
-        await callUpdateRoutineSettings(updatedMeals);
-        showToast(messageType === 'updated' ? 'Meal updated!' : 'Meal added!', 'success'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast(messageType === 'updated' ? 'Meal updated!' : 'Meal added!', 'success');
       } catch (error) {
         console.error('Failed to save meal schedule:', error);
-        showToast('Failed to save meal schedule.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, activeGoalId, meals, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [meals, activeGoal, updateRoutineSettings, showToast]
   );
 
   const handleRemoveSchedule = useCallback(
     async (indexToRemove: number) => {
-      if (!currentUser || !activeGoalId) {
-        showToast('You must be logged in and have an active goal to remove schedules.', 'error');
-        return;
-      }
+      if (!activeGoal) return;
       const updatedMeals = meals.filter((_, index) => index !== indexToRemove);
-      setMeals(updatedMeals); // Optimistic update
-
+      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
       try {
-        await callUpdateRoutineSettings(updatedMeals);
-        showToast('Meal schedule removed.', 'info'); // Use global showToast
+        await updateRoutineSettings(newSettings);
+        showToast('Meal schedule removed.', 'info');
       } catch (error) {
         console.error('Failed to remove meal schedule:', error);
-        showToast('Failed to remove meal schedule.', 'error'); // Use global showToast
-        const oldState = await getUserData(currentUser!.uid);
-        onAppStateUpdate(oldState);
       }
     },
-    [currentUser, activeGoalId, meals, showToast, onAppStateUpdate, callUpdateRoutineSettings] // Dependency on global showToast
+    [meals, activeGoal, updateRoutineSettings, showToast]
   );
 
   const completedMealsCount = meals.filter(meal => meal.completed).length;
@@ -204,15 +147,11 @@ const MealSchedule: React.FC<MealScheduleProps> = ({ currentUser, appState, onAp
         onToggleCompletion={toggleMealCompletion}
         onRemoveSchedule={handleRemoveSchedule}
         onSaveSchedule={handleSaveSchedule}
-        // REMOVED: showToast prop is no longer needed, RoutineSectionCard gets it directly
         newInputLabelPlaceholder="e.g., Lunch"
         newIconOptions={mealIcons}
         iconComponentsMap={IconComponents}
       />
       <RoutineCalendar
-        appState={appState}
-        currentUser={currentUser}
-        onAppStateUpdate={onAppStateUpdate}
         routineType={RoutineType.MEAL}
         title="Meal Log"
         icon={MdOutlineRestaurantMenu}
