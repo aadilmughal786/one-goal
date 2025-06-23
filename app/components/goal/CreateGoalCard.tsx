@@ -1,59 +1,38 @@
 // app/components/goal/CreateGoalCard.tsx
 'use client';
 
-import { AppState, Goal } from '@/types';
-import { User } from 'firebase/auth';
+import { Goal } from '@/types';
 import React, { useCallback } from 'react';
 import { FiPlus, FiUpload } from 'react-icons/fi';
 
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
 import { deserializeGoalForImport } from '@/services/dataService';
-import { setUserData } from '@/services/goalService'; // Assuming setUserData handles a full state overwrite
-// NEW: Import useNotificationStore to use showToast and showConfirmation
+import { setUserData } from '@/services/goalService';
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
+// FIX: The component no longer needs currentUser, appState, or onAppStateUpdate from props.
 interface CreateGoalCardProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore
-  // REMOVED: onOpenConfirmationModal is now handled internally via useNotificationStore
-  onAppStateUpdate: (newAppState: AppState) => void;
   onOpenGoalModal: (goal: Goal | null, isEditMode: boolean) => void;
 }
 
-/**
- * CreateGoalCard Component
- *
- * A specialized card that provides a prominent button to create a new goal.
- * It also includes an option to import an individual goal's data from a JSON file.
- * This component has been refactored to use the new dedicated services.
- */
-const CreateGoalCard: React.FC<CreateGoalCardProps> = ({
-  currentUser,
-  appState,
-  // REMOVED: showMessage,
-  onAppStateUpdate,
-  onOpenGoalModal,
-  // REMOVED: onOpenConfirmationModal,
-}) => {
-  // NEW: Access showToast and showConfirmation from the global notification store
+const CreateGoalCard: React.FC<CreateGoalCardProps> = ({ onOpenGoalModal }) => {
+  // FIX: Get necessary state and actions directly from the store.
+  const { currentUser, appState } = useGoalStore(state => ({
+    currentUser: state.currentUser,
+    appState: state.appState,
+  }));
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
-  /**
-   * Handles importing a single goal from a JSON file.
-   * It now uses the new dataService and goalService.
-   */
   const handleImportGoal = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file || !currentUser) {
-        showToast('No file selected or user not authenticated.', 'error'); // Use global showToast
+        showToast('No file selected or user not authenticated.', 'error');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        showToast('File is too large (max 5MB).', 'error'); // Use global showToast
+        showToast('File is too large (max 5MB).', 'error');
         event.target.value = '';
         return;
       }
@@ -63,7 +42,6 @@ const CreateGoalCard: React.FC<CreateGoalCardProps> = ({
       reader.onload = async e => {
         try {
           const importedRawData = JSON.parse(e.target?.result as string);
-          // Using the new, specific service function for deserialization
           const importedGoal = deserializeGoalForImport(importedRawData);
 
           const performImportAction = async () => {
@@ -75,29 +53,27 @@ const CreateGoalCard: React.FC<CreateGoalCardProps> = ({
               };
               const newActiveGoalId = appState.activeGoalId || importedGoal.id;
 
-              const newAppState: AppState = {
+              const newAppState = {
                 ...appState,
                 goals: newGoals,
                 activeGoalId: newActiveGoalId,
               };
 
-              // Using the new, specific service function to save the data
+              // FIX: Now uses setUserData from the imported service.
               await setUserData(currentUser.uid, newAppState);
 
-              onAppStateUpdate(newAppState);
+              // We no longer call onAppStateUpdate. The store will trigger re-renders.
               showToast(
-                // Use global showToast
                 `Goal "${importedGoal.name}" imported successfully as a new goal!`,
                 'success'
               );
             } catch (error) {
               console.error('Failed to import goal:', error);
-              showToast(`Failed to import goal: ${(error as Error).message}`, 'error'); // Use global showToast
+              showToast(`Failed to import goal: ${(error as Error).message}`, 'error');
             }
           };
 
           showConfirmation({
-            // Use global showConfirmation
             title: `Import Goal?`,
             message: `This will create a NEW goal from the imported file. It will not overwrite any existing goal. Proceed?`,
             action: performImportAction,
@@ -105,12 +81,12 @@ const CreateGoalCard: React.FC<CreateGoalCardProps> = ({
           });
         } catch (error) {
           console.error('Error processing imported file:', error);
-          showToast('Import failed: Invalid file format or corrupted goal data.', 'error'); // Use global showToast
+          showToast('Import failed: Invalid file format or corrupted goal data.', 'error');
         }
       };
       reader.readAsText(file);
     },
-    [currentUser, appState, showToast, onAppStateUpdate, showConfirmation] // Dependencies on global showToast and showConfirmation
+    [currentUser, appState, showToast, showConfirmation]
   );
 
   return (

@@ -2,18 +2,15 @@
 'use client';
 
 import { format } from 'date-fns';
-import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
 import { FiBarChart2, FiFeather, FiGrid } from 'react-icons/fi';
 
-import { AppState, DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
-
 import { onAuthChange } from '@/services/authService';
-import { saveDailyProgress } from '@/services/routineService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { DailyProgress } from '@/types';
 
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
@@ -21,25 +18,11 @@ import DashboardMain from '@/components/dashboard/DashboardMain';
 import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
 
 interface DashboardTabProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  onAppStateUpdate: (newAppState: AppState) => void;
   isDailyProgressModalOpen: boolean;
   selectedDate: Date | null;
   handleDayClick: (date: Date) => void;
   handleSaveProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
   setIsDailyProgressModalOpen: (isOpen: boolean) => void;
-  handleOpenGoalModal: (isEditing?: boolean) => void;
-  promptForArchiveAndNewGoal: () => void;
-  handleExport: () => Promise<void>;
-  handleImportChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  transformedGoalForModal: {
-    name: string;
-    description: string | null;
-    startDate: string;
-    endDate: string;
-  } | null;
-  isEditMode: boolean;
 }
 
 interface TabItem {
@@ -80,61 +63,32 @@ const ConsolidatedDashboardPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
-
-  // CRITICAL FIX: Ensure setAppState is correctly destructured from useState.
-  // This is the source of the "Cannot find name 'setAppState'" error.
-  const [appState, setAppState] = useState<AppState | null>(null);
-
-  const currentUser = useGoalStore(state => state.currentUser);
+  const appState = useGoalStore(state => state.appState);
   const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+  const isLoading = useGoalStore(state => state.isLoading);
+  const saveDailyProgressAction = useGoalStore(state => state.saveDailyProgress);
 
   const showToast = useNotificationStore(state => state.showToast);
 
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
 
   const [activeTab, setActiveTabInternal] = useState<string>(() => {
     const tabFromUrl = searchParams.get('tab');
     return tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
   });
 
-  // FIXED: handleAppStateUpdate now correctly uses setAppState from the component's scope
-  const handleAppStateUpdate = useCallback(
-    (newAppState: AppState) => {
-      setAppState(newAppState); // This line is correct and should now work
-    },
-    [setAppState] // setAppState is a stable setter, but including it explicitly is safe
-  );
-
   useEffect(() => {
     const unsubscribe = onAuthChange(async user => {
       if (user) {
         await fetchInitialData(user);
       } else {
-        setIsLoading(false);
         router.replace('/login');
       }
     });
-
-    const initialLoadTimeout = setTimeout(() => {
-      if (isLoading && currentUser === undefined && appState === undefined) {
-        setIsLoading(false);
-      }
-    }, 2000);
-
-    return () => {
-      unsubscribe();
-      clearTimeout(initialLoadTimeout);
-    };
-  }, [router, fetchInitialData, showToast, currentUser, isLoading, appState]);
-
-  useEffect(() => {
-    if (currentUser !== undefined && appState !== undefined) {
-      setIsLoading(false);
-    }
-  }, [currentUser, appState]);
+    return () => unsubscribe();
+  }, [router, fetchInitialData]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -142,7 +96,6 @@ const ConsolidatedDashboardPageContent = () => {
       const timer = setTimeout(() => {
         setIsTabContentLoading(false);
       }, 300);
-
       return () => clearTimeout(timer);
     }
   }, [activeTab, isLoading]);
@@ -158,8 +111,6 @@ const ConsolidatedDashboardPageContent = () => {
   );
 
   const activeGoal = useMemo(() => {
-    // Access appState from the component's state, not the global store directly here
-    // This ensures consistency with how other parts of this component use appState.
     if (!appState?.activeGoalId || !appState.goals) return null;
     return appState.goals[appState.activeGoalId];
   }, [appState]);
@@ -171,51 +122,24 @@ const ConsolidatedDashboardPageContent = () => {
 
   const handleSaveProgress = useCallback(
     async (progressData: Partial<DailyProgress>) => {
-      if (!currentUser || !appState || !activeGoal) {
-        showToast('Authentication or active goal required to save progress.', 'error');
+      const { currentUser } = useGoalStore.getState(); // Get fresh state inside callback
+      if (!currentUser) {
+        showToast('Authentication required to save progress.', 'error');
         return;
       }
-
-      const dateKey = progressData.date || format(new Date(), 'yyyy-MM-dd');
-      const existingProgress = appState.goals[activeGoal.id].dailyProgress[dateKey];
-
-      const completeProgressData: DailyProgress = {
-        date: dateKey,
-        satisfaction: progressData.satisfaction ?? SatisfactionLevel.NEUTRAL,
-        notes: existingProgress?.notes ?? '',
-        sessions: existingProgress?.sessions ?? [],
-        routines:
-          progressData.routines ??
-          existingProgress?.routines ??
-          ({} as Record<RoutineType, RoutineLogStatus>),
-        totalSessionDuration: existingProgress?.totalSessionDuration ?? 0,
-      };
-      if (progressData.notes !== undefined) {
-        completeProgressData.notes = progressData.notes.trim();
-      }
-
       try {
-        await saveDailyProgress(currentUser.uid, activeGoal.id, completeProgressData);
-
-        const updatedDailyProgress = {
-          ...appState.goals[activeGoal.id].dailyProgress,
-          [dateKey]: completeProgressData,
-        };
-        const updatedGoal = { ...activeGoal, dailyProgress: updatedDailyProgress };
-        const newAppState = {
-          ...appState,
-          goals: { ...appState.goals, [activeGoal.id]: updatedGoal },
-        };
-        handleAppStateUpdate(newAppState);
-
+        await saveDailyProgressAction({
+          ...progressData,
+          date: progressData.date || format(new Date(), 'yyyy-MM-dd'),
+        } as DailyProgress);
         setIsDailyProgressModalOpen(false);
         showToast('Progress saved successfully!', 'success');
       } catch (error) {
-        console.error('Failed to save daily progress:', error);
-        showToast('Failed to save daily progress.', 'error');
+        showToast('Failed to save progress.', 'error');
+        console.error(error);
       }
     },
-    [currentUser, appState, activeGoal, showToast, handleAppStateUpdate]
+    [saveDailyProgressAction, showToast] // Dependencies are now stable
   );
 
   const initialProgress = useMemo(() => {
@@ -224,71 +148,24 @@ const ConsolidatedDashboardPageContent = () => {
       : null;
   }, [selectedDate, activeGoal]);
 
-  const handleOpenGoalModal = useCallback((_?: boolean) => {
-    /* Implement if needed directly here or via GoalList */
-  }, []);
-  const promptForArchiveAndNewGoal = useCallback(() => {
-    /* Implement if needed directly here or via GoalList */
-  }, []);
-  const handleExport = useCallback(async () => {
-    /* Implement if needed directly here or via GoalList */
-  }, []);
-  const handleImportChange = useCallback((_: React.ChangeEvent<HTMLInputElement>) => {
-    /* Implement if needed directly here or via GoalList */
-  }, []);
-
   const renderActiveTabContent = () => {
-    if (isLoading) {
+    if (isLoading || isTabContentLoading) {
       return <PageMainContentSkeletonLoader />;
-    }
-
-    if (isTabContentLoading) {
-      return <PageMainContentSkeletonLoader />;
-    }
-
-    if (!activeGoal) {
-      return (
-        <DashboardMain
-          currentUser={currentUser}
-          appState={appState}
-          onAppStateUpdate={handleAppStateUpdate}
-          isDailyProgressModalOpen={isDailyProgressModalOpen}
-          selectedDate={selectedDate}
-          handleDayClick={handleDayClick}
-          handleSaveProgress={handleSaveProgress}
-          setIsDailyProgressModalOpen={setIsDailyProgressModalOpen}
-          handleOpenGoalModal={handleOpenGoalModal}
-          promptForArchiveAndNewGoal={promptForArchiveAndNewGoal}
-          handleExport={handleExport}
-          handleImportChange={handleImportChange}
-          transformedGoalForModal={null}
-          isEditMode={false}
-        />
-      );
     }
 
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
 
     if (ActiveComponent) {
       const commonProps: DashboardTabProps = {
-        currentUser,
-        appState,
-        onAppStateUpdate: handleAppStateUpdate,
         isDailyProgressModalOpen,
         selectedDate,
         handleDayClick,
         handleSaveProgress,
         setIsDailyProgressModalOpen,
-        handleOpenGoalModal,
-        promptForArchiveAndNewGoal,
-        handleExport,
-        handleImportChange,
-        transformedGoalForModal: null,
-        isEditMode: false,
       };
       return <ActiveComponent {...commonProps} />;
     }
-    return null;
+    return <DashboardMain {...({} as DashboardTabProps)} />;
   };
 
   return (

@@ -1,28 +1,21 @@
 // app/(root)/goal/page.tsx
 'use client';
 
-import { User } from 'firebase/auth';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore'; // Import Timestamp
 import { useRouter } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'; // Ensure useState is imported
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
-import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
-import GoalModal from '@/components/goal/GoalModal';
-import { AppState, Goal, GoalStatus } from '@/types';
-
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
 import { onAuthChange } from '@/services/authService';
-import { createGoal, getUserData, updateGoal } from '@/services/goalService';
-// NEW: Import useNotificationStore to use showToast and showConfirmation
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { Goal, GoalStatus } from '@/types';
 
-// Components for this page
+import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
 import CreateGoalCard from '@/components/goal/CreateGoalCard';
 import GoalList from '@/components/goal/GoalList';
+import GoalModal from '@/components/goal/GoalModal';
 
-// Page-level Skeleton Loader
 const GoalPageSkeletonLoader = () => (
   <div className="space-y-8 animate-pulse">
     <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
@@ -37,65 +30,41 @@ const GoalPageSkeletonLoader = () => (
   </div>
 );
 
-/**
- * GoalPageContent Component
- * This is the main component for the /goal route, now refactored to use the new service layer.
- */
 const GoalPageContent = () => {
   const router = useRouter();
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [appState, setAppState] = useState<AppState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // FIX: Destructure state and actions from the store using individual selectors
+  // This prevents re-renders from creating new objects in the selector.
+  const currentUser = useGoalStore(state => state.currentUser);
+  const isLoading = useGoalStore(state => state.isLoading);
+  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+  const createGoal = useGoalStore(state => state.createGoal);
+  const updateGoal = useGoalStore(state => state.updateGoal);
 
-  // NEW: Access showToast and showConfirmation from the global notification store
   const showToast = useNotificationStore(state => state.showToast);
 
-  // States for GoalModal (create/edit goal)
+  // Modal states are local UI concerns
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [selectedGoalForModal, setSelectedGoalForModal] = useState<Goal | null>(null);
   const [isGoalModalEditMode, setIsGoalModalEditMode] = useState(false);
-
-  // States for GoalSummaryModal
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedGoalForSummary, setSelectedGoalForSummary] = useState<Goal | null>(null);
 
-  // State for search query - THIS IS WHERE 'searchQuery' IS DECLARED
+  // Search and filter states are also local UI concerns
   const [searchQuery, setSearchQuery] = useState('');
-  // State for filter status
   const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
 
-  // Renamed from showMessage to displayMessage for clarity, and now uses global showToast
-  const displayMessage = useCallback(
-    (text: string, type: 'success' | 'error' | 'info') => {
-      showToast(text, type);
-    },
-    [showToast] // Dependency on the global showToast
-  );
-
-  // --- Authentication and Initial Data Fetching ---
   useEffect(() => {
     const unsubscribe = onAuthChange(user => {
       if (user) {
-        setCurrentUser(user);
-        getUserData(user.uid)
-          .then(data => {
-            setAppState(data);
-            setIsLoading(false);
-          })
-          .catch(error => {
-            console.error('Error fetching user data:', error);
-            displayMessage('Failed to load goals.', 'error');
-            setIsLoading(false);
-          });
+        fetchInitialData(user);
       } else {
         router.replace('/login');
       }
     });
     return () => unsubscribe();
-  }, [router, displayMessage]);
+  }, [router, fetchInitialData]);
 
-  // --- Goal Modal Handlers (Create/Edit) ---
   const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
     setSelectedGoalForModal(goal);
     setIsGoalModalEditMode(isEditMode);
@@ -104,37 +73,24 @@ const GoalPageContent = () => {
 
   const handleSetGoal = useCallback(
     async (name: string, endDate: Date, description: string) => {
-      if (!currentUser || !appState) return;
+      if (!currentUser) return;
       try {
         if (isGoalModalEditMode && selectedGoalForModal) {
-          await updateGoal(currentUser.uid, selectedGoalForModal.id, {
-            name,
-            description,
-            endDate: Timestamp.fromDate(endDate),
-          });
-          displayMessage('Goal updated successfully!', 'success');
+          const updates = { name, description, endDate: Timestamp.fromDate(endDate) };
+          await updateGoal(selectedGoalForModal.id, updates);
+          showToast('Goal updated successfully!', 'success');
         } else {
-          const newGoalData = {
-            name,
-            description,
-            startDate: Timestamp.now(),
-            endDate: Timestamp.fromDate(endDate),
-            status: GoalStatus.ACTIVE,
-          };
-          await createGoal(currentUser.uid, newGoalData);
-          displayMessage('Goal created successfully!', 'success');
+          await createGoal(name, endDate, description);
+          showToast('Goal created successfully!', 'success');
         }
-        const newAppState = await getUserData(currentUser.uid);
-        setAppState(newAppState);
         setIsGoalModalOpen(false);
       } catch {
-        displayMessage('Failed to save goal.', 'error');
+        showToast('Failed to save goal.', 'error');
       }
     },
-    [currentUser, appState, isGoalModalEditMode, selectedGoalForModal, displayMessage]
+    [currentUser, isGoalModalEditMode, selectedGoalForModal, createGoal, updateGoal, showToast]
   );
 
-  // --- Goal Summary Modal Handlers ---
   const handleOpenSummaryModal = useCallback((goal: Goal) => {
     setSelectedGoalForSummary(goal);
     setIsSummaryModalOpen(true);
@@ -144,7 +100,7 @@ const GoalPageContent = () => {
     return selectedGoalForModal
       ? {
           name: selectedGoalForModal.name,
-          description: selectedGoalForModal.description,
+          description: selectedGoalForModal.description ?? '',
           startDate: selectedGoalForModal.startDate.toDate().toISOString(),
           endDate: selectedGoalForModal.endDate.toDate().toISOString(),
         }
@@ -180,7 +136,6 @@ const GoalPageContent = () => {
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      {/* ToastMessage and ConfirmationModal are now handled globally in RootLayout */}
       <nav className="flex flex-col px-4 pt-3 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="mb-4 text-center">
           <h2 className="mb-1 text-2xl font-bold text-white">Your Goal Hub</h2>
@@ -193,7 +148,7 @@ const GoalPageContent = () => {
           <input
             type="text"
             placeholder="Search goals by name or description..."
-            value={searchQuery} // Usage of searchQuery
+            value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="p-3 pl-10 w-full h-12 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -221,20 +176,12 @@ const GoalPageContent = () => {
       <div className="container p-4 mx-auto max-w-5xl md:p-8">
         <section className="py-8 space-y-8">
           <GoalList
-            currentUser={currentUser}
-            appState={appState}
-            onAppStateUpdate={setAppState}
             onOpenGoalModal={handleOpenGoalModal}
             onOpenSummaryModal={handleOpenSummaryModal}
-            searchQuery={searchQuery} // Usage of searchQuery
+            searchQuery={searchQuery}
             filterStatus={filterStatus}
           />
-          <CreateGoalCard
-            currentUser={currentUser}
-            appState={appState}
-            onAppStateUpdate={setAppState}
-            onOpenGoalModal={handleOpenGoalModal}
-          />
+          <CreateGoalCard onOpenGoalModal={handleOpenGoalModal} />
         </section>
       </div>
       <GoalModal

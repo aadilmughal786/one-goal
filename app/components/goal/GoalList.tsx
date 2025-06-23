@@ -1,9 +1,8 @@
 // app/components/goal/GoalList.tsx
 'use client';
 
-import { AppState, Goal, GoalStatus } from '@/types';
+import { Goal, GoalStatus } from '@/types';
 import { differenceInDays, format as formatDate } from 'date-fns';
-import { User } from 'firebase/auth';
 import Fuse from 'fuse.js';
 import React, { useCallback, useMemo } from 'react';
 import {
@@ -16,42 +15,32 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 
-// --- REFLECTING THE REFACTOR ---
-// We now import specific functions from our new, focused service modules.
 import { serializeGoalForExport } from '@/services/dataService';
-import { deleteGoal, setActiveGoal, updateGoal } from '@/services/goalService';
-// NEW: Import useNotificationStore to use showToast and showConfirmation
+import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
+// Props are simplified. This component no longer needs to receive appState or currentUser.
 interface GoalListProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  // REMOVED: showMessage is now handled internally via useNotificationStore
-  // REMOVED: onOpenConfirmationModal is now handled internally via useNotificationStore
-  onAppStateUpdate: (newAppState: AppState) => void;
   onOpenGoalModal: (goal: Goal | null, isEditMode: boolean) => void;
   onOpenSummaryModal: (goal: Goal) => void;
   searchQuery: string;
   filterStatus: GoalStatus | 'all';
 }
 
-/**
- * GoalList Component
- * Displays a searchable and filterable list of all user goals.
- * It has been refactored to use the new dedicated services for all its data operations.
- */
 const GoalList: React.FC<GoalListProps> = ({
-  currentUser,
-  appState,
-  // REMOVED: showMessage,
-  onAppStateUpdate,
   onOpenGoalModal,
   onOpenSummaryModal,
-  // REMOVED: onOpenConfirmationModal,
   searchQuery,
   filterStatus,
 }) => {
-  // NEW: Access showToast and showConfirmation from the global notification store
+  // Get state and actions directly from the Zustand stores.
+  const { appState, setActiveGoal, deleteGoal, updateGoal } = useGoalStore(state => ({
+    appState: state.appState,
+    setActiveGoal: state.setActiveGoal,
+    deleteGoal: state.deleteGoal,
+    updateGoal: state.updateGoal,
+  }));
+
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
@@ -75,80 +64,49 @@ const GoalList: React.FC<GoalListProps> = ({
     });
   }, [allGoals, filterStatus, searchQuery, fuseOptions]);
 
-  // --- Goal Actions using new services ---
-
   const handleSetGoalAsActive = useCallback(
     async (goalId: string) => {
-      if (!currentUser || !appState) return;
-      try {
-        await setActiveGoal(currentUser.uid, goalId);
-        const newAppState = { ...appState, activeGoalId: goalId };
-        onAppStateUpdate(newAppState);
-        showToast('Goal set as active!', 'success'); // Use global showToast
-      } catch {
-        showToast('Failed to set goal as active.', 'error'); // Use global showToast
-      }
+      await setActiveGoal(goalId);
+      showToast('Goal set as active!', 'success');
     },
-    [currentUser, appState, showToast, onAppStateUpdate] // Dependency on global showToast
+    [setActiveGoal, showToast]
   );
 
   const handleDeleteGoal = useCallback(
     (goal: Goal) => {
       showConfirmation({
-        // Use global showConfirmation
         title: `Delete Goal: ${goal.name}?`,
         message: `Are you sure you want to permanently delete "${goal.name}" and all its associated data? This action cannot be undone.`,
         action: async () => {
-          if (!currentUser || !appState) return;
-          try {
-            await deleteGoal(currentUser.uid, goal.id);
-            const newGoals = { ...appState.goals };
-            delete newGoals[goal.id];
-            const newActiveGoalId =
-              appState.activeGoalId === goal.id ? null : appState.activeGoalId;
-            onAppStateUpdate({ ...appState, goals: newGoals, activeGoalId: newActiveGoalId });
-            showToast('Goal deleted successfully.', 'info'); // Use global showToast
-          } catch {
-            showToast('Failed to delete goal.', 'error'); // Use global showToast
-          }
+          await deleteGoal(goal.id);
+          showToast('Goal deleted successfully.', 'info');
         },
         actionDelayMs: 5000,
       });
     },
-    [currentUser, appState, showToast, onAppStateUpdate, showConfirmation] // Dependencies on global showToast and showConfirmation
+    [deleteGoal, showToast, showConfirmation]
   );
 
   const handleArchiveGoal = useCallback(
     (goal: Goal) => {
       if (goal.status !== GoalStatus.ACTIVE) {
-        showToast('Only active goals can be archived.', 'info'); // Use global showToast
+        showToast('Only active goals can be archived.', 'info');
         return;
       }
       showConfirmation({
-        // Use global showConfirmation
         title: `Archive Goal: ${goal.name}?`,
         message: `This will mark "${goal.name}" as 'Completed'. If it is your active goal, it will be deactivated.`,
         action: async () => {
-          if (!currentUser || !appState) return;
-          try {
-            await updateGoal(currentUser.uid, goal.id, { status: GoalStatus.COMPLETED });
-            if (appState.activeGoalId === goal.id) {
-              await setActiveGoal(currentUser.uid, null);
-            }
-            const updatedGoal = { ...goal, status: GoalStatus.COMPLETED };
-            const updatedGoals = { ...appState.goals, [goal.id]: updatedGoal };
-            const newActiveGoalId =
-              appState.activeGoalId === goal.id ? null : appState.activeGoalId;
-            onAppStateUpdate({ ...appState, goals: updatedGoals, activeGoalId: newActiveGoalId });
-            showToast('Goal archived successfully!', 'success'); // Use global showToast
-          } catch {
-            showToast('Failed to archive goal.', 'error'); // Use global showToast
+          await updateGoal(goal.id, { status: GoalStatus.COMPLETED });
+          if (appState?.activeGoalId === goal.id) {
+            await setActiveGoal(null);
           }
+          showToast('Goal archived successfully!', 'success');
         },
         actionDelayMs: 3000,
       });
     },
-    [currentUser, appState, showToast, onAppStateUpdate, showConfirmation] // Dependencies on global showToast and showConfirmation
+    [updateGoal, appState?.activeGoalId, setActiveGoal, showToast, showConfirmation]
   );
 
   const handleExportSingleGoal = useCallback(
@@ -165,12 +123,12 @@ const GoalList: React.FC<GoalListProps> = ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        showToast(`Goal "${goal.name}" exported successfully.`, 'success'); // Use global showToast
+        showToast(`Goal "${goal.name}" exported successfully.`, 'success');
       } catch (error) {
-        showToast(`Failed to export goal: ${(error as Error).message}`, 'error'); // Use global showToast
+        showToast(`Failed to export goal: ${(error as Error).message}`, 'error');
       }
     },
-    [showToast] // Dependency on global showToast
+    [showToast]
   );
 
   const getStatusText = useCallback((status: GoalStatus) => {
