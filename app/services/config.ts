@@ -1,62 +1,54 @@
 // app/services/config.ts
-import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
+import { FirebaseApp, initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
-import {
-  Firestore,
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-} from 'firebase/firestore';
+import { Firestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
-declare const __firebase_config: string | undefined;
+/**
+ * @file app/services/config.ts
+ * @description Centralized Firebase Initialization.
+ *
+ * This module is responsible for initializing the Firebase app and its core services
+ * (Firestore, Auth). By centralizing this logic, we ensure that these services
+ * are instantiated only once and can be shared across the entire application.
+ *
+ * It also enables Firestore's offline persistence, a crucial feature for a robust
+ * user experience, allowing the app to function with an intermittent or no network connection.
+ */
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-// FIX: Guard the entire Firebase initialization to only run on the client-side.
-// The `typeof window !== 'undefined'` check is a standard way to determine
-// if the code is running in a browser environment. This block will be skipped
-// during the server-side build process, preventing the "invalid-api-key" error.
-if (typeof window !== 'undefined') {
-  if (!getApps().length) {
-    let firebaseConfig;
+/**
+ * The single, initialized Firebase App instance.
+ */
+const app: FirebaseApp = initializeApp(firebaseConfig);
 
-    if (typeof __firebase_config !== 'undefined') {
-      // Use the runtime config in production
-      firebaseConfig = JSON.parse(__firebase_config);
-    } else {
-      // Fallback to environment variables for local development
-      firebaseConfig = {
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-      };
-    }
+/**
+ * The shared Authentication service instance.
+ * All authentication operations will use this instance.
+ */
+export const auth: Auth = getAuth(app);
 
-    // Initialize the app only if the config is valid
-    if (firebaseConfig && firebaseConfig.apiKey) {
-      app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({}),
-      });
-    } else {
-      // This case would only happen if the config is somehow missing on the client.
-      // We can log an error to the console.
-      console.error('Firebase config is missing or invalid on the client-side.');
-    }
-  } else {
-    // If the app is already initialized, get the existing instance.
-    app = getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
-  }
-}
-
-// Export the variables. They will be `undefined` on the server but will be
-// correctly initialized on the client before any service that uses them is called.
-export { auth, db };
+/**
+ * The shared Firestore database instance.
+ *
+ * This instance is initialized using `initializeFirestore` with a configuration
+ * for a persistent local cache. This is the most modern and robust way to enable
+ * offline capabilities that work across multiple browser tabs.
+ *
+ * - `persistentLocalCache({})`: Configures Firestore to save data on the user's device.
+ * When called with an empty object, it uses a default configuration that enables
+ * multi-tab synchronization if the browser environment supports it.
+ *
+ * If persistence fails to initialize (e.g., due to browser limitations or permissions),
+ * Firestore will gracefully fall back to in-memory caching for the current session.
+ */
+export const db: Firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache({}),
+});

@@ -2,7 +2,6 @@
 
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
-import Script from 'next/script'; // Import the Next.js Script component
 import React from 'react';
 import Footer from './components/layout/Footer';
 import './globals.css';
@@ -55,14 +54,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={poppins.className}>
-        {/* FIX: Add the Script component to load the Firebase config at runtime.
-            - The `strategy="beforeInteractive"` ensures this script loads and executes
-              before any React hydration or interactive application code runs.
-            - This makes the `__firebase_config` global variable available to your
-              `app/services/config.ts` file just in time.
-        */}
-        <Script src="/one-goal/firebase-config.js" strategy="beforeInteractive" />
-
         <div className="min-h-screen text-white bg-black">
           <div className="relative z-10">
             <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
