@@ -8,7 +8,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'; // 
 import { FiSearch } from 'react-icons/fi';
 
 import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
-import GoalModal from '@/components/dashboard/GoalModal';
+import GoalModal from '@/components/goal/GoalModal';
 import { AppState, Goal, GoalStatus } from '@/types';
 
 // --- REFLECTING THE REFACTOR ---

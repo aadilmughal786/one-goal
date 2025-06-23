@@ -7,7 +7,7 @@ import {
   StickyNoteColor,
 } from '@/types';
 import { Timestamp } from 'firebase/firestore';
-import { z } from 'zod';
+import { z } from 'zod'; // <--- ADDED: Import 'z' from 'zod'
 
 /**
  * @file app/utils/schemas.ts
@@ -79,7 +79,7 @@ const routinesSchema = z
   });
 
 export const dailyProgressSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected APAC-YYYY-MM-DD'),
   satisfaction: z.nativeEnum(SatisfactionLevel),
   notes: z.string(),
   sessions: z.array(stopwatchSessionSchema),
@@ -148,4 +148,58 @@ export const appStateSchema = z.object({
 export const serializableAppStateSchema = z.object({
   activeGoalId: z.string().nullable(),
   goals: z.record(z.string(), z.any()), // Validate that goals is a record of any type
+});
+
+// Zod Schema for TodoEditModal form fields
+export const todoEditFormSchema = z.object({
+  text: z.string().min(1, 'Task text cannot be empty.').max(200, 'Task text is too long.'),
+  description: z.string().max(500, 'Description is too long.').nullable(),
+  deadline: z
+    .date()
+    .nullable()
+    .refine(
+      date => {
+        // Allow null, or if not null, ensure it's a valid date
+        return date === null || !isNaN(date.getTime());
+      },
+      { message: 'Invalid deadline date.' }
+    )
+    .optional(), // Use optional if the field might not be present on form initialization
+});
+
+// Zod Schema for ScheduleEditModal form fields
+export const scheduleEditFormSchema = z.object({
+  label: z.string().min(1, 'Label cannot be empty.'),
+  time: z.date().refine(date => !isNaN(date.getTime()), { message: 'Invalid time selected.' }),
+  duration: z.coerce
+    .number() // Use coerce to convert string input to number
+    .min(1, 'Duration must be at least 1 minute.')
+    .max(1440, 'Duration cannot exceed 24 hours (1440 minutes).')
+    .int('Duration must be a whole number.'),
+  icon: z.string().min(1, 'Icon must be selected.'),
+});
+
+// Zod Schema for GoalModal form fields
+export const goalFormSchema = z.object({
+  name: z.string().min(1, 'Goal name cannot be empty.').max(100, 'Goal name is too long.'),
+  description: z.string().max(500, 'Description is too long.'),
+  endDate: z
+    .date()
+    .nullable()
+    .refine(
+      date => date !== null && !isNaN(date.getTime()), // Must be a valid date
+      { message: 'Please select a target date and time.' }
+    )
+    .refine(
+      date => date === null || date.getTime() > new Date().getTime(), // Must be in the future
+      { message: 'Target date and time must be in the future.' }
+    ),
+});
+
+// Zod Schema for DailyProgressModal form fields
+export const dailyProgressFormSchema = z.object({
+  satisfaction: z.nativeEnum(SatisfactionLevel, {
+    errorMap: () => ({ message: 'Please select a satisfaction level.' }),
+  }),
+  notes: z.string().max(500, 'Notes are too long.').optional().nullable(),
 });

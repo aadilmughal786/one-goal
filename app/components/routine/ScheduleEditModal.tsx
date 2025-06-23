@@ -11,14 +11,22 @@ import { MdOutlineSettings } from 'react-icons/md';
 // NEW: Import useNotificationStore to use showToast
 import { useNotificationStore } from '@/store/useNotificationStore';
 
+// React Hook Form imports
+import { zodResolver } from '@hookform/resolvers/zod';
+import { SubmitHandler, useForm } from 'react-hook-form';
+// Import the new schema for the form
+import { scheduleEditFormSchema } from '@/utils/schemas';
+import z from 'zod';
+
+// Define the type for the form data based on the Zod schema
+type ScheduleEditFormData = z.infer<typeof scheduleEditFormSchema>;
+
 interface ScheduleEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   scheduleToEdit: ScheduledRoutineBase | null;
   originalIndex: number | null;
   onSave: (schedule: ScheduledRoutineBase, originalIndex: number | null) => Promise<void>;
-  // REMOVED: showToast prop is no longer needed
-  // showToast: (text: string, type: 'success' | 'error' | 'info') => void;
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
   iconComponentsMap: { [key: string]: React.ElementType };
@@ -33,40 +41,77 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   scheduleToEdit,
   originalIndex,
   onSave,
-  // REMOVED: showToast from destructuring
   newInputLabelPlaceholder,
   newIconOptions,
   iconComponentsMap,
   buttonLabel,
 }) => {
-  // NEW: Access showToast from the global notification store
   const showToast = useNotificationStore(state => state.showToast);
 
-  const [label, setLabel] = useState('');
-  const [duration, setDuration] = useState<number | ''>(30);
-  const [icon, setIcon] = useState(newIconOptions[0]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Initialize react-hook-form
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<ScheduleEditFormData>({
+    resolver: zodResolver(scheduleEditFormSchema),
+    defaultValues: {
+      label: '',
+      time: new Date(), // Default to current time for time picker
+      duration: 30,
+      icon: newIconOptions[0], // Default to the first icon option
+    },
+  });
+
+  // Watch the time field for DateTimePicker
+  const scheduleTime = watch('time');
+  const selectedIcon = watch('icon'); // Watch the selected icon
+
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
-  const [scheduleTime, setScheduleTime] = useState<Date>(new Date());
 
   useEffect(() => {
     if (isOpen) {
       if (scheduleToEdit) {
-        setLabel(scheduleToEdit.label);
-        setScheduleTime(parse(scheduleToEdit.time, 'HH:mm', new Date()));
-        setDuration(scheduleToEdit.duration);
-        setIcon(scheduleToEdit.icon);
+        // Set form values when modal opens and scheduleToEdit is provided
+        reset({
+          label: scheduleToEdit.label,
+          time: parse(scheduleToEdit.time, 'HH:mm', new Date()), // Parse string time to Date
+          duration: scheduleToEdit.duration,
+          icon: scheduleToEdit.icon,
+        });
       } else {
-        setLabel('');
-        setScheduleTime(new Date());
-        setDuration(30);
-        setIcon(newIconOptions[0]);
+        // Reset form to default values if adding a new schedule
+        reset({
+          label: '',
+          time: new Date(),
+          duration: 30,
+          icon: newIconOptions[0],
+        });
       }
-      setIsSubmitting(false);
-      setIsTimePickerOpen(false);
+      // Ensure submitting state is reset on open
+      // This is handled by isSubmitting from formState, but also to be safe.
+      // setIsSubmitting(false); // No longer needed as formState.isSubmitting covers this.
+      setIsTimePickerOpen(false); // Close time picker when modal opens
     }
-  }, [isOpen, scheduleToEdit, newIconOptions]);
+  }, [isOpen, scheduleToEdit, newIconOptions, reset]);
 
+  // Effect to display validation errors as toasts
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      // Only run if there are actual errors
+      for (const key in errors) {
+        const error = errors[key as keyof ScheduleEditFormData];
+        if (error?.message) {
+          showToast(error.message, 'error');
+        }
+      }
+    }
+  }, [errors, showToast]);
+
+  // Handle modal body overflow when open
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'auto';
@@ -75,39 +120,34 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
     };
   }, [isOpen]);
 
-  const handleDurationChange = (value: string) => {
-    setDuration(value === '' ? '' : parseInt(value, 10));
-  };
+  // Handle form submission
+  const onSubmit: SubmitHandler<ScheduleEditFormData> = async data => {
+    // isSubmitting from formState covers button disabled state
+    // Manual validation check for empty label, time, duration no longer needed due to Zod schema
 
-  const handleSubmit = async () => {
-    const parsedDuration = Number(duration);
-    if (!label.trim() || !scheduleTime || isNaN(parsedDuration) || parsedDuration < 1) {
-      showToast('Please provide a valid label, time, and duration (min 1 min).', 'error'); // Use global showToast
-      return;
-    }
-
-    setIsSubmitting(true);
     const now = Timestamp.now();
-    const finalTime = format(scheduleTime, 'HH:mm');
+    const finalTime = format(data.time, 'HH:mm'); // Format Date object back to HH:mm string
 
     let newOrUpdatedSchedule: ScheduledRoutineBase;
 
     if (scheduleToEdit) {
+      // If editing existing
       newOrUpdatedSchedule = {
-        ...scheduleToEdit,
-        label: label.trim(),
+        ...scheduleToEdit, // Keep original ID, createdAt etc.
+        label: data.label.trim(),
         time: finalTime,
-        duration: parsedDuration,
-        icon,
+        duration: data.duration,
+        icon: data.icon,
         updatedAt: now,
       };
     } else {
+      // If adding new
       newOrUpdatedSchedule = {
         id: generateUUID(),
-        label: label.trim(),
+        label: data.label.trim(),
         time: finalTime,
-        duration: parsedDuration,
-        icon,
+        duration: data.duration,
+        icon: data.icon,
         completed: false,
         completedAt: null,
         createdAt: now,
@@ -120,9 +160,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error saving schedule:', error);
-      showToast('Failed to save schedule. Please try again.', 'error'); // Use global showToast
-    } finally {
-      setIsSubmitting(false);
+      showToast('Failed to save schedule. Please try again.', 'error');
     }
   };
 
@@ -140,116 +178,118 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
           className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md cursor-auto"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center p-6 border-b border-white/10">
-            <h2 className="text-xl font-semibold text-white">
-              {scheduleToEdit ? 'Edit Schedule' : 'Add New Schedule'}
-            </h2>
-            <button
-              className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
-              onClick={onClose}
-              aria-label="Close modal"
-            >
-              <FiX />
-            </button>
-          </div>
-          <div className="p-6 space-y-6">
-            <div>
-              <label className="block mb-2 text-sm text-white/70">Icon</label>
-              <div className="flex flex-wrap gap-2 p-2 rounded-lg border bg-black/20 border-white/10">
-                {newIconOptions.map(optionIconName => {
-                  const IconComponent = iconComponentsMap[optionIconName] || MdOutlineSettings;
-                  const isSelected = icon === optionIconName;
-                  return (
-                    <button
-                      key={optionIconName}
-                      onClick={() => setIcon(optionIconName)}
-                      className={`flex justify-center items-center p-3 rounded-md transition-all duration-200 cursor-pointer
-                        ${isSelected ? 'text-black bg-white' : 'text-white/70 bg-white/5 hover:bg-white/10 hover:text-white'}`}
-                      aria-label={`Select ${optionIconName} icon`}
-                      title={optionIconName.replace('MdOutline', '').replace('Fa', '')}
-                    >
-                      <IconComponent size={24} />
-                    </button>
-                  );
-                })}
-              </div>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="flex justify-between items-center p-6 border-b border-white/10">
+              <h2 className="text-xl font-semibold text-white">
+                {scheduleToEdit ? 'Edit Schedule' : 'Add New Schedule'}
+              </h2>
+              <button
+                type="button"
+                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+                onClick={onClose}
+                aria-label="Close modal"
+              >
+                <FiX />
+              </button>
             </div>
-            <div>
-              <label htmlFor="schedule-label" className="block mb-2 text-sm text-white/70">
-                Label
-              </label>
-              <input
-                id="schedule-label"
-                type="text"
-                placeholder={newInputLabelPlaceholder}
-                value={label}
-                onChange={e => setLabel(e.target.value)}
-                className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
-                aria-required="true"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="p-6 space-y-6">
               <div>
-                <label htmlFor="start-time" className="block mb-2 text-sm text-white/70">
-                  Start Time
-                </label>
-                <button
-                  id="start-time"
-                  onClick={() => setIsTimePickerOpen(true)}
-                  className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
-                  aria-haspopup="true"
-                  aria-expanded={isTimePickerOpen}
-                >
-                  {format(scheduleTime, 'HH:mm')}
-                </button>
+                <label className="block mb-2 text-sm text-white/70">Icon</label>
+                <div className="flex flex-wrap gap-2 p-2 rounded-lg border bg-black/20 border-white/10">
+                  {newIconOptions.map(optionIconName => {
+                    const IconComponent = iconComponentsMap[optionIconName] || MdOutlineSettings;
+                    const isSelected = selectedIcon === optionIconName;
+                    return (
+                      <button
+                        key={optionIconName}
+                        type="button" // Prevent form submission
+                        onClick={() =>
+                          setValue('icon', optionIconName, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          })
+                        }
+                        className={`flex justify-center items-center p-3 rounded-md transition-all duration-200 cursor-pointer
+                          ${isSelected ? 'text-black bg-white' : 'text-white/70 bg-white/5 hover:bg-white/10 hover:text-white'}`}
+                        aria-label={`Select ${optionIconName} icon`}
+                        title={optionIconName.replace('MdOutline', '').replace('Fa', '')}
+                      >
+                        <IconComponent size={24} />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
-                <label htmlFor="duration-minutes" className="block mb-2 text-sm text-white/70">
-                  Duration (min)
+                <label htmlFor="schedule-label" className="block mb-2 text-sm text-white/70">
+                  Label
                 </label>
                 <input
-                  id="duration-minutes"
-                  type="number"
-                  min={1}
-                  placeholder="e.g., 30"
-                  value={duration}
-                  onChange={e => handleDurationChange(e.target.value)}
+                  id="schedule-label"
+                  type="text"
+                  placeholder={newInputLabelPlaceholder}
+                  {...register('label')} // Register the input
                   className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
                   aria-required="true"
-                  aria-label="Duration in minutes"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="start-time" className="block mb-2 text-sm text-white/70">
+                    Start Time
+                  </label>
+                  <button
+                    id="start-time"
+                    type="button" // Prevent form submission
+                    onClick={() => setIsTimePickerOpen(true)}
+                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    aria-haspopup="true"
+                    aria-expanded={isTimePickerOpen}
+                  >
+                    {format(scheduleTime, 'HH:mm')}
+                  </button>
+                </div>
+                <div>
+                  <label htmlFor="duration-minutes" className="block mb-2 text-sm text-white/70">
+                    Duration (min)
+                  </label>
+                  <input
+                    id="duration-minutes"
+                    type="number"
+                    min={1}
+                    placeholder="e.g., 30"
+                    {...register('duration', { valueAsNumber: true })} // Register as number
+                    className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    aria-required="true"
+                    aria-label="Duration in minutes"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="p-6 border-t border-white/10">
-            <button
-              onClick={handleSubmit}
-              disabled={
-                isSubmitting ||
-                !label.trim() ||
-                !scheduleTime ||
-                Number(duration) < 1 ||
-                isNaN(Number(duration))
-              }
-              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
-              aria-label={buttonLabel}
-            >
-              {isSubmitting ? (
-                <FiLoader className="w-5 h-5 animate-spin" />
-              ) : (
-                <FiCheck className="w-5 h-5" />
-              )}
-              <span>{buttonLabel}</span>
-            </button>
-          </div>
+            <div className="p-6 border-t border-white/10">
+              <button
+                type="submit"
+                disabled={isSubmitting || !isDirty} // Disable if submitting or no changes
+                className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+                aria-label={buttonLabel}
+              >
+                {isSubmitting ? (
+                  <FiLoader className="w-5 h-5 animate-spin" />
+                ) : (
+                  <FiCheck className="w-5 h-5" />
+                )}
+                <span>{buttonLabel}</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
       <DateTimePicker
         isOpen={isTimePickerOpen}
-        value={scheduleTime}
+        value={scheduleTime} // Pass the Date object directly
         onChange={date => {
           if (date) {
-            setScheduleTime(date);
+            setValue('time', date, { shouldValidate: true, shouldDirty: true });
           }
         }}
         onClose={() => setIsTimePickerOpen(false)}
