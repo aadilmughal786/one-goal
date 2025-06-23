@@ -37,11 +37,9 @@ const teethIcons: string[] = Object.keys(IconComponents);
  */
 const TeethCare: React.FC = () => {
   // --- REFACTOR: Get all necessary state and actions from the stores ---
-  const { appState, updateRoutineSettings } = useGoalStore(state => ({
-    currentUser: state.currentUser,
-    appState: state.appState,
-    updateRoutineSettings: state.updateRoutineSettings,
-  }));
+  // FIX: Select each piece of state individually to prevent infinite loops.
+  const appState = useGoalStore(state => state.appState);
+  const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];

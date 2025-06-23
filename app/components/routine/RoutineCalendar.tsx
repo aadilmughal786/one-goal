@@ -106,10 +106,9 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   icon: IconComponent,
 }) => {
   // --- REFACTOR: Get all necessary state and actions from the stores ---
-  const { appState, saveDailyProgress } = useGoalStore(state => ({
-    appState: state.appState,
-    saveDailyProgress: state.saveDailyProgress,
-  }));
+  // FIX: Select each piece of state individually to prevent infinite loops.
+  const appState = useGoalStore(state => state.appState);
+  const saveDailyProgress = useGoalStore(state => state.saveDailyProgress);
   const showToast = useNotificationStore(state => state.showToast);
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
@@ -202,7 +201,6 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
       };
 
       try {
-        // --- REFACTOR: Use the saveDailyProgress action from the store ---
         await saveDailyProgress(updatedProgress);
         showToast(`${title} status updated!`, 'success');
       } catch (error: unknown) {
@@ -237,7 +235,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           {title}
         </h3>
         <div className="text-lg font-semibold text-center text-white">
-          {format(currentMonth, 'MMMM<y_bin_46>')}
+          {format(currentMonth, 'MMMM yyyy')}
         </div>
         <div className="flex gap-1 sm:gap-2">
           <button

@@ -20,18 +20,13 @@ import { DistractionItem } from '@/types';
  */
 const DistractionListComponent: React.FC = () => {
   // --- REFACTOR: Get data and actions from stores ---
-  const { appState, addDistraction, updateDistraction, deleteDistraction } = useGoalStore(
-    state => ({
-      appState: state.appState,
-      addDistraction: state.addDistraction,
-      updateDistraction: state.updateDistraction,
-      deleteDistraction: state.deleteDistraction,
-    })
-  );
-  const { showToast, showConfirmation } = useNotificationStore(state => ({
-    showToast: state.showToast,
-    showConfirmation: state.showConfirmation,
-  }));
+  // FIX: Select each piece of state or action individually to prevent infinite loops.
+  const appState = useGoalStore(state => state.appState);
+  const addDistraction = useGoalStore(state => state.addDistraction);
+  const updateDistraction = useGoalStore(state => state.updateDistraction);
+  const deleteDistraction = useGoalStore(state => state.deleteDistraction);
+  const showToast = useNotificationStore(state => state.showToast);
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
   const list = appState?.goals[appState.activeGoalId || '']?.notToDoList || [];
 

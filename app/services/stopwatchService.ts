@@ -60,26 +60,27 @@ export const addStopwatchSession = async (
       updatedAt: now,
     };
 
-    const dateKey = newSession.startTime.toDate().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateKey = newSession.startTime.toDate().toISOString().split('T')[0]; // yyyy-MM-dd
     const existingProgress = goal.dailyProgress[dateKey];
 
     const updatedSessions = existingProgress
       ? [...existingProgress.sessions, newSession]
       : [newSession];
 
-    // Recalculate the total duration for the day.
     const newTotalDuration = updatedSessions.reduce((sum, session) => sum + session.duration, 0);
 
     // If no progress entry exists for this day, create a default one.
+    // FIX: When creating a new daily progress, ensure the `sessions` array is initialized with the new session.
     const updatedDailyProgress: DailyProgress = existingProgress ?? {
       date: dateKey,
       satisfaction: SatisfactionLevel.NEUTRAL,
       notes: '',
-      routines: {} as Record<string, RoutineLogStatus>, // Default empty routines
-      sessions: [], // Start with empty, will be updated below
+      routines: {} as Record<string, RoutineLogStatus>,
+      sessions: [newSession], // FIX: Initialize with the new session
       totalSessionDuration: 0,
     };
 
+    // This part correctly updates the sessions array whether it's a new or existing day
     updatedDailyProgress.sessions = updatedSessions;
     updatedDailyProgress.totalSessionDuration = newTotalDuration;
 

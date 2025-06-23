@@ -93,19 +93,14 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     }
   },
 
-  /** Saves the completed stopwatch session to Firestore. */
+  /** Saves the completed stopwatch session to Firestore and refreshes the app state. */
   save: async () => {
     const { sessionLabel, elapsedTime, startTime } = get();
-    // Get the current user and active goal from the main goal store.
     const { currentUser, appState } = useGoalStore.getState();
     const activeGoalId = appState?.activeGoalId;
-
-    // NEW: Access showToast from the useNotificationStore
     const showToast = useNotificationStore.getState().showToast;
 
     if (!currentUser || !activeGoalId || !sessionLabel.trim()) {
-      console.error('Cannot save session: Missing user, active goal, or label.');
-      // Trigger a toast notification here.
       showToast('Cannot save session: Missing user, active goal, or label.', 'error');
       return;
     }
@@ -119,13 +114,18 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     };
 
     try {
+      // 1. Save the new session to the database.
       await addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
-      // Perform a full reset of the timer state after a successful save.
+
+      // 2. Reset the timer's local state.
       get().reset();
-      showToast('Focus session saved successfully!', 'success'); // Success toast
+      showToast('Focus session saved successfully!', 'success');
+
+      // 3. FIX: Fetch the latest data from the database to update the UI.
+      // This ensures the SessionLog component gets the new session immediately.
+      await useGoalStore.getState().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Failed to save session', error);
-      // Trigger an error toast here.
       showToast('Failed to save focus session.', 'error');
     } finally {
       set({ isSaving: false, isLabeling: false });

@@ -24,20 +24,18 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 const StickyNotes: React.FC = () => {
-  const { appState, addStickyNote, updateStickyNote, deleteStickyNote } = useGoalStore(state => ({
-    appState: state.appState,
-    addStickyNote: state.addStickyNote,
-    updateStickyNote: state.updateStickyNote,
-    deleteStickyNote: state.deleteStickyNote,
-  }));
-  const { showToast, showConfirmation } = useNotificationStore(state => ({
-    showToast: state.showToast,
-    showConfirmation: state.showConfirmation,
-  }));
+  // FIX: Select each piece of state and action individually.
+  const appState = useGoalStore(state => state.appState);
+  const addStickyNote = useGoalStore(state => state.addStickyNote);
+  const updateStickyNote = useGoalStore(state => state.updateStickyNote);
+  const deleteStickyNote = useGoalStore(state => state.deleteStickyNote);
+
+  // FIX: Select each action individually from the notification store as well.
+  const showToast = useNotificationStore(state => state.showToast);
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
 
-  // FIX: Memoize the stickyNotes array to prevent unnecessary re-renders.
   const stickyNotes = useMemo(() => activeGoal?.stickyNotes || [], [activeGoal]);
 
   const [searchQuery, setSearchQuery] = useState('');

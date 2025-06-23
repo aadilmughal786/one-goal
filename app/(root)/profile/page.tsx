@@ -242,6 +242,37 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">User ID</span>
+              <span className="font-mono text-sm text-white/80">{currentUser.uid}</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Account Created</span>
+              <span className="text-white/80">
+                {currentUser.metadata.creationTime
+                  ? formatDate(currentUser.metadata.creationTime, 'MMM d,yyyy')
+                  : 'Unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Last Sign In</span>
+              <span className="text-white/80">
+                {currentUser.metadata.lastSignInTime
+                  ? formatDate(currentUser.metadata.lastSignInTime, 'MMM d,yyyy')
+                  : 'Unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-white/60">Email Verified</span>
+              <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
+                {currentUser.emailVerified ? 'Yes' : 'No'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {isAvatarModalOpen && (

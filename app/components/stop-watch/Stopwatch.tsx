@@ -28,29 +28,17 @@ import { useTimerStore } from '@/store/useTimerStore';
  */
 const Stopwatch: React.FC = () => {
   // Access the stopwatch state and actions directly from the useTimerStore
-  const {
-    isRunning: stopwatchIsRunning,
-    elapsedTime: stopwatchElapsedTime,
-    isLabeling: stopwatchIsLabeling,
-    sessionLabel: stopwatchSessionLabel,
-    isSaving: isSavingStopwatch,
-    setSessionLabel: setStopwatchSessionLabel,
-    start: handleStopwatchStart,
-    pause: handleStopwatchPause,
-    reset: handleStopwatchReset,
-    save: handleStopwatchSave,
-  } = useTimerStore(state => ({
-    isRunning: state.isRunning,
-    elapsedTime: state.elapsedTime,
-    isLabeling: state.isLabeling,
-    sessionLabel: state.sessionLabel,
-    isSaving: state.isSaving,
-    setSessionLabel: state.setSessionLabel,
-    start: state.start,
-    pause: state.pause,
-    reset: state.reset,
-    save: state.save,
-  }));
+  // FIX: Select each piece of state individually to prevent infinite re-renders.
+  const stopwatchIsRunning = useTimerStore(state => state.isRunning);
+  const stopwatchElapsedTime = useTimerStore(state => state.elapsedTime);
+  const stopwatchIsLabeling = useTimerStore(state => state.isLabeling);
+  const stopwatchSessionLabel = useTimerStore(state => state.sessionLabel);
+  const isSavingStopwatch = useTimerStore(state => state.isSaving);
+  const setStopwatchSessionLabel = useTimerStore(state => state.setSessionLabel);
+  const handleStopwatchStart = useTimerStore(state => state.start);
+  const handleStopwatchPause = useTimerStore(state => state.pause);
+  const handleStopwatchReset = useTimerStore(state => state.reset);
+  const handleStopwatchSave = useTimerStore(state => state.save);
 
   // State to manage the fullscreen mode of the stopwatch container.
   const [isFullScreen, setIsFullScreen] = useState(false);

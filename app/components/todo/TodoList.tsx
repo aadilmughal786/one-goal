@@ -163,13 +163,12 @@ const TodoListItem: React.FC<{
 // --- MAIN TODO LIST COMPONENT ---
 const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
   // --- REFACTOR: Get data and actions from stores ---
-  const { appState, addTodo, updateTodo, deleteTodo, reorderTodos } = useGoalStore(state => ({
-    appState: state.appState,
-    addTodo: state.addTodo,
-    updateTodo: state.updateTodo,
-    deleteTodo: state.deleteTodo,
-    reorderTodos: state.reorderTodos,
-  }));
+  // FIX: Select each piece of state or action individually to prevent infinite loops.
+  const appState = useGoalStore(state => state.appState);
+  const addTodo = useGoalStore(state => state.addTodo);
+  const updateTodo = useGoalStore(state => state.updateTodo);
+  const deleteTodo = useGoalStore(state => state.deleteTodo);
+  const reorderTodos = useGoalStore(state => state.reorderTodos);
   const showToast = useNotificationStore(state => state.showToast);
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
