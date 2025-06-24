@@ -1,33 +1,28 @@
 // app/components/dashboard/DashboardAnalytics.tsx
 'use client';
 
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import Charts from '@/components/dashboard/Charts';
-import { AppState } from '@/types';
+import { useGoalStore } from '@/store/useGoalStore';
 import Link from 'next/link';
 import React, { useMemo } from 'react';
 import { FiBarChart2 } from 'react-icons/fi';
 
-// NEW: Import the common NoActiveGoalMessage component
-import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
+const DashboardAnalytics: React.FC = () => {
+  // FIX: Get activeGoal directly from the store.
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
 
-interface DashboardAnalyticsProps {
-  appState: AppState | null;
-}
+  const dailyProgressArray = useMemo(
+    () => (activeGoal ? Object.values(activeGoal.dailyProgress) : []),
+    [activeGoal]
+  );
 
-const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ appState }) => {
-  const activeGoal = useMemo(() => {
-    if (!appState?.activeGoalId || !appState.goals) return null;
-    return appState.goals[appState.activeGoalId];
-  }, [appState]);
-
-  const dailyProgressArray = activeGoal ? Object.values(activeGoal.dailyProgress) : [];
-
-  // FIX: Use the common NoActiveGoalMessage component for consistency.
   if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
 
-  // Display a different message if there is a goal but no data to analyze yet.
   if (dailyProgressArray.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center p-10 h-full text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">

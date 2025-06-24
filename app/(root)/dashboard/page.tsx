@@ -10,22 +10,14 @@ import { FiBarChart2, FiFeather, FiGrid } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { AppState, DailyProgress } from '@/types';
+import { DailyProgress } from '@/types';
 
-// REFACTOR: Import the new common skeleton component
+// REFACTOR: Import components
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import DashboardMain from '@/components/dashboard/DashboardMain';
 import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
-
-interface DashboardTabProps {
-  isDailyProgressModalOpen: boolean;
-  selectedDate: Date | null;
-  handleDayClick: (date: Date) => void;
-  handleSaveProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
-  setIsDailyProgressModalOpen: (isOpen: boolean) => void;
-}
 
 interface TabItem {
   id: string;
@@ -52,8 +44,12 @@ const ConsolidatedDashboardPageContent = () => {
   const searchParams = useSearchParams();
 
   const { isLoading } = useAuth();
+
+  // FIX: Select each piece of state individually to prevent infinite loops,
+  // matching the pattern used in other components like TeethCare.tsx.
   const appState = useGoalStore(state => state.appState);
   const saveDailyProgressAction = useGoalStore(state => state.saveDailyProgress);
+
   const showToast = useNotificationStore(state => state.showToast);
 
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
@@ -97,11 +93,6 @@ const ConsolidatedDashboardPageContent = () => {
 
   const handleSaveProgress = useCallback(
     async (progressData: Partial<DailyProgress>) => {
-      const { currentUser } = useGoalStore.getState();
-      if (!currentUser) {
-        showToast('Authentication required to save progress.', 'error');
-        return;
-      }
       try {
         await saveDailyProgressAction({
           ...progressData,
@@ -125,36 +116,19 @@ const ConsolidatedDashboardPageContent = () => {
 
   const renderActiveTabContent = () => {
     if (isLoading || isTabContentLoading) {
-      // REFACTOR: Use the common skeleton component.
       return <PageContentSkeleton />;
     }
 
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
 
     if (ActiveComponent) {
-      const commonProps: DashboardTabProps = {
-        isDailyProgressModalOpen,
-        selectedDate,
-        handleDayClick,
-        handleSaveProgress,
-        setIsDailyProgressModalOpen,
-      };
-
-      const componentProps = {
-        ...commonProps,
-        ...(ActiveComponent.name === 'DashboardMain' && { appState }),
-        ...(ActiveComponent.name === 'DashboardAnalytics' && { appState }),
-        ...(ActiveComponent.name === 'DashboardQuotes' && {
-          currentUser: useGoalStore.getState().currentUser,
-          appState,
-          onAppStateUpdate: (newAppState: AppState) =>
-            useGoalStore.setState({ appState: newAppState }),
-        }),
-      };
-
-      return <ActiveComponent {...componentProps} />;
+      // FIX: Pass only the necessary props to DashboardMain, other components are self-sufficient.
+      if (activeTab === 'main') {
+        return <DashboardMain handleDayClick={handleDayClick} />;
+      }
+      return <ActiveComponent />;
     }
-    return <DashboardMain {...({} as DashboardTabProps)} />;
+    return <DashboardMain handleDayClick={handleDayClick} />;
   };
 
   return (
@@ -163,7 +137,6 @@ const ConsolidatedDashboardPageContent = () => {
         <div className="flex space-x-2">
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
-                // FIX: Changed padding from py-4 to py-3 to match the real tabs
                 <div key={i} className="px-4 py-3 animate-pulse">
                   <div className="w-24 h-6 rounded-md bg-white/10"></div>
                 </div>

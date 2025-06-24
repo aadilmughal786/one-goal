@@ -1,10 +1,9 @@
 // app/components/stop-watch/SessionLog.tsx
 'use client';
 
-import { deleteStopwatchSession, updateStopwatchSession } from '@/services/stopwatchService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { AppState, StopwatchSession } from '@/types';
+import { StopwatchSession } from '@/types';
 import {
   addMonths,
   eachDayOfInterval,
@@ -33,21 +32,19 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 
-// --- REFACTOR: The props interface is simplified. ---
-// The unused isUpdatingId prop has been removed.
-interface SessionLogProps {
-  appState: AppState | null;
-}
-
-export default function SessionLog({ appState }: SessionLogProps) {
+export default function SessionLog() {
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
+  // FIX: Select each piece of state individually to prevent infinite loops.
   const currentUser = useGoalStore(state => state.currentUser);
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
+  const deleteStopwatchSession = useGoalStore(state => state.deleteStopwatchSession);
+  const updateStopwatchSession = useGoalStore(state => state.updateStopwatchSession);
 
-  const activeGoal = appState?.goals[appState.activeGoalId || ''];
-  const activeGoalId = appState?.activeGoalId;
-
+  const activeGoalId = activeGoal?.id;
   const goalStartDate = activeGoal?.startDate?.toDate();
   const goalEndDate = activeGoal?.endDate?.toDate();
 
@@ -55,7 +52,6 @@ export default function SessionLog({ appState }: SessionLogProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  // This local state now correctly manages the loading status for updates.
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
 
   const loggedDays = useMemo(() => {
@@ -154,12 +150,10 @@ export default function SessionLog({ appState }: SessionLogProps) {
     setIsUpdatingId(session.id);
 
     try {
-      await updateStopwatchSession(currentUser.uid, activeGoalId, dateKey, session.id, editText);
+      await updateStopwatchSession(dateKey, session.id, editText);
       showToast('Session label updated!', 'success');
-      await useGoalStore.getState().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Error updating session:', error);
-      showToast('Failed to update session label.', 'error');
     } finally {
       setEditingSessionId(null);
       setEditText('');
@@ -183,19 +177,17 @@ export default function SessionLog({ appState }: SessionLogProps) {
           setIsUpdatingId(sessionId);
 
           try {
-            await deleteStopwatchSession(currentUser.uid, activeGoalId, dateKey, sessionId);
+            await deleteStopwatchSession(dateKey, sessionId);
             showToast('Session deleted.', 'info');
-            await useGoalStore.getState().fetchInitialData(currentUser);
           } catch (error) {
             console.error('Error deleting session:', error);
-            showToast('Failed to delete session.', 'error');
           } finally {
             setIsUpdatingId(null);
           }
         },
       });
     },
-    [showConfirmation, currentUser, activeGoalId, selectedDay, showToast, setIsUpdatingId]
+    [showConfirmation, currentUser, activeGoalId, selectedDay, showToast, deleteStopwatchSession]
   );
 
   if (!activeGoal) {

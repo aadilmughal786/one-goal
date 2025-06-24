@@ -3,6 +3,7 @@ import {
   AppState,
   DailyProgress,
   RoutineLogStatus,
+  RoutineType,
   SatisfactionLevel,
   StopwatchSession,
 } from '@/types';
@@ -63,24 +64,27 @@ export const addStopwatchSession = async (
     const dateKey = newSession.startTime.toDate().toISOString().split('T')[0]; // yyyy-MM-dd
     const existingProgress = goal.dailyProgress[dateKey];
 
-    const updatedSessions = existingProgress
-      ? [...existingProgress.sessions, newSession]
-      : [newSession];
-
-    const newTotalDuration = updatedSessions.reduce((sum, session) => sum + session.duration, 0);
-
     // If no progress entry exists for this day, create a default one.
-    // FIX: When creating a new daily progress, ensure the `sessions` array is initialized with the new session.
+    // FIX: Initialize the 'routines' object with all required keys to conform to the DailyProgress type.
     const updatedDailyProgress: DailyProgress = existingProgress ?? {
       date: dateKey,
       satisfaction: SatisfactionLevel.NEUTRAL,
       notes: '',
-      routines: {} as Record<string, RoutineLogStatus>,
-      sessions: [newSession], // FIX: Initialize with the new session
+      routines: {
+        [RoutineType.SLEEP]: RoutineLogStatus.NOT_LOGGED,
+        [RoutineType.WATER]: RoutineLogStatus.NOT_LOGGED,
+        [RoutineType.TEETH]: RoutineLogStatus.NOT_LOGGED,
+        [RoutineType.MEAL]: RoutineLogStatus.NOT_LOGGED,
+        [RoutineType.BATH]: RoutineLogStatus.NOT_LOGGED,
+        [RoutineType.EXERCISE]: RoutineLogStatus.NOT_LOGGED,
+      },
+      sessions: [], // Start with an empty array, it will be populated next.
       totalSessionDuration: 0,
     };
 
-    // This part correctly updates the sessions array whether it's a new or existing day
+    const updatedSessions = [...updatedDailyProgress.sessions, newSession];
+    const newTotalDuration = updatedSessions.reduce((sum, session) => sum + session.duration, 0);
+
     updatedDailyProgress.sessions = updatedSessions;
     updatedDailyProgress.totalSessionDuration = newTotalDuration;
 

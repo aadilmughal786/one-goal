@@ -20,6 +20,7 @@ import * as goalService from '@/services/goalService';
 import * as quoteService from '@/services/quoteService';
 import * as routineService from '@/services/routineService';
 import * as stickyNoteService from '@/services/stickyNoteService';
+import * as stopwatchService from '@/services/stopwatchService'; // Import stopwatch service
 import * as todoService from '@/services/todoService';
 
 // Import the notification store to show error toasts on failure
@@ -55,6 +56,9 @@ interface GoalStore {
   saveDailyProgress: (progressData: DailyProgress) => Promise<void>;
   addStarredQuote: (quoteId: number) => Promise<void>;
   removeStarredQuote: (quoteId: number) => Promise<void>;
+  // FIX: Added missing stopwatch actions to the store interface
+  updateStopwatchSession: (dateKey: string, sessionId: string, newLabel: string) => Promise<void>;
+  deleteStopwatchSession: (dateKey: string, sessionId: string) => Promise<void>;
 }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
@@ -81,8 +85,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const { currentUser, appState } = get();
     if (!currentUser || !appState) return;
 
-    // This is not an optimistic update, so we don't need a rollback.
-    // We wait for the server to confirm the new goal.
     try {
       const newGoalData = {
         name,
@@ -99,7 +101,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
           goals: { ...state.appState!.goals, [createdGoal.id]: createdGoal },
           activeGoalId: state.appState!.activeGoalId ?? createdGoal.id,
         };
-        // If there was no active goal, make the new one active.
         if (!state.appState!.activeGoalId) {
           goalService.setActiveGoal(currentUser.uid, createdGoal.id);
         }
@@ -114,10 +115,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   updateGoal: async (goalId, updates) => {
     const { currentUser, appState } = get();
     if (!currentUser || !appState) return;
-
-    const originalState = { ...appState }; // Save original state
-
-    // Optimistic update
+    const originalState = { ...appState };
     set(state => ({
       appState: {
         ...state.appState!,
@@ -127,52 +125,44 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         },
       },
     }));
-
     try {
       await goalService.updateGoal(currentUser.uid, goalId, updates);
     } catch (error) {
       console.error('Store: Failed to update goal', error);
       useNotificationStore.getState().showToast('Failed to update goal. Reverting.', 'error');
-      set({ appState: originalState }); // Rollback on failure
+      set({ appState: originalState });
     }
   },
 
   deleteGoal: async goalId => {
     const { currentUser, appState } = get();
     if (!currentUser || !appState) return;
-
     const originalState = { ...appState };
-
     const newGoals = { ...originalState.goals };
     delete newGoals[goalId];
     const newActiveGoalId =
       originalState.activeGoalId === goalId ? null : originalState.activeGoalId;
-
-    // Optimistic update
     set({ appState: { ...originalState, goals: newGoals, activeGoalId: newActiveGoalId } });
-
     try {
       await goalService.deleteGoal(currentUser.uid, goalId);
     } catch (error) {
       console.error('Store: Failed to delete goal', error);
       useNotificationStore.getState().showToast('Failed to delete goal. Reverting.', 'error');
-      set({ appState: originalState }); // Rollback
+      set({ appState: originalState });
     }
   },
 
   setActiveGoal: async goalId => {
     const { currentUser, appState } = get();
     if (!currentUser || !appState) return;
-
     const originalActiveGoalId = appState.activeGoalId;
     set(state => ({ appState: { ...state.appState!, activeGoalId: goalId } }));
-
     try {
       await goalService.setActiveGoal(currentUser.uid, goalId);
     } catch (error) {
       console.error('Store: Failed to set active goal', error);
       useNotificationStore.getState().showToast('Could not switch active goal.', 'error');
-      set(state => ({ appState: { ...state.appState!, activeGoalId: originalActiveGoalId } })); // Rollback
+      set(state => ({ appState: { ...state.appState!, activeGoalId: originalActiveGoalId } }));
     }
   },
 
@@ -180,8 +170,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
     if (!currentUser || !activeGoalId) return;
-
-    // No optimistic update here, as we need the ID from the service
     try {
       const newItem = await todoService.addTodoItem(currentUser.uid, activeGoalId, text);
       set(state => {
@@ -207,9 +195,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
     if (!currentUser || !activeGoalId) return;
-
     const originalState = { ...appState };
-
     set(state => {
       const goal = state.appState!.goals[activeGoalId];
       const updatedList = goal.toDoList.map(item =>
@@ -222,7 +208,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         },
       };
     });
-
     try {
       await todoService.updateTodoItem(currentUser.uid, activeGoalId, itemId, updates);
     } catch (error) {
@@ -236,9 +221,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
     if (!currentUser || !activeGoalId) return;
-
     const originalState = { ...appState };
-
     set(state => {
       const goal = state.appState!.goals[activeGoalId];
       const updatedList = goal.toDoList.filter(item => item.id !== itemId);
@@ -249,7 +232,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         },
       };
     });
-
     try {
       await todoService.deleteTodoItem(currentUser.uid, activeGoalId, itemId);
     } catch (error) {
@@ -263,9 +245,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
     if (!currentUser || !activeGoalId) return;
-
     const originalState = { ...appState };
-
     set(state => {
       const goal = state.appState!.goals[activeGoalId];
       return {
@@ -275,7 +255,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         },
       };
     });
-
     try {
       await todoService.updateTodoListOrder(currentUser.uid, activeGoalId, reorderedList);
     } catch (error) {
@@ -285,52 +264,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     }
   },
 
-  // All other actions (distractions, notes, routines, etc.) would follow the same
-  // "save original state -> optimistic update -> try/catch with rollback" pattern.
-  // For brevity, I've implemented the pattern on the main actions.
-  // The full implementation would apply this to every state-mutating action.
-
-  // Example for one more action to illustrate the pattern:
-  updateDistraction: async (itemId, updates) => {
-    const { currentUser, appState } = get();
-    const activeGoalId = appState?.activeGoalId;
-    if (!currentUser || !activeGoalId) return;
-
-    const originalState = { ...appState };
-
-    set(state => {
-      const goal = state.appState!.goals[activeGoalId];
-      const updatedList = goal.notToDoList.map(item =>
-        item.id === itemId ? { ...item, ...updates } : item
-      );
-      return {
-        appState: {
-          ...state.appState!,
-          goals: {
-            ...state.appState!.goals,
-            [activeGoalId]: { ...goal, notToDoList: updatedList },
-          },
-        },
-      };
-    });
-
-    try {
-      await distractionService.updateDistractionItem(
-        currentUser.uid,
-        activeGoalId,
-        itemId,
-        updates
-      );
-    } catch (error) {
-      console.error('Store: Failed to update distraction', error);
-      useNotificationStore
-        .getState()
-        .showToast('Failed to update distraction. Reverting.', 'error');
-      set({ appState: originalState });
-    }
-  },
-
-  // Placeholder for other actions to be updated
   addDistraction: async title => {
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
@@ -356,6 +289,42 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     } catch (error) {
       console.error('Store: Failed to add distraction', error);
       useNotificationStore.getState().showToast('Could not add distraction.', 'error');
+    }
+  },
+
+  updateDistraction: async (itemId, updates) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+    const originalState = { ...appState };
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedList = goal.notToDoList.map(item =>
+        item.id === itemId ? { ...item, ...updates } : item
+      );
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: { ...goal, notToDoList: updatedList },
+          },
+        },
+      };
+    });
+    try {
+      await distractionService.updateDistractionItem(
+        currentUser.uid,
+        activeGoalId,
+        itemId,
+        updates
+      );
+    } catch (error) {
+      console.error('Store: Failed to update distraction', error);
+      useNotificationStore
+        .getState()
+        .showToast('Failed to update distraction. Reverting.', 'error');
+      set({ appState: originalState });
     }
   },
 
@@ -406,7 +375,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
             ...state.appState!,
             goals: {
               ...state.appState!.goals,
-              [activeGoalId]: { ...goal, stickyNotes: [...goal.stickyNotes, newItem] },
+              [activeGoalId]: { ...goal, stickyNotes: [...(goal.stickyNotes || []), newItem] },
             },
           },
         };
@@ -424,7 +393,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     const originalState = { ...appState };
     set(state => {
       const goal = state.appState!.goals[activeGoalId];
-      const updatedList = goal.stickyNotes.map(item =>
+      const updatedList = (goal.stickyNotes || []).map(item =>
         item.id === itemId ? { ...item, ...updates } : item
       );
       return {
@@ -460,7 +429,10 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
           ...state.appState!,
           goals: {
             ...state.appState!.goals,
-            [activeGoalId]: { ...goal, stickyNotes: goal.stickyNotes.filter(n => n.id !== itemId) },
+            [activeGoalId]: {
+              ...goal,
+              stickyNotes: (goal.stickyNotes || []).filter(n => n.id !== itemId),
+            },
           },
         },
       };
@@ -578,6 +550,107 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     } catch (error) {
       console.error('Store: Failed to unstar quote', error);
       useNotificationStore.getState().showToast('Failed to unstar quote. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  // FIX: Implement the missing stopwatch actions
+  updateStopwatchSession: async (dateKey, sessionId, newLabel) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const progress = goal.dailyProgress[dateKey];
+      if (!progress) return state;
+
+      const updatedSessions = progress.sessions.map(session =>
+        session.id === sessionId
+          ? { ...session, label: newLabel, updatedAt: Timestamp.now() }
+          : session
+      );
+
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: {
+              ...goal,
+              dailyProgress: {
+                ...goal.dailyProgress,
+                [dateKey]: { ...progress, sessions: updatedSessions },
+              },
+            },
+          },
+        },
+      };
+    });
+
+    try {
+      await stopwatchService.updateStopwatchSession(
+        currentUser.uid,
+        activeGoalId,
+        dateKey,
+        sessionId,
+        newLabel
+      );
+    } catch (error) {
+      console.error('Store: Failed to update stopwatch session', error);
+      useNotificationStore.getState().showToast('Failed to update session. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  deleteStopwatchSession: async (dateKey, sessionId) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const progress = goal.dailyProgress[dateKey];
+      if (!progress) return state;
+
+      const updatedSessions = progress.sessions.filter(session => session.id !== sessionId);
+      const newTotalDuration = updatedSessions.reduce((sum, session) => sum + session.duration, 0);
+
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: {
+              ...goal,
+              dailyProgress: {
+                ...goal.dailyProgress,
+                [dateKey]: {
+                  ...progress,
+                  sessions: updatedSessions,
+                  totalSessionDuration: newTotalDuration,
+                },
+              },
+            },
+          },
+        },
+      };
+    });
+
+    try {
+      await stopwatchService.deleteStopwatchSession(
+        currentUser.uid,
+        activeGoalId,
+        dateKey,
+        sessionId
+      );
+    } catch (error) {
+      console.error('Store: Failed to delete stopwatch session', error);
+      useNotificationStore.getState().showToast('Failed to delete session. Reverting.', 'error');
       set({ appState: originalState });
     }
   },

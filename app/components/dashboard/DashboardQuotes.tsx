@@ -1,38 +1,20 @@
 // app/components/dashboard/DashboardQuotes.tsx
 'use client';
 
-import { quotes as allQuotes } from '@/data/quotes';
-import { AppState, Quote } from '@/types';
-import { User } from 'firebase/auth';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiLoader, FiRefreshCw, FiStar } from 'react-icons/fi';
-
-// We now import specific functions from our new, focused service module.
-import { addStarredQuote, removeStarredQuote } from '@/services/quoteService';
-// NEW: Import useNotificationStore to use showToast
-import { useNotificationStore } from '@/store/useNotificationStore';
-
-// NEW: Import the common NoActiveGoalMessage component
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-
-// The props interface remains the same as its parent (dashboard/page.tsx) is not yet refactored.
-interface DashboardQuotesProps {
-  currentUser: User | null;
-  appState: AppState | null;
-  onAppStateUpdate: (newAppState: AppState) => void;
-}
+import { quotes as allQuotes } from '@/data/quotes';
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { Quote } from '@/types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FiLoader, FiRefreshCw, FiStar } from 'react-icons/fi';
 
 /**
  * DashboardQuotes Component
- *
  * Displays a "Quote of the Moment" and a list of starred quotes.
  * It has been refactored to use the new dedicated quoteService for all data operations.
  */
-const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
-  currentUser,
-  appState,
-  onAppStateUpdate,
-}) => {
+const DashboardQuotes: React.FC = () => {
   const [randomQuote, setRandomQuote] = useState<Quote | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isFetchingNew, setIsFetchingNew] = useState(false);
@@ -40,10 +22,12 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
 
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoal = useMemo(() => {
-    if (!appState?.activeGoalId || !appState.goals) return null;
-    return appState.goals[appState.activeGoalId];
-  }, [appState]);
+  // FIX: Select each piece of state individually to prevent infinite loops.
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
+  const addStarredQuote = useGoalStore(state => state.addStarredQuote);
+  const removeStarredQuote = useGoalStore(state => state.removeStarredQuote);
 
   const getNewRandomQuote = useCallback(() => {
     setIsFetchingNew(true);
@@ -62,64 +46,35 @@ const DashboardQuotes: React.FC<DashboardQuotesProps> = ({
     randomQuote && activeGoal ? activeGoal.starredQuotes.includes(randomQuote.id) : false;
 
   const handleToggleStar = async () => {
-    if (!currentUser || !activeGoal || !randomQuote || isUpdating) return;
+    if (!activeGoal || !randomQuote || isUpdating) return;
 
     setIsUpdating(true);
-    const { id: goalId } = activeGoal;
-    const { uid } = currentUser;
     const { id: quoteId } = randomQuote;
 
     try {
-      let updatedStarredQuoteIds: number[];
       if (isCurrentQuoteStarred) {
-        await removeStarredQuote(uid, goalId, quoteId);
-        updatedStarredQuoteIds = activeGoal.starredQuotes.filter(qId => qId !== quoteId);
+        await removeStarredQuote(quoteId);
         showToast('Quote unstarred.', 'info');
       } else {
-        await addStarredQuote(uid, goalId, quoteId);
-        updatedStarredQuoteIds = [...activeGoal.starredQuotes, quoteId];
+        await addStarredQuote(quoteId);
         showToast('Quote starred!', 'success');
       }
-
-      const newAppState = {
-        ...appState!,
-        goals: {
-          ...appState!.goals,
-          [goalId]: { ...activeGoal, starredQuotes: updatedStarredQuoteIds },
-        },
-      };
-      onAppStateUpdate(newAppState);
     } catch (error) {
+      // Error is handled by the store
       console.error('Failed to update quote status:', error);
-      showToast('Failed to update quote status.', 'error');
     } finally {
       setIsUpdating(false);
     }
   };
 
   const handleUnstarFromList = async (quoteId: number) => {
-    if (!currentUser || !activeGoal) return;
-
+    if (!activeGoal) return;
     setUpdatingId(quoteId);
-    const { id: goalId } = activeGoal;
-    const { uid } = currentUser;
-
     try {
-      await removeStarredQuote(uid, goalId, quoteId);
-      const updatedStarredQuoteIds = activeGoal.starredQuotes.filter(qId => qId !== quoteId);
-
-      const newAppState = {
-        ...appState!,
-        goals: {
-          ...appState!.goals,
-          [goalId]: { ...activeGoal, starredQuotes: updatedStarredQuoteIds },
-        },
-      };
-      onAppStateUpdate(newAppState);
+      await removeStarredQuote(quoteId);
       showToast('Quote unstarred.', 'info');
     } catch (error) {
       console.error('Failed to unstar quote from list:', error);
-      showToast('Failed to unstar quote.', 'error');
     } finally {
       setUpdatingId(null);
     }

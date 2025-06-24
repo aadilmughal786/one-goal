@@ -2,7 +2,7 @@
 'use client';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-import PageContentSkeleton from '@/components/common/PageContentSkeleton'; // NEW: Import the common skeleton
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import SessionLog from '@/components/stop-watch/SessionLog';
 import Stopwatch from '@/components/stop-watch/Stopwatch';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,14 +24,12 @@ const tabItems: TabItem[] = [
   { id: 'log', label: 'Session Log', icon: FiCalendar },
 ];
 
-// REFACTOR: This local component is no longer needed.
-// const PageMainContentSkeletonLoader = () => ( ... );
-
 const StopwatchPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const { isLoading } = useAuth();
+  // FIX: Read appState directly here to determine if an active goal exists.
   const appState = useGoalStore(state => state.appState);
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
@@ -64,7 +62,6 @@ const StopwatchPageContent = () => {
     const activeGoal = appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null;
 
     if (isLoading || isTabContentLoading) {
-      // REFACTOR: Use the common skeleton component.
       return <PageContentSkeleton />;
     }
 
@@ -76,7 +73,8 @@ const StopwatchPageContent = () => {
       case 'stopwatch':
         return <Stopwatch />;
       case 'log':
-        return <SessionLog appState={appState} />;
+        // FIX: SessionLog is now self-sufficient and doesn't need props.
+        return <SessionLog />;
       default:
         return null;
     }
@@ -88,7 +86,6 @@ const StopwatchPageContent = () => {
         <div className="flex space-x-2">
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
-                // FIX: Changed padding from py-4 to py-3 to match the real tabs
                 <div key={i} className="px-4 py-3 animate-pulse">
                   <div className="w-20 h-6 rounded-md bg-white/10"></div>
                 </div>

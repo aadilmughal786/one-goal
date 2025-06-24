@@ -1,48 +1,25 @@
 // app/components/dashboard/DashboardMain.tsx
 'use client';
 
-import { DailyProgress } from '@/types';
-import { format } from 'date-fns';
-import React, { useMemo } from 'react';
-
-// REFACTOR: Import the common 'No Active Goal' component
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-import { useGoalStore } from '@/store/useGoalStore';
-
 import CountdownCard from '@/components/dashboard/CountdownCard';
-import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import RoutineTimeline from '@/components/dashboard/RoutineTimeline';
+import { useGoalStore } from '@/store/useGoalStore';
+import React from 'react';
 
+// REFACTOR: This component no longer needs to manage modal state passed from its parent.
+// The parent page (`dashboard/page.tsx`) will handle the modal logic.
 interface DashboardMainProps {
-  isDailyProgressModalOpen: boolean;
-  selectedDate: Date | null;
   handleDayClick: (date: Date) => void;
-  handleSaveProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
-  setIsDailyProgressModalOpen: (isOpen: boolean) => void;
 }
 
-const DashboardMain: React.FC<DashboardMainProps> = ({
-  isDailyProgressModalOpen,
-  selectedDate,
-  handleDayClick,
-  handleSaveProgress,
-  setIsDailyProgressModalOpen,
-}) => {
-  const appState = useGoalStore(state => state.appState);
+const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
+  // FIX: Get activeGoal directly from the store.
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
 
-  const activeGoal = useMemo(() => {
-    if (!appState?.activeGoalId || !appState.goals) return null;
-    return appState.goals[appState.activeGoalId];
-  }, [appState]);
-
-  const initialProgress = useMemo(() => {
-    return selectedDate && activeGoal
-      ? activeGoal.dailyProgress[format(selectedDate, 'yyyy-MM-dd')] || null
-      : null;
-  }, [selectedDate, activeGoal]);
-
-  // FIX: Use the common NoActiveGoalMessage component for consistency.
   if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
@@ -61,7 +38,8 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
       </section>
 
       <section>
-        <RoutineTimeline appState={appState} />
+        {/* FIX: RoutineTimeline is now self-sufficient and doesn't need props. */}
+        <RoutineTimeline />
       </section>
 
       <section>
@@ -77,16 +55,6 @@ const DashboardMain: React.FC<DashboardMainProps> = ({
           onDayClick={handleDayClick}
         />
       </section>
-
-      {selectedDate && (
-        <DailyProgressModal
-          isOpen={isDailyProgressModalOpen}
-          onClose={() => setIsDailyProgressModalOpen(false)}
-          date={selectedDate}
-          initialProgress={initialProgress}
-          onSave={handleSaveProgress}
-        />
-      )}
     </div>
   );
 };

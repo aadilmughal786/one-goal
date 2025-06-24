@@ -18,7 +18,6 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // FIX: Select each piece of state individually to prevent infinite re-renders.
-  // This is the standard way to fix the "getServerSnapshot" warning with Zustand.
   const fetchInitialData = useGoalStore(state => state.fetchInitialData);
   const currentUser = useGoalStore(state => state.currentUser);
   const appState = useGoalStore(state => state.appState);
@@ -51,7 +50,9 @@ export const useAuth = () => {
       unsubscribe();
       clearTimeout(initialLoadTimeout);
     };
-  }, [router, fetchInitialData, appState, currentUser, isLoading]); // Dependencies for the effect.
+    // FIX: Removed isLoading from dependency array to prevent potential race conditions/loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, fetchInitialData, appState, currentUser]); // Dependencies for the effect.
 
   useEffect(() => {
     // Once the user and app state are loaded, update the loading state.
