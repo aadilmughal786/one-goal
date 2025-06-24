@@ -24,6 +24,7 @@ import * as stopwatchService from '@/services/stopwatchService'; // Import stopw
 import * as todoService from '@/services/todoService';
 
 // Import the notification store to show error toasts on failure
+import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { useNotificationStore } from './useNotificationStore';
 
 /**
@@ -75,9 +76,36 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       const appData = await goalService.getUserData(user.uid);
       set({ appState: appData, isLoading: false });
     } catch (error) {
-      console.error('Failed to fetch user data', error);
-      useNotificationStore.getState().showToast('Failed to load your data.', 'error');
-      set({ isLoading: false, currentUser: null, appState: null });
+      console.error('Failed to fetch user data:', error);
+
+      let errorMessage = 'Failed to load your data. It may be corrupted.';
+      if (error instanceof ServiceError) {
+        // Use the detailed, formatted message from the service
+        errorMessage = error.message;
+      }
+
+      // Show the specific error to the user
+      useNotificationStore.getState().showToast(errorMessage, 'error');
+
+      // If the error was a validation failure, reset the data to prevent crashes
+      if (error instanceof ServiceError && error.code === ServiceErrorCode.VALIDATION_FAILED) {
+        const { currentUser } = get();
+        if (currentUser) {
+          try {
+            const defaultState = await goalService.resetUserData(currentUser.uid);
+            set({ appState: defaultState, isLoading: false });
+            // Inform the user that a reset has occurred
+            useNotificationStore
+              .getState()
+              .showToast('Your data was incompatible and has been safely reset.', 'info');
+          } catch (resetError) {
+            console.error('Failed to reset user data after validation failure:', resetError);
+            set({ isLoading: false, currentUser: null, appState: null });
+          }
+        }
+      } else {
+        set({ isLoading: false, currentUser: null, appState: null });
+      }
     }
   },
 

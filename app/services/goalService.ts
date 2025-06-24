@@ -99,9 +99,30 @@ export const getUserData = async (userId: string): Promise<AppState> => {
         'Zod Validation Failed: Firestore data is malformed.',
         validationResult.error.flatten()
       );
-      const defaultState = _initializeDefaultAppState();
-      await setDoc(userDocRef, defaultState);
-      return defaultState;
+
+      // Format a detailed error message from Zod's error object.
+      const flattenedErrors = validationResult.error.flatten().fieldErrors;
+      const errorDetails = Object.entries(flattenedErrors)
+        .map(([path, messages]) => {
+          // Attempt to find the name of the goal causing the issue
+          const goalIdMatch = path.match(/goals\.(.*?)\./);
+          const goalId = goalIdMatch ? goalIdMatch[1] : null;
+          const goalName = goalId ? (rawData as AppState)?.goals[goalId]?.name : null;
+          const goalContext = goalName ? `in Goal "${goalName}"` : '';
+
+          // Extract the final field name that failed validation
+          const field = path.substring(path.lastIndexOf('.') + 1);
+
+          return `Field '${field}' ${goalContext} is invalid: ${messages.join('. ')}`;
+        })
+        .join('; ');
+
+      // Throw a specific error with the details. The store will catch this.
+      throw new ServiceError(
+        `Data validation failed. ${errorDetails}`,
+        ServiceErrorCode.VALIDATION_FAILED,
+        validationResult.error
+      );
     }
 
     const validatedData = validationResult.data;
@@ -113,6 +134,7 @@ export const getUserData = async (userId: string): Promise<AppState> => {
 
     return validatedData;
   } catch (error) {
+    if (error instanceof ServiceError) throw error; // Re-throw our custom error
     throw new ServiceError('Failed to load user data.', ServiceErrorCode.OPERATION_FAILED, error);
   }
 };
