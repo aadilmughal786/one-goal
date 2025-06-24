@@ -3,78 +3,58 @@
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { RoutineType, WaterRoutineSettings } from '@/types';
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { MdAdd, MdOutlineWaterDrop, MdRemove } from 'react-icons/md';
 
 /**
  * WaterTracker Component
- *
  * Manages the user's daily water intake goal and tracks current consumption.
- * This component has been refactored to use the new dedicated services and global store.
+ * This component relies on the global Zustand store and assumes default settings
+ * are initialized when a goal is created.
  */
 const WaterTracker: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
-  const appState = useGoalStore(state => state.appState);
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+  const waterSettings = activeGoal?.routineSettings?.water;
+  const waterGoal = waterSettings?.goal ?? 8;
+  const currentWater = waterSettings?.current ?? 0;
 
-  const [waterGoal, setWaterGoal] = useState(8);
-  const [currentWater, setCurrentWater] = useState(0);
+  const handleWaterSettingsChange = async (newValues: Partial<WaterRoutineSettings>) => {
+    // This check is now robust. It handles old goals that might not have water settings.
+    if (!activeGoal) {
+      showToast('Cannot update water settings: no active goal found.', 'error');
+      return;
+    }
 
-  useEffect(() => {
-    // Update local state when the global store changes
-    const settings = activeGoal?.routineSettings?.water;
-    setWaterGoal(settings?.goal ?? 8);
-    setCurrentWater(settings?.current ?? 0);
-  }, [activeGoal]);
-
-  /**
-   * Debounced function to save water settings to Firestore.
-   */
-  const saveWaterSettings = useCallback(async () => {
-    if (!activeGoal) return;
-
-    const newWaterSettings: WaterRoutineSettings = {
-      goal: waterGoal,
-      current: currentWater,
-    };
+    // If water settings don't exist (for old goals), create them on the fly.
+    const currentWaterSettings = activeGoal.routineSettings.water || { goal: 8, current: 0 };
+    const newWaterSettings = { ...currentWaterSettings, ...newValues };
 
     const newSettings = { ...activeGoal.routineSettings, water: newWaterSettings };
 
     try {
       await updateRoutineSettings(newSettings);
-      // Success toast is omitted for debounced saves to avoid spamming the user.
     } catch (error) {
       console.error('Failed to save water settings:', error);
-      showToast('Failed to save water settings.', 'error');
     }
-  }, [activeGoal, waterGoal, currentWater, showToast, updateRoutineSettings]);
+  };
 
-  // Effect to trigger `saveWaterSettings` with a debounce.
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      saveWaterSettings();
-    }, 1000); // 1-second debounce
-    return () => clearTimeout(handler);
-  }, [waterGoal, currentWater, saveWaterSettings]);
-
-  /**
-   * Handles incrementing or decrementing the current water consumption.
-   */
   const handleWaterChange = (increment: number) => {
-    setCurrentWater(prev => {
-      const newValue = prev + increment;
-      if (newValue < 0) return 0;
-      if (newValue > waterGoal + 10) return waterGoal + 10;
-      return newValue;
-    });
+    const newValue = currentWater + increment;
+    if (newValue < 0) return;
+    if (newValue > waterGoal + 10) return;
+    handleWaterSettingsChange({ current: newValue });
+  };
+
+  const handleGoalChange = (newGoal: number) => {
+    handleWaterSettingsChange({ goal: newGoal });
   };
 
   if (!activeGoal) {
@@ -146,7 +126,7 @@ const WaterTracker: React.FC = () => {
             min="4"
             max="20"
             value={waterGoal}
-            onChange={e => setWaterGoal(parseInt(e.target.value, 10))}
+            onChange={e => handleGoalChange(parseInt(e.target.value, 10))}
             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/20 accent-blue-500"
             aria-label="Daily water goal in glasses"
           />

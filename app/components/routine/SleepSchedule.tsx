@@ -5,13 +5,12 @@ import { DateTimePicker } from '@/components/common/DateTimePicker';
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { RoutineType, ScheduledRoutineBase, SleepRoutineSettings } from '@/types';
 import { addDays, differenceInMinutes, format, isAfter, isBefore, parse } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaMoon, FaSun } from 'react-icons/fa';
 import { FiLoader, FiRefreshCw } from 'react-icons/fi';
 import {
@@ -38,39 +37,28 @@ const sleepTips = [
 
 /**
  * SleepSchedule Component
- * This component has been refactored to use the new dedicated services and contains full implementation.
+ * This component has been refactored to remove local state management for routine data,
+ * fixing synchronization issues and relying entirely on the global Zustand store.
  */
 const SleepSchedule: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
-  const appState = useGoalStore(state => state.appState);
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
 
-  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+  const sleepSettings = activeGoal?.routineSettings?.sleep;
+  const bedtime = sleepSettings?.sleepTime || '22:00';
+  const wakeTime = sleepSettings?.wakeTime || '06:00';
 
-  const [bedtime, setBedtime] = useState('22:00');
-  const [wakeTime, setWakeTime] = useState('06:00');
-  const [napSchedule, setNapSchedule] = useState<ScheduledRoutineBase[]>([]);
-  const [, setCurrentTime] = useState(new Date());
+  // FIX: Wrap the initialization of 'napSchedule' in useMemo to stabilize its reference.
+  const napSchedule = useMemo(() => sleepSettings?.naps || [], [sleepSettings?.naps]);
+
   const [isBedtimePickerOpen, setIsBedtimePickerOpen] = useState(false);
   const [isWakeTimePickerOpen, setIsWakeTimePickerOpen] = useState(false);
   const [randomTip, setRandomTip] = useState('');
   const [isRefreshingTip, setIsRefreshingTip] = useState(false);
-  const isInitialDebounceMount = useRef(true);
-
-  useEffect(() => {
-    if (activeGoal?.routineSettings?.sleep) {
-      const { sleepTime, wakeTime, naps } = activeGoal.routineSettings.sleep;
-      setBedtime(sleepTime);
-      setWakeTime(wakeTime);
-      setNapSchedule(naps || []);
-    } else {
-      setBedtime('22:00');
-      setWakeTime('06:00');
-      setNapSchedule([]);
-    }
-  }, [activeGoal]);
+  const [, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -121,38 +109,22 @@ const SleepSchedule: React.FC = () => {
     refreshTip();
   }, [refreshTip]);
 
-  const saveMainSleepSettings = useCallback(async () => {
-    if (!activeGoal) return;
+  const handleTimeChange = async (type: 'bedtime' | 'wakeTime', newTime: string | null) => {
+    if (!activeGoal || !newTime) return;
+
     const newSleepSettings: SleepRoutineSettings = {
-      sleepTime: bedtime,
-      wakeTime,
-      naps: napSchedule,
+      ...activeGoal.routineSettings.sleep!,
+      [type === 'bedtime' ? 'sleepTime' : 'wakeTime']: newTime,
     };
     const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
-    try {
-      await updateRoutineSettings(newSettings);
-    } catch (error) {
-      showToast('Failed to save sleep settings.', 'error');
-      console.error(error);
-    }
-  }, [activeGoal, bedtime, wakeTime, napSchedule, updateRoutineSettings, showToast]);
-
-  useEffect(() => {
-    if (isInitialDebounceMount.current) {
-      isInitialDebounceMount.current = false;
-      return;
-    }
-    const handler = setTimeout(() => saveMainSleepSettings(), 1000);
-    return () => clearTimeout(handler);
-  }, [bedtime, wakeTime, saveMainSleepSettings]);
+    await updateRoutineSettings(newSettings);
+  };
 
   const updateNapSchedules = useCallback(
     async (updatedNaps: ScheduledRoutineBase[], successMessage: string) => {
       if (!activeGoal) return;
-      // FIX: Explicitly create the new SleepRoutineSettings object to ensure type safety.
       const newSleepSettings: SleepRoutineSettings = {
-        sleepTime: bedtime,
-        wakeTime: wakeTime,
+        ...activeGoal.routineSettings.sleep!,
         naps: updatedNaps,
       };
       const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
@@ -163,7 +135,7 @@ const SleepSchedule: React.FC = () => {
         console.error('Failed to update nap schedule:', error);
       }
     },
-    [activeGoal, bedtime, wakeTime, updateRoutineSettings, showToast]
+    [activeGoal, updateRoutineSettings, showToast]
   );
 
   const toggleNapCompletion = useCallback(
@@ -177,7 +149,6 @@ const SleepSchedule: React.FC = () => {
             }
           : nap
       );
-      setNapSchedule(updatedNaps);
       await updateNapSchedules(updatedNaps, 'Nap schedule updated!');
     },
     [napSchedule, updateNapSchedules]
@@ -192,7 +163,6 @@ const SleepSchedule: React.FC = () => {
       } else {
         updatedNaps = [...napSchedule, schedule];
       }
-      setNapSchedule(updatedNaps);
       await updateNapSchedules(updatedNaps, message);
     },
     [napSchedule, updateNapSchedules]
@@ -201,7 +171,6 @@ const SleepSchedule: React.FC = () => {
   const handleRemoveNapSchedule = useCallback(
     async (indexToRemove: number) => {
       const updatedNaps = napSchedule.filter((_, index) => index !== indexToRemove);
-      setNapSchedule(updatedNaps);
       await updateNapSchedules(updatedNaps, 'Nap schedule removed.');
     },
     [napSchedule, updateNapSchedules]
@@ -329,18 +298,14 @@ const SleepSchedule: React.FC = () => {
       <DateTimePicker
         isOpen={isBedtimePickerOpen}
         value={parse(bedtime, 'HH:mm', new Date())}
-        onChange={date => {
-          if (date) setBedtime(format(date, 'HH:mm'));
-        }}
+        onChange={date => handleTimeChange('bedtime', date ? format(date, 'HH:mm') : null)}
         onClose={() => setIsBedtimePickerOpen(false)}
         mode="time"
       />
       <DateTimePicker
         isOpen={isWakeTimePickerOpen}
         value={parse(wakeTime, 'HH:mm', new Date())}
-        onChange={date => {
-          if (date) setWakeTime(format(date, 'HH:mm'));
-        }}
+        onChange={date => handleTimeChange('wakeTime', date ? format(date, 'HH:mm') : null)}
         onClose={() => setIsWakeTimePickerOpen(false)}
         mode="time"
       />

@@ -10,11 +10,6 @@ import { db } from './config'; // Import the shared db instance
 /**
  * @file app/services/goalService.ts
  * @description Goal and App State Data Service.
- *
- * This module is responsible for all data operations related to the core `Goal`
- * entities and the top-level `AppState` document for a user. It includes logic
- * for fetching, creating, and updating goals, ensuring all data is validated
- * against our Zod schemas upon retrieval.
  */
 
 // Helper to generate a unique ID on the client side.
@@ -31,10 +26,6 @@ const _initializeDefaultAppState = (): AppState => ({
 
 /**
  * A helper function that handles the daily reset of routines for all active goals.
- * It checks if the `lastRoutineResetDate` is before the current day. If so, it resets
- * the completion status of all scheduled routines and the daily water intake.
- * @param appState The current state of the application.
- * @returns An object containing the potentially updated appState and a boolean indicating if an update is needed.
  */
 const _handleDailyRoutineResets = (
   appState: AppState
@@ -88,9 +79,6 @@ const _handleDailyRoutineResets = (
 
 /**
  * Retrieves the entire user data document (`AppState`) from Firestore.
- * This is the primary data fetching function for the application.
- * Ensures that a valid AppState is always returned, initializing one if necessary
- * or if fetched data is malformed.
  */
 export const getUserData = async (userId: string): Promise<AppState> => {
   const userDocRef = doc(db, 'users', userId);
@@ -154,15 +142,23 @@ export const createGoal = async (
   const goalToCreate: Goal = {
     ...newGoalData,
     id: goalId,
-    createdAt: now, // Correctly set to current time
-    updatedAt: now, // Correctly set to current time
+    createdAt: now,
+    updatedAt: now,
     dailyProgress: {},
     toDoList: [],
     notToDoList: [],
     stickyNotes: [],
+    // FIX: Add default routine settings for both sleep and water when a goal is created.
     routineSettings: {
-      sleep: null,
-      water: null,
+      sleep: {
+        sleepTime: '22:00',
+        wakeTime: '06:00',
+        naps: [],
+      },
+      water: {
+        goal: 8,
+        current: 0,
+      },
       bath: [],
       exercise: [],
       meal: [],
@@ -187,7 +183,6 @@ export const createGoal = async (
       [`goals.${goalId}`]: validation.data,
     });
 
-    // Set as active if it's the first goal
     const userDoc = await getDoc(userDocRef);
     const appState = userDoc.data() as AppState;
     if (Object.keys(appState.goals).length === 1 && !appState.activeGoalId) {
@@ -211,7 +206,6 @@ export const updateGoal = async (
   const userDocRef = doc(db, 'users', userId);
   const updatePayload = { ...updates, updatedAt: Timestamp.now() };
 
-  // Create a flattened object for updating nested fields in the map
   const userDocUpdatePayload: { [key: string]: any } = {};
   for (const [key, value] of Object.entries(updatePayload)) {
     userDocUpdatePayload[`goals.${goalId}.${key}`] = value;
@@ -242,10 +236,9 @@ export const deleteGoal = async (userId: string, goalId: string): Promise<void> 
     const appState = userDocSnap.data() as AppState;
 
     const updatePayload: { [key: string]: any } = {
-      [`goals.${goalId}`]: deleteField(), // Use deleteField to remove the goal from the map
+      [`goals.${goalId}`]: deleteField(),
     };
 
-    // If the deleted goal was the active one, clear activeGoalId
     if (appState.activeGoalId === goalId) {
       updatePayload.activeGoalId = null;
     }
