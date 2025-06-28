@@ -54,7 +54,7 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
         await updateWellnessSettings(currentUser.uid, activeGoalId, newSettings);
         stopAllTimers();
         startTimers(newSettings);
-      } catch (error) {
+      } catch {
         useNotificationStore.getState().showToast('Failed to save reminder settings.', 'error');
         set({ settings });
         stopAllTimers();

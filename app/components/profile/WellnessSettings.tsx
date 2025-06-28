@@ -133,7 +133,7 @@ const WellnessSettings: React.FC = () => {
           return (
             <div
               key={type}
-              className="flex flex-col gap-4 p-4 rounded-lg sm:flex-row sm:items-center bg-black/20"
+              className="flex flex-col gap-4 p-4 rounded-lg border sm:flex-row sm:items-center bg-black/20 border-white/5"
             >
               <div className="flex flex-grow gap-4 items-center">
                 <Icon size={24} className="text-blue-400" />
