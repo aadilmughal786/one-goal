@@ -65,7 +65,6 @@ export const addStopwatchSession = async (
     const existingProgress = goal.dailyProgress[dateKey];
 
     // If no progress entry exists for this day, create a default one.
-    // FIX: Initialize the 'routines' object with all required keys to conform to the DailyProgress type.
     const updatedDailyProgress: DailyProgress = existingProgress ?? {
       date: dateKey,
       satisfaction: SatisfactionLevel.NEUTRAL,
@@ -80,6 +79,7 @@ export const addStopwatchSession = async (
       },
       sessions: [], // Start with an empty array, it will be populated next.
       totalSessionDuration: 0,
+      weight: null,
     };
 
     const updatedSessions = [...updatedDailyProgress.sessions, newSession];

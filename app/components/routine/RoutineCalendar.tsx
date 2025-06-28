@@ -198,6 +198,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
         sessions: existingDailyProgress?.sessions || [],
         totalSessionDuration: existingDailyProgress?.totalSessionDuration || 0,
         routines: routinesForToday,
+        weight: existingDailyProgress?.weight,
       };
 
       try {

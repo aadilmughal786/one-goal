@@ -125,6 +125,8 @@ export interface DailyProgress {
   routines: Record<RoutineType, RoutineLogStatus>;
   /** A denormalized sum of all session durations for this day (in ms) for performance. */
   totalSessionDuration: number;
+  /** The user's weight for the day, in a user-defined unit (e.g., kg, lbs). Can be null if not logged. */
+  weight: number | null;
 }
 
 /** A base interface for any user-defined, schedulable routine. */

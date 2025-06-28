@@ -85,6 +85,7 @@ export const dailyProgressSchema = z.object({
   sessions: z.array(stopwatchSessionSchema),
   routines: routinesSchema,
   totalSessionDuration: z.number().min(0),
+  weight: z.number().positive('Weight must be a positive number.').nullable(),
 });
 
 export const scheduledRoutineBaseSchema = baseEntitySchema.merge(completableSchema).extend({
@@ -199,6 +200,11 @@ export const dailyProgressFormSchema = z.object({
     errorMap: () => ({ message: 'Please select a satisfaction level.' }),
   }),
   notes: z.string().max(500, 'Notes are too long.').optional().nullable(),
+  weight: z.coerce
+    .number({ invalid_type_error: 'Weight must be a number.' })
+    .positive('Weight must be a positive number.')
+    .optional()
+    .nullable(),
 });
 
 // Zod Schema for DistractionEditModal form fields

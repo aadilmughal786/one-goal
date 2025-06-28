@@ -5,6 +5,9 @@ import {
   DistractionItem,
   Goal,
   GoalStatus,
+  RoutineLogStatus,
+  RoutineType,
+  SatisfactionLevel,
   StickyNote,
   StickyNoteColor,
   TodoItem,
@@ -55,7 +58,7 @@ interface GoalStore {
   updateStickyNote: (itemId: string, updates: Partial<StickyNote>) => Promise<void>;
   deleteStickyNote: (itemId: string) => Promise<void>;
   updateRoutineSettings: (newSettings: UserRoutineSettings) => Promise<void>;
-  saveDailyProgress: (progressData: DailyProgress) => Promise<void>;
+  saveDailyProgress: (progressData: Partial<DailyProgress>) => Promise<void>;
   addStarredQuote: (quoteId: number) => Promise<void>;
   removeStarredQuote: (quoteId: number) => Promise<void>;
   updateStopwatchSession: (dateKey: string, sessionId: string, newLabel: string) => Promise<void>;
@@ -559,26 +562,59 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     }
   },
 
-  saveDailyProgress: async progressData => {
+  saveDailyProgress: async (progressData: Partial<DailyProgress>) => {
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
-    if (!currentUser || !activeGoalId) return;
+    if (!currentUser || !activeGoalId || !progressData.date) return;
+
+    const dateKey = progressData.date;
     const originalState = { ...appState };
+
     set(state => {
       const goal = state.appState!.goals[activeGoalId];
-      const updatedProgress = { ...goal.dailyProgress, [progressData.date]: progressData };
+      const existingProgress = goal.dailyProgress[dateKey] || {
+        date: dateKey,
+        satisfaction: SatisfactionLevel.NEUTRAL,
+        notes: '',
+        sessions: [],
+        totalSessionDuration: 0,
+        routines: {
+          [RoutineType.SLEEP]: RoutineLogStatus.NOT_LOGGED,
+          [RoutineType.WATER]: RoutineLogStatus.NOT_LOGGED,
+          [RoutineType.TEETH]: RoutineLogStatus.NOT_LOGGED,
+          [RoutineType.MEAL]: RoutineLogStatus.NOT_LOGGED,
+          [RoutineType.BATH]: RoutineLogStatus.NOT_LOGGED,
+          [RoutineType.EXERCISE]: RoutineLogStatus.NOT_LOGGED,
+        },
+        weight: null,
+      };
+
+      const updatedDailyData: DailyProgress = {
+        ...existingProgress,
+        ...progressData,
+      };
+
+      const updatedProgressMap = { ...goal.dailyProgress, [dateKey]: updatedDailyData };
+
       return {
         appState: {
           ...state.appState!,
           goals: {
             ...state.appState!.goals,
-            [activeGoalId]: { ...goal, dailyProgress: updatedProgress },
+            [activeGoalId]: { ...goal, dailyProgress: updatedProgressMap },
           },
         },
       };
     });
+
     try {
-      await routineService.saveDailyProgress(currentUser.uid, activeGoalId, progressData);
+      const finalProgressDataForFirebase =
+        get().appState!.goals[activeGoalId].dailyProgress[dateKey];
+      await routineService.saveDailyProgress(
+        currentUser.uid,
+        activeGoalId,
+        finalProgressDataForFirebase
+      );
     } catch (error) {
       console.error('Store: Failed to save progress', error);
       useNotificationStore.getState().showToast('Failed to save progress. Reverting.', 'error');

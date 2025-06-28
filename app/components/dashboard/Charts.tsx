@@ -1,7 +1,7 @@
 // app/components/dashboard/Charts.tsx
 'use client';
 
-import { DailyProgress, Goal, SatisfactionLevel, StopwatchSession } from '@/types'; // Ensure StopwatchSession is imported
+import { DailyProgress, Goal, SatisfactionLevel, StopwatchSession } from '@/types';
 import {
   differenceInDays,
   eachDayOfInterval,
@@ -11,6 +11,7 @@ import {
   startOfWeek,
 } from 'date-fns';
 import React, { useMemo } from 'react';
+import { FaWeightHanging } from 'react-icons/fa';
 import {
   FiActivity,
   FiBarChart,
@@ -47,23 +48,16 @@ interface ChartsProps {
   goal: Goal | null;
 }
 
-// Define the interface for a single item in the chartData array
 interface ChartDataItem {
   date: string;
   satisfaction: number;
-  timeSpent: number; // In minutes
-  efficiency: number; // Satisfaction per hour
-  movingAvg: number; // 7-day moving average for satisfaction
+  timeSpent: number;
+  efficiency: number;
+  movingAvg: number;
 }
 
-/**
- * Maps SatisfactionLevel enum values to display information (color, label, numeric value).
- * @param level The SatisfactionLevel enum value.
- * @returns An object containing color, label, and numeric representation.
- */
 const getSatisfactionInfo = (level: SatisfactionLevel) => {
   const info: Record<SatisfactionLevel, { color: string; label: string; numeric: number }> = {
-    // Corrected enum member names to match types/index.ts
     [SatisfactionLevel.VERY_UNSATISFIED]: {
       color: '#ef4444',
       label: 'Very Unsatisfied',
@@ -74,17 +68,9 @@ const getSatisfactionInfo = (level: SatisfactionLevel) => {
     [SatisfactionLevel.SATISFIED]: { color: '#84cc16', label: 'Satisfied', numeric: 4 },
     [SatisfactionLevel.VERY_SATISFIED]: { color: '#22c55e', label: 'Very Satisfied', numeric: 5 },
   };
-  // Fallback for unexpected level, though TypeScript should prevent this if enum is strictly used.
   return info[level] || { color: '#9ca3af', label: 'Unknown', numeric: 0 };
 };
 
-/**
- * Custom Tooltip component for Recharts, providing formatted display of data points.
- * @param active - Boolean indicating if the tooltip is active.
- * @param payload - Array of data entries for the active point.
- * @param label - The label for the active data point (e.g., date).
- * @returns ReactNode representing the custom tooltip.
- */
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
@@ -95,29 +81,28 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
           let displayValue: string;
 
           if (typeof value === 'number') {
-            // Format based on the data key for better readability
             if (entry.dataKey === 'cumulativeHours') {
               displayValue = `${value.toFixed(1)} hrs`;
             } else if (entry.dataKey === 'avgTime' || entry.dataKey === 'timeSpent') {
-              // Added 'timeSpent'
               displayValue = `${value.toFixed(1)} mins`;
+            } else if (entry.dataKey === 'weight') {
+              displayValue = `${value.toFixed(1)}`;
             } else if (
               entry.dataKey === 'completionRate' ||
               entry.dataKey === 'consistency' ||
               entry.dataKey === 'successRate'
             ) {
-              displayValue = `${value.toFixed(0)}%`; // Round percentages to whole numbers
+              displayValue = `${value.toFixed(0)}%`;
             } else if (
               entry.dataKey === 'satisfaction' ||
               entry.dataKey === 'avgSatisfaction' ||
               entry.dataKey === 'movingAvg'
             ) {
-              displayValue = value.toFixed(1); // Satisfaction levels to 1 decimal
+              displayValue = value.toFixed(1);
             } else {
-              displayValue = value.toFixed(2); // Default for other numbers
+              displayValue = value.toFixed(2);
             }
           } else if (typeof value === 'string') {
-            // Attempt to parse string to float for formatting, else display as is
             const parsed = parseFloat(value);
             displayValue = isNaN(parsed) ? value : parsed.toFixed(2);
           } else {
@@ -136,78 +121,58 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   return null;
 };
 
-/**
- * Charts Component
- *
- * Displays various performance charts based on daily progress data for a goal.
- * Utilizes Recharts library for data visualization.
- */
 const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
-  /**
-   * Helper to calculate total duration in minutes from an array of StopwatchSession.
-   * @param sessions - Array of StopwatchSession objects.
-   * @returns Total duration in minutes.
-   */
   const getTotalSessionMinutes = (sessions: StopwatchSession[] | undefined): number => {
-    // Ensure sessions is an array and sum the 'duration' property (which is in milliseconds)
-    return (sessions || []).reduce((sum, s) => sum + s.duration, 0) / (1000 * 60); // Convert ms to minutes
+    return (sessions || []).reduce((sum, s) => sum + s.duration, 0) / (1000 * 60);
   };
 
-  /**
-   * Memoized data for daily satisfaction, time spent, and moving averages.
-   * This is the primary data source for the Satisfaction Trend chart.
-   */
   const chartData: ChartDataItem[] = useMemo(() => {
-    // Explicitly type as ChartDataItem[]
-    // Ensure dailyProgress is an array before mapping
     if (!dailyProgress) return [];
-
     const data = dailyProgress.map(p => ({
-      date: format(new Date(p.date), 'MMM d'), // Format date string for display
-      satisfaction: getSatisfactionInfo(p.satisfaction).numeric, // Use 'satisfaction' property from DailyProgress
-      timeSpent: getTotalSessionMinutes(p.sessions), // Calculate total time spent in minutes from sessions
-      // Efficiency calculation (satisfaction per hour spent). Avoid division by zero.
+      date: format(new Date(p.date), 'MMM d'),
+      satisfaction: getSatisfactionInfo(p.satisfaction).numeric,
+      timeSpent: getTotalSessionMinutes(p.sessions),
       efficiency:
         getTotalSessionMinutes(p.sessions) > 0
           ? getSatisfactionInfo(p.satisfaction).numeric / (getTotalSessionMinutes(p.sessions) / 60)
           : 0,
-      movingAvg: 0, // Initialize movingAvg here
+      movingAvg: 0,
     }));
-
-    // Calculate 7-day moving average for satisfaction.
     for (let i = 0; i < data.length; i++) {
-      const start = Math.max(0, i - 6); // Start index for the 7-day window
-      const end = i + 1; // End index for the window
-      const window = data.slice(start, end); // Extract the window of data
-      const sum = window.reduce((acc, curr) => acc + curr.satisfaction, 0); // Sum satisfaction in the window
-      data[i].movingAvg = parseFloat((sum / window.length).toFixed(2)); // Calculate average and format
+      const start = Math.max(0, i - 6);
+      const end = i + 1;
+      const window = data.slice(start, end);
+      const sum = window.reduce((acc, curr) => acc + curr.satisfaction, 0);
+      data[i].movingAvg = parseFloat((sum / window.length).toFixed(2));
     }
-
     return data;
-  }, [dailyProgress]); // Dependency: re-calculate if dailyProgress changes
+  }, [dailyProgress]);
 
-  /**
-   * Memoized data for overall goal progress, including days passed, logged, and consistency rates.
-   * Used in the RadialBarChart.
-   */
+  const weightData = useMemo(() => {
+    if (!dailyProgress) return [];
+    return dailyProgress
+      .filter(p => p.weight !== null && p.weight > 0)
+      .map(p => ({
+        date: format(new Date(p.date), 'MMM d'),
+        weight: p.weight,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [dailyProgress]);
+
   const goalProgressData = useMemo(() => {
     if (!goal) return null;
-
-    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1; // Total duration of the goal
+    const totalDays = differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1;
     const daysPassed = Math.min(
-      differenceInDays(new Date(), goal.startDate.toDate()) + 1, // Days from goal start to today
+      differenceInDays(new Date(), goal.startDate.toDate()) + 1,
       totalDays
     );
-    // Count days where there's progress (satisfaction > neutral or some time spent)
     const daysLogged = dailyProgress.filter(
       p =>
         getSatisfactionInfo(p.satisfaction).numeric > SatisfactionLevel.NEUTRAL ||
         getTotalSessionMinutes(p.sessions) > 0
     ).length;
-
-    const completionRate = (daysPassed / totalDays) * 100; // Percentage of goal period passed
-    const loggingRate = daysPassed > 0 ? (daysLogged / daysPassed) * 100 : 0; // Consistency of logging
-
+    const completionRate = (daysPassed / totalDays) * 100;
+    const loggingRate = daysPassed > 0 ? (daysLogged / daysPassed) * 100 : 0;
     return {
       totalDays,
       daysPassed,
@@ -216,113 +181,80 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       completionRate,
       loggingRate,
     };
-  }, [dailyProgress, goal]); // Dependencies: dailyProgress and goal
+  }, [dailyProgress, goal]);
 
-  /**
-   * Memoized data for weekly consistency tracking.
-   * Used in the BarChart for weekly consistency.
-   */
   const consistencyData = useMemo(() => {
     if (!goal) return [];
-
     const weeks = [];
-    let currentDate = goal.startDate.toDate(); // Start from goal's start date
-    // End date for loop is min of today and goal end date, to avoid future dates
+    let currentDate = goal.startDate.toDate();
     const endDateForLoop = Math.min(new Date().getTime(), goal.endDate.toDate().getTime());
-
     while (currentDate.getTime() <= endDateForLoop) {
       const weekStart = startOfWeek(currentDate);
       const weekEnd = endOfWeek(currentDate);
       const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
       const weekProgress = weekDays
-        // Filter days to be within goal start and current date (or goal end date)
         .filter(day => day >= goal.startDate.toDate() && day <= new Date())
         .map(day => {
-          const dayKey = format(day, 'yyyy-MM-dd'); // Format date string correctly for lookup
-          return dailyProgress.find(p => p.date === dayKey); // Find progress for this specific day
+          const dayKey = format(day, 'yyyy-MM-dd');
+          return dailyProgress.find(p => p.date === dayKey);
         });
-
       const activeDays = weekProgress.filter(
         p =>
           p &&
           (getSatisfactionInfo(p.satisfaction).numeric > SatisfactionLevel.NEUTRAL ||
             getTotalSessionMinutes(p.sessions) > 0)
-      ).length; // Count days with logged progress
-
+      ).length;
       const totalWeekDays = weekProgress.length;
-      const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0; // Consistency percentage
-
+      const consistency = totalWeekDays > 0 ? (activeDays / totalWeekDays) * 100 : 0;
       weeks.push({
-        week: format(weekStart, 'MMM d'), // Label for the week
-        consistency: parseFloat(consistency.toFixed(1)), // Format consistency percentage
+        week: format(weekStart, 'MMM d'),
+        consistency: parseFloat(consistency.toFixed(1)),
         activeDays,
         totalDays: totalWeekDays,
       });
-
-      // Move to the next week's start
       currentDate = new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000);
     }
-
     return weeks;
-  }, [dailyProgress, goal]); // Dependencies: dailyProgress and goal
+  }, [dailyProgress, goal]);
 
-  /**
-   * Memoized data for cumulative hours invested and rolling average satisfaction.
-   * Used in the Cumulative Progress chart.
-   */
   const cumulativeTimeData = useMemo(() => {
     if (!dailyProgress) return [];
-
     let accumulatedTimeMinutes = 0;
     let accumulatedSatisfaction = 0;
-
     return dailyProgress.map((p, index) => {
-      accumulatedTimeMinutes += getTotalSessionMinutes(p.sessions); // Accumulate minutes
-      accumulatedSatisfaction += getSatisfactionInfo(p.satisfaction).numeric; // Accumulate satisfaction
-
+      accumulatedTimeMinutes += getTotalSessionMinutes(p.sessions);
+      accumulatedSatisfaction += getSatisfactionInfo(p.satisfaction).numeric;
       return {
-        date: format(new Date(p.date), 'MMM d'), // Format date string
-        cumulativeHours: parseFloat((accumulatedTimeMinutes / 60).toFixed(2)), // Convert to hours
-        avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)), // Rolling average
+        date: format(new Date(p.date), 'MMM d'),
+        cumulativeHours: parseFloat((accumulatedTimeMinutes / 60).toFixed(2)),
+        avgSatisfaction: parseFloat((accumulatedSatisfaction / (index + 1)).toFixed(2)),
       };
     });
-  }, [dailyProgress]); // Dependency: dailyProgress
+  }, [dailyProgress]);
 
-  /**
-   * Memoized data for correlating time spent with satisfaction levels.
-   * Used in the Time vs Satisfaction Analysis chart.
-   */
   const correlationData = useMemo(() => {
-    if (!chartData) return []; // Depends on chartData, which has been fixed
-
+    if (!chartData) return [];
     return chartData.map(item => ({
-      timeSpent: item.timeSpent, // Already uses minutes from chartData
-      satisfaction: item.satisfaction, // Already from chartData
-      efficiency: item.efficiency, // Already calculated in chartData
+      timeSpent: item.timeSpent,
+      satisfaction: item.satisfaction,
+      efficiency: item.efficiency,
       date: item.date,
     }));
-  }, [chartData]); // Dependency: chartData
+  }, [chartData]);
 
-  /**
-   * Memoized data for weekly performance, averaged by day of the week.
-   * Used in the Day-of-Week Performance Analysis chart.
-   */
   const weeklyPerformance = useMemo(() => {
     if (!dailyProgress) return [];
-
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData: {
       [key: number]: {
         totalSatisfaction: number;
-        totalTime: number; // In minutes
+        totalTime: number;
         count: number;
         highSatisfactionDays: number;
       };
     } = {};
-
     dailyProgress.forEach(p => {
-      const dayIndex = getDay(new Date(p.date)); // Get day of week (0-6)
+      const dayIndex = getDay(new Date(p.date));
       if (!weeklyData[dayIndex]) {
         weeklyData[dayIndex] = {
           totalSatisfaction: 0,
@@ -331,50 +263,42 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
           highSatisfactionDays: 0,
         };
       }
-      const satisfaction = getSatisfactionInfo(p.satisfaction).numeric; // Use 'satisfaction'
+      const satisfaction = getSatisfactionInfo(p.satisfaction).numeric;
       weeklyData[dayIndex].totalSatisfaction += satisfaction;
-      weeklyData[dayIndex].totalTime += getTotalSessionMinutes(p.sessions); // Accumulate total minutes
+      weeklyData[dayIndex].totalTime += getTotalSessionMinutes(p.sessions);
       weeklyData[dayIndex].count++;
-      if (satisfaction >= SatisfactionLevel.SATISFIED) weeklyData[dayIndex].highSatisfactionDays++; // Count high satisfaction days
+      if (satisfaction >= SatisfactionLevel.SATISFIED) weeklyData[dayIndex].highSatisfactionDays++;
     });
-
     return daysOfWeek.map((name, index) => ({
-      name, // Day name (Sun, Mon, etc.)
+      name,
       avgSatisfaction: weeklyData[index]
         ? parseFloat((weeklyData[index].totalSatisfaction / weeklyData[index].count).toFixed(2))
         : 0,
       avgTime: weeklyData[index]
         ? parseFloat((weeklyData[index].totalTime / weeklyData[index].count).toFixed(2))
-        : 0, // Average time in minutes
+        : 0,
       successRate: weeklyData[index]
         ? parseFloat(
             ((weeklyData[index].highSatisfactionDays / weeklyData[index].count) * 100).toFixed(1)
           )
         : 0,
     }));
-  }, [dailyProgress]); // Dependency: dailyProgress
+  }, [dailyProgress]);
 
-  /**
-   * Memoized data for the distribution of satisfaction levels.
-   * Used in the Satisfaction Level Distribution PieChart.
-   */
   const satisfactionDistribution = useMemo(() => {
     if (!dailyProgress) return [];
-
     const distribution = new Map<SatisfactionLevel, number>();
     dailyProgress.forEach(p => {
-      distribution.set(p.satisfaction, (distribution.get(p.satisfaction) || 0) + 1); // Use 'satisfaction'
+      distribution.set(p.satisfaction, (distribution.get(p.satisfaction) || 0) + 1);
     });
-
     return Array.from(distribution.entries()).map(([level, count]) => ({
       name: getSatisfactionInfo(level).label,
       value: count,
       percentage: parseFloat(((count / dailyProgress.length) * 100).toFixed(1)),
       color: getSatisfactionInfo(level).color,
     }));
-  }, [dailyProgress]); // Dependency: dailyProgress
+  }, [dailyProgress]);
 
-  // Render a message if no progress data is available.
   if (!dailyProgress || dailyProgress.length === 0) {
     return (
       <div className="p-8 text-center text-white/60">
@@ -386,7 +310,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   return (
     <div className="space-y-8">
-      {/* Goal Progress Overview */}
       {goalProgressData && (
         <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
           <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
@@ -435,7 +358,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </div>
       )}
 
-      {/* Satisfaction Trend */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
           <FiTrendingUp /> Satisfaction Trend & Moving Average
@@ -469,7 +391,42 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      {/* Weekly Consistency */}
+      {weightData.length > 1 && (
+        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+            <FaWeightHanging /> Weight Trend
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={weightData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+              <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+              <YAxis
+                stroke="#9ca3af"
+                fontSize={12}
+                domain={['dataMin - 2', 'dataMax + 2']}
+                label={{
+                  value: 'Weight',
+                  angle: -90,
+                  position: 'insideLeft',
+                  fill: '#9ca3af',
+                }}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+              <Legend iconType="circle" />
+              <Line
+                type="monotone"
+                dataKey="weight"
+                name="Weight"
+                stroke="#f472b6"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {consistencyData.length > 0 && (
         <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
           <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
@@ -497,7 +454,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </div>
       )}
 
-      {/* Enhanced Weekly Performance */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
           <FiActivity /> Day-of-Week Performance Analysis
@@ -554,7 +510,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      {/* Cumulative Progress */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
           <FiClock /> Cumulative Progress & Satisfaction Trend
@@ -607,7 +562,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      {/* Time vs Satisfaction Efficiency */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
           <FiStar /> Time vs Satisfaction Analysis
@@ -646,7 +600,6 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      {/* Enhanced Satisfaction Distribution */}
       <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
         <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
           <FiCheckCircle /> Satisfaction Level Distribution

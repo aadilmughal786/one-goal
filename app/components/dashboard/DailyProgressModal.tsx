@@ -1,10 +1,11 @@
 // app/components/dashboard/DailyProgressModal.tsx
 'use client';
 
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { DailyProgress, RoutineLogStatus, RoutineType, SatisfactionLevel } from '@/types';
 import { format } from 'date-fns';
 import React, { useEffect, useRef, useState } from 'react';
-import { FaTooth } from 'react-icons/fa6'; // Using a better icon for Teeth
+import { FaTooth, FaWeightHanging } from 'react-icons/fa6';
 import { FiCheckCircle, FiChevronDown, FiEdit3, FiLoader, FiX } from 'react-icons/fi';
 import {
   MdOutlineDirectionsRun,
@@ -13,17 +14,13 @@ import {
   MdOutlineShower,
   MdOutlineWaterDrop,
 } from 'react-icons/md';
-// NEW: Import useNotificationStore to use showToast
-import { useNotificationStore } from '@/store/useNotificationStore';
 
 // React Hook Form imports
+import { dailyProgressFormSchema } from '@/utils/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SubmitHandler, useForm } from 'react-hook-form';
-// Import the new schema for the form
-import { dailyProgressFormSchema } from '@/utils/schemas';
 import z from 'zod';
 
-// Define the type for the form data based on the Zod schema
 type DailyProgressFormData = z.infer<typeof dailyProgressFormSchema>;
 
 interface DailyProgressModalProps {
@@ -42,13 +39,12 @@ const satisfactionOptions = [
   { level: SatisfactionLevel.VERY_SATISFIED, label: 'Very Satisfied', color: 'bg-green-500' },
 ];
 
-// Data structure for routine buttons, now with a better icon for Teeth.
 const routineData = [
   { type: RoutineType.SLEEP, label: 'Sleep', icon: MdOutlineNightlight },
   { type: RoutineType.WATER, label: 'Water', icon: MdOutlineWaterDrop },
   { type: RoutineType.EXERCISE, label: 'Exercise', icon: MdOutlineDirectionsRun },
   { type: RoutineType.MEAL, label: 'Meal', icon: MdOutlineRestaurant },
-  { type: RoutineType.TEETH, label: 'Teeth', icon: FaTooth }, // Updated Icon
+  { type: RoutineType.TEETH, label: 'Teeth', icon: FaTooth },
   { type: RoutineType.BATH, label: 'Bath', icon: MdOutlineShower },
 ];
 
@@ -61,41 +57,38 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
 }) => {
   const showToast = useNotificationStore(state => state.showToast);
 
-  // Initialize react-hook-form
   const {
     register,
     handleSubmit,
     setValue,
     reset,
     watch,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isSubmitting },
   } = useForm<DailyProgressFormData>({
     resolver: zodResolver(dailyProgressFormSchema),
     defaultValues: {
-      satisfaction: SatisfactionLevel.NEUTRAL, // Set a default value
+      satisfaction: SatisfactionLevel.NEUTRAL,
       notes: '',
+      weight: null,
     },
+    mode: 'onTouched',
   });
 
   const selectedSatisfaction = watch('satisfaction');
-
-  // State for routine toggles (managed separately from react-hook-form inputs)
   const [routines, setRoutines] = useState<Record<RoutineType, RoutineLogStatus>>(
     {} as Record<RoutineType, RoutineLogStatus>
   );
-
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // Reset form values when modal opens
       reset({
         satisfaction: initialProgress?.satisfaction || SatisfactionLevel.NEUTRAL,
         notes: initialProgress?.notes || '',
+        weight: initialProgress?.weight,
       });
 
-      // Initialize routines state
       const initialRoutines: Record<RoutineType, RoutineLogStatus> = Object.values(
         RoutineType
       ).reduce(
@@ -106,14 +99,12 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
         {} as Record<RoutineType, RoutineLogStatus>
       );
       setRoutines(initialRoutines);
-      setIsDropdownOpen(false); // Close dropdown
+      setIsDropdownOpen(false);
     }
   }, [isOpen, initialProgress, reset]);
 
-  // Effect to display validation errors as toasts
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
-      // Only run if there are actual errors
       for (const key in errors) {
         const error = errors[key as keyof DailyProgressFormData];
         if (error?.message) {
@@ -137,23 +128,19 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
     setRoutines(prev => {
       const currentStatus = prev[type];
       let newStatus: RoutineLogStatus;
-      if (currentStatus === RoutineLogStatus.DONE) {
-        newStatus = RoutineLogStatus.SKIPPED;
-      } else if (currentStatus === RoutineLogStatus.SKIPPED) {
-        newStatus = RoutineLogStatus.NOT_LOGGED;
-      } else {
-        newStatus = RoutineLogStatus.DONE;
-      }
+      if (currentStatus === RoutineLogStatus.DONE) newStatus = RoutineLogStatus.SKIPPED;
+      else if (currentStatus === RoutineLogStatus.SKIPPED) newStatus = RoutineLogStatus.NOT_LOGGED;
+      else newStatus = RoutineLogStatus.DONE;
       return { ...prev, [type]: newStatus };
     });
   };
 
   const onSubmit: SubmitHandler<DailyProgressFormData> = async data => {
-    // Combine form data with routines state
     const progressData: Partial<DailyProgress> = {
       date: format(date, 'yyyy-MM-dd'),
       satisfaction: data.satisfaction,
-      notes: data.notes?.trim() || '', // Ensure notes are string, handle null/undefined
+      notes: data.notes?.trim() || '',
+      weight: data.weight || null,
       routines: routines,
     };
     try {
@@ -193,7 +180,6 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
         onClick={e => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Header with reduced vertical padding */}
           <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
             <h2 id="daily-progress-modal-title" className="text-xl font-semibold text-white">
               Log Progress for {format(date, 'MMMM d,yyyy')}
@@ -261,6 +247,22 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 )}
               </div>
             </div>
+
+            <div>
+              <label htmlFor="weight" className="block mb-2 text-sm font-medium text-white/70">
+                <FaWeightHanging className="inline -mt-1 mr-1" />
+                Weight (Optional)
+              </label>
+              <input
+                id="weight"
+                type="number"
+                step="0.1"
+                placeholder="e.g., 75.5"
+                {...register('weight')}
+                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white"
+              />
+            </div>
+
             <div>
               <label htmlFor="notes" className="block mb-2 text-sm font-medium text-white/70">
                 Notes (Optional)
@@ -269,11 +271,10 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 id="notes"
                 rows={3}
                 placeholder="Any thoughts, challenges, or wins from today?"
-                {...register('notes')} // Register the textarea
+                {...register('notes')}
                 className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white"
               />
             </div>
-            {/* Refactored Routine Toggles into a single icon row */}
             <div>
               <label className="block mb-3 text-sm font-medium text-white/70">
                 Log Daily Routines
@@ -298,11 +299,10 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
               </div>
             </div>
           </div>
-          {/* Footer with reduced vertical padding */}
           <div className="px-6 py-4 border-t border-white/10">
             <button
               type="submit"
-              disabled={isSubmitting || !isDirty} // Disable if submitting or no changes
+              disabled={isSubmitting}
               className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-md transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
               aria-label="Save daily progress"
             >

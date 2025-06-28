@@ -3,7 +3,7 @@
 
 import { RoutineType, ScheduledRoutineBase } from '@/types';
 import { Timestamp } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   MdOutlineCake,
   MdOutlineCookie,
@@ -20,15 +20,13 @@ import {
   MdOutlineSetMeal,
 } from 'react-icons/md';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import WeightTrendChart from './WeightTrendChart'; // Import the new chart component
 
-// Map of icon names (strings) to their actual React component imports
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineLocalCafe,
   MdOutlineFastfood,
@@ -54,8 +52,6 @@ const mealIcons: string[] = Object.keys(IconComponents);
  * This component has been refactored to fetch its own data from the useGoalStore.
  */
 const MealSchedule: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
@@ -64,8 +60,12 @@ const MealSchedule: React.FC = () => {
 
   const [meals, setMeals] = useState<ScheduledRoutineBase[]>([]);
 
+  // Memoize daily progress data to pass to the chart
+  const dailyProgress = useMemo(() => {
+    return activeGoal ? Object.values(activeGoal.dailyProgress) : [];
+  }, [activeGoal]);
+
   useEffect(() => {
-    // Update local schedules state when the global store changes
     setMeals(activeGoal?.routineSettings?.meal || []);
   }, [activeGoal]);
 
@@ -149,6 +149,10 @@ const MealSchedule: React.FC = () => {
         newIconOptions={mealIcons}
         iconComponentsMap={IconComponents}
       />
+
+      {/* Render the new weight trend chart here */}
+      <WeightTrendChart dailyProgress={dailyProgress} />
+
       <RoutineCalendar
         routineType={RoutineType.MEAL}
         title="Meal Log"
