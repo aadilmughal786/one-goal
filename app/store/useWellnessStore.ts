@@ -10,7 +10,6 @@ import { useNotificationStore } from './useNotificationStore';
 interface WellnessState {
   settings: WellnessSettings | null;
   activeTimers: Record<string, number>;
-  // The state now holds a queue of reminders.
   reminderQueue: ReminderType[];
   isInitialized: boolean;
   synth: Tone.Synth | null;
@@ -26,7 +25,6 @@ interface WellnessState {
 const useWellnessStore = create<WellnessState>((set, get) => ({
   settings: null,
   activeTimers: {},
-  // The initial state for the queue is an empty array.
   reminderQueue: [],
   isInitialized: false,
   synth: null,
@@ -56,7 +54,7 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
         await updateWellnessSettings(currentUser.uid, activeGoalId, newSettings);
         stopAllTimers();
         startTimers(newSettings);
-      } catch {
+      } catch (error) {
         useNotificationStore.getState().showToast('Failed to save reminder settings.', 'error');
         set({ settings });
         stopAllTimers();
@@ -65,11 +63,6 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
     }
   },
 
-  /**
-   * Adds a reminder to the queue.
-   * Plays a sound only when the first item is added to an empty queue.
-   * Prevents duplicate reminders from being added to the queue.
-   */
   triggerReminder: type => {
     const { reminderQueue, synth } = get();
     if (reminderQueue.length === 0 && synth) {
@@ -80,17 +73,14 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
     }
   },
 
-  /**
-   * Dismisses the current reminder and processes the next one in the queue.
-   */
   dismissReminder: () => {
-    // Removes the first item from the queue array.
     set(state => ({ reminderQueue: state.reminderQueue.slice(1) }));
 
-    // If there's another reminder waiting, play a sound for it.
     const { reminderQueue, synth } = get();
     if (reminderQueue.length > 0 && synth) {
-      synth.triggerAttackRelease('C4', '8n');
+      // FIX: Schedule the next sound slightly in the future (+0.1s)
+      // to prevent timing conflicts in the audio context.
+      synth.triggerAttackRelease('C4', '8n', '+0.1');
     }
   },
 
