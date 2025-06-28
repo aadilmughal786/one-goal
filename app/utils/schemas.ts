@@ -144,7 +144,7 @@ export const appStateSchema = z.object({
 });
 
 // --- SCHEMAS FOR JSON IMPORT/EXPORT (using ISO strings for dates) ---
-export const serializableGoalSchema = z.any(); // Kept as 'any' for initial structural validation before deep deserialization.
+export const serializableGoalSchema = z.any();
 export const serializableGoalsArraySchema = z.array(serializableGoalSchema);
 
 // Zod Schema for TodoEditModal form fields
@@ -199,4 +199,11 @@ export const dailyProgressFormSchema = z.object({
     errorMap: () => ({ message: 'Please select a satisfaction level.' }),
   }),
   notes: z.string().max(500, 'Notes are too long.').optional().nullable(),
+});
+
+// Zod Schema for DistractionEditModal form fields
+export const distractionEditFormSchema = z.object({
+  title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title is too long.'),
+  description: z.string().max(500, 'Description is too long.').nullable(),
+  triggerPatterns: z.string().max(500, 'Trigger patterns text is too long.').nullable(),
 });

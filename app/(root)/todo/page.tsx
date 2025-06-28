@@ -8,13 +8,14 @@ import { MdStickyNote2, MdWarning } from 'react-icons/md';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
+import DistractionEditModal from '@/components/todo/DistractionEditModal';
 import DistractionList from '@/components/todo/DistractionList';
 import StickyNotes from '@/components/todo/StickyNotes';
 import TodoEditModal from '@/components/todo/TodoEditModal';
 import TodoList from '@/components/todo/TodoList';
 import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
-import { TodoItem } from '@/types';
+import { DistractionItem, TodoItem } from '@/types';
 
 interface TabItem {
   id: string;
@@ -41,6 +42,7 @@ const TodoPageContent = () => {
   const { isLoading } = useAuth();
   const appState = useGoalStore(state => state.appState);
   const updateTodo = useGoalStore(state => state.updateTodo);
+  const updateDistraction = useGoalStore(state => state.updateDistraction);
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
   const [activeTab, setActiveTabInternal] = useState(() => {
@@ -50,15 +52,18 @@ const TodoPageContent = () => {
   const [isTodoEditModalOpen, setIsTodoEditModalOpen] = useState(false);
   const [selectedTodoForEdit, setSelectedTodoForEdit] = useState<TodoItem | null>(null);
 
+  const [isDistractionEditModalOpen, setIsDistractionEditModalOpen] = useState(false);
+  const [selectedDistractionForEdit, setSelectedDistractionForEdit] =
+    useState<DistractionItem | null>(null);
+
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
 
-  // RE-ADD: Effect to show skeleton on tab switch for a smooth transition.
   useEffect(() => {
     if (!isLoading) {
       setIsTabContentLoading(true);
       const timer = setTimeout(() => {
         setIsTabContentLoading(false);
-      }, 300); // 300ms delay for the transition
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [activeTab, isLoading]);
@@ -85,8 +90,19 @@ const TodoPageContent = () => {
     [updateTodo]
   );
 
+  const handleOpenDistractionEditModal = useCallback((distraction: DistractionItem) => {
+    setSelectedDistractionForEdit(distraction);
+    setIsDistractionEditModalOpen(true);
+  }, []);
+
+  const handleSaveDistractionUpdates = useCallback(
+    async (id: string, updates: Partial<DistractionItem>) => {
+      await updateDistraction(id, updates);
+    },
+    [updateDistraction]
+  );
+
   const renderActiveTabContent = () => {
-    // FIX: Show skeleton if initial load is happening OR if tab content is loading.
     if (isLoading || isTabContentLoading) {
       return <PageContentSkeleton />;
     }
@@ -100,6 +116,9 @@ const TodoPageContent = () => {
     if (ActiveComponent) {
       if (activeTab === 'todo') {
         return <TodoList onEditTodo={handleOpenTodoEditModal} />;
+      }
+      if (activeTab === 'distractions') {
+        return <DistractionList onEditDistraction={handleOpenDistractionEditModal} />;
       }
       return <ActiveComponent />;
     }
@@ -142,6 +161,13 @@ const TodoPageContent = () => {
         onClose={() => setIsTodoEditModalOpen(false)}
         todoItem={selectedTodoForEdit}
         onSave={handleSaveTodoUpdates}
+      />
+
+      <DistractionEditModal
+        isOpen={isDistractionEditModalOpen}
+        onClose={() => setIsDistractionEditModalOpen(false)}
+        distractionItem={selectedDistractionForEdit}
+        onSave={handleSaveDistractionUpdates}
       />
     </main>
   );
