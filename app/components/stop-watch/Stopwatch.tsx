@@ -1,202 +1,284 @@
 // app/components/stop-watch/Stopwatch.tsx
 'use client';
 
-// Removed useContext and TimerContext as we are now using Zustand store
-import React, { useEffect, useRef, useState } from 'react';
+import { useGoalStore } from '@/store/useGoalStore';
+import { useTimerStore } from '@/store/useTimerStore';
+import { format } from 'date-fns';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  FiActivity,
+  FiCheckSquare,
   FiLoader,
   FiMaximize,
   FiMinimize,
   FiPause,
   FiPlay,
-  FiRefreshCw,
   FiSave,
-} from 'react-icons/fi'; // Updated icon import
-// Import the useTimerStore from our Zustand store
-import { useTimerStore } from '@/store/useTimerStore';
+  FiX,
+} from 'react-icons/fi';
 
-/**
- * Stopwatch Component
- *
- * This component provides the main user interface for the stopwatch functionality.
- * It integrates with the useTimerStore to manage the stopwatch's state (running, elapsed time, labeling, saving).
- * Features include:
- * - Start, pause, and reset controls for the stopwatch.
- * - Input for labeling a completed session before saving.
- * - Fullscreen mode for an immersive timing experience.
- * - Visual indicators for stopwatch state (running, saving).
- */
+const focusPresets = [
+  { label: '3h', minutes: 180 },
+  { label: '2h', minutes: 120 },
+  { label: '1h', minutes: 60 },
+  { label: '45m', minutes: 45 },
+  { label: '30m', minutes: 30 },
+  { label: '15m', minutes: 15 },
+];
+
+const breakPresets = [
+  { label: '1h', minutes: 60 },
+  { label: '30m', minutes: 30 },
+  { label: '15m', minutes: 15 },
+  { label: '5m', minutes: 5 },
+];
+
 const Stopwatch: React.FC = () => {
-  // Access the stopwatch state and actions directly from the useTimerStore
-  // FIX: Select each piece of state individually to prevent infinite re-renders.
-  const stopwatchIsRunning = useTimerStore(state => state.isRunning);
-  const stopwatchElapsedTime = useTimerStore(state => state.elapsedTime);
-  const stopwatchIsLabeling = useTimerStore(state => state.isLabeling);
-  const stopwatchSessionLabel = useTimerStore(state => state.sessionLabel);
-  const isSavingStopwatch = useTimerStore(state => state.isSaving);
-  const setStopwatchSessionLabel = useTimerStore(state => state.setSessionLabel);
-  const handleStopwatchStart = useTimerStore(state => state.start);
-  const handleStopwatchPause = useTimerStore(state => state.pause);
-  const handleStopwatchReset = useTimerStore(state => state.reset);
-  const handleStopwatchSave = useTimerStore(state => state.save);
+  const {
+    isRunning,
+    isPreparing,
+    isBreak,
+    isSaving,
+    remainingTime,
+    duration,
+    sessionLabel,
+    setTimer,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    saveSession,
+    setSessionLabel,
+  } = useTimerStore();
 
-  // State to manage the fullscreen mode of the stopwatch container.
   const [isFullScreen, setIsFullScreen] = useState(false);
-  // Ref to the div element that will enter fullscreen mode.
   const fullScreenRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Formats milliseconds into an object containing hours, minutes, and seconds as padded strings.
-   * Ensures fixed-width display for time.
-   * @param ms The elapsed time in milliseconds.
-   * @returns An object { hours, minutes, seconds }.
-   */
+  // --- Fetch today's stats from the goal store ---
+  const appState = useGoalStore(state => state.appState);
+  const todayKey = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  const todaysStats = useMemo(() => {
+    const activeGoal = appState?.goals[appState.activeGoalId || ''];
+    const todaysProgress = activeGoal?.dailyProgress[todayKey];
+    return {
+      sessions: todaysProgress?.sessions?.length || 0,
+      totalTime: todaysProgress?.totalSessionDuration || 0, // in milliseconds
+    };
+  }, [appState, todayKey]);
+
+  const formatTotalTime = (ms: number) => {
+    const totalMinutes = Math.floor(ms / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+  // --- End of stats logic ---
+
   const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
     const seconds = String(totalSeconds % 60).padStart(2, '0');
-    return { hours, minutes, seconds };
+    const centiseconds = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+    return { minutes, seconds, centiseconds };
   };
 
-  // Get the formatted time parts for display.
-  const { hours, minutes, seconds } = formatTime(stopwatchElapsedTime);
+  const { minutes, seconds, centiseconds } = formatTime(remainingTime);
+  const progressPercentage = duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
 
-  /**
-   * Toggles the fullscreen mode for the stopwatch container.
-   * Uses the Web Fullscreen API.
-   */
+  const handlePresetClick = (minutes: number, label: string, isBreakSession: boolean) => {
+    setTimer(minutes, label, isBreakSession);
+  };
+
   const toggleFullScreen = () => {
-    if (!fullScreenRef.current) return; // Ensure ref is attached to an element
+    if (!fullScreenRef.current) return;
     if (!document.fullscreenElement) {
-      // If not currently in fullscreen, request fullscreen.
-      fullScreenRef.current.requestFullscreen();
+      fullScreenRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
     } else {
-      // If in fullscreen, exit fullscreen.
       document.exitFullscreen();
     }
   };
 
-  // Effect to listen for fullscreen change events and update the `isFullScreen` state.
   useEffect(() => {
-    const handleFullScreenChange = () => {
-      // Update state based on whether any element is currently in fullscreen mode.
-      setIsFullScreen(!!document.fullscreenElement);
-    };
-    // Add event listener when component mounts.
+    const handleFullScreenChange = () => setIsFullScreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullScreenChange);
-    // Remove event listener when component unmounts to prevent memory leaks.
     return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount.
+  }, []);
+
+  const renderInitialState = () => (
+    <div className="w-full text-center animate-fade-in">
+      <div className="mb-6">
+        <h4 className="mb-3 font-semibold text-white">Focus Sessions</h4>
+        <div className="grid grid-cols-3 gap-2">
+          {focusPresets.map(p => (
+            <button
+              key={`f-${p.minutes}`}
+              onClick={() => handlePresetClick(p.minutes, `${p.label} Focus`, false)}
+              className="p-3 rounded-lg bg-white/5 hover:bg-white/10"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="mb-3 font-semibold text-white">Breaks</h4>
+        <div className="grid grid-cols-4 gap-2">
+          {breakPresets.map(p => (
+            <button
+              key={`b-${p.minutes}`}
+              onClick={() => handlePresetClick(p.minutes, `${p.label} Break`, true)}
+              className="p-3 rounded-lg bg-white/5 hover:bg-white/10"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPreparationState = () => (
+    <div className="w-full max-w-xs text-center animate-fade-in">
+      <p className="mb-4 text-white/80">Label your {isBreak ? 'break' : 'focus'} session:</p>
+      <input
+        type="text"
+        value={sessionLabel}
+        onChange={e => setSessionLabel(e.target.value)}
+        autoFocus
+        className="p-3 mb-4 w-full text-lg text-center text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button
+        onClick={startTimer}
+        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors hover:bg-white/90"
+      >
+        Start Timer
+      </button>
+    </div>
+  );
+
+  const renderTimerState = () => (
+    <>
+      <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+        <circle
+          cx="60"
+          cy="60"
+          r="54"
+          stroke="rgba(255, 255, 255, 0.1)"
+          strokeWidth="4"
+          fill="transparent"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r="54"
+          stroke="white"
+          strokeWidth="4"
+          fill="transparent"
+          strokeLinecap="round"
+          strokeDasharray={2 * Math.PI * 54}
+          strokeDashoffset={2 * Math.PI * 54 * (1 - progressPercentage / 100)}
+          className="transition-all duration-1000 linear"
+        />
+      </svg>
+      <div className="z-10 text-center">
+        <div
+          className="font-mono text-6xl font-bold tracking-wider text-white"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {`${minutes}:${seconds}`}
+        </div>
+        <p className="font-mono text-lg text-white/50">{centiseconds}</p>
+        <p
+          className={`mt-2 font-semibold text-sm px-3 py-1 rounded-full inline-block ${isBreak ? 'text-green-300 bg-green-500/20' : 'text-blue-300 bg-blue-500/20'}`}
+        >
+          {sessionLabel}
+        </p>
+      </div>
+    </>
+  );
 
   return (
     <div
-      ref={fullScreenRef} // Attach ref for fullscreen control
-      className={`flex flex-col justify-center items-center p-4 w-full text-white transition-colors duration-500
-        ${isFullScreen ? 'h-screen bg-black' : 'bg-transparent'}
-      `}
+      ref={fullScreenRef}
+      className={`relative p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-lg max-w-lg mx-auto transition-all duration-300 ${isFullScreen ? 'h-screen flex flex-col justify-center items-center' : ''}`}
     >
-      <div
-        className={`w-full max-w-3xl mx-auto p-6 sm:p-8 rounded-3xl border shadow-2xl transition-all duration-300
-          ${isFullScreen ? 'bg-black border-black' : 'bg-white/[0.02] border-white/10'}
-        `}
-      >
-        {/* Conditional rendering based on whether the session is in labeling mode */}
-        {stopwatchIsLabeling ? (
-          <div className="w-full text-center">
-            <p className="mb-2 text-white/70">Session Complete! What did you work on?</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={stopwatchSessionLabel}
-                onChange={e => setStopwatchSessionLabel(e.target.value)}
-                placeholder="e.g., Drafted project proposal..."
-                autoFocus // Automatically focus the input field
-                className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-green-400/50"
-                onKeyPress={e => e.key === 'Enter' && handleStopwatchSave()} // Save on Enter key press
-                disabled={isSavingStopwatch} // Disable input while saving
-                aria-label="Enter session label"
-              />
-              <button
-                onClick={handleStopwatchSave}
-                disabled={isSavingStopwatch || !stopwatchSessionLabel.trim()} // Disable save if empty or saving
-                className="p-3 font-semibold text-white bg-green-600 rounded-lg transition-all duration-200 cursor-pointer hover:bg-green-500 hover:scale-105 active:scale-95 disabled:opacity-60"
-                aria-label="Save session"
-              >
-                {isSavingStopwatch ? (
-                  <FiLoader size={24} className="animate-spin" /> // Loader icon when saving
-                ) : (
-                  <FiSave size={24} /> // Save icon
-                )}
-              </button>
-            </div>
-          </div>
-        ) : (
+      <h2 className="mb-8 text-2xl font-bold text-center text-white">Focus Session Timer</h2>
+
+      <div className="flex relative justify-center items-center mx-auto mb-8 w-64 h-64">
+        {isPreparing
+          ? renderPreparationState()
+          : duration > 0
+            ? renderTimerState()
+            : renderInitialState()}
+      </div>
+
+      <div className="flex justify-center gap-6 items-center min-h-[80px]">
+        {isPreparing && (
+          <button
+            onClick={resetTimer}
+            className="flex gap-2 items-center px-4 py-2 text-sm text-white/70 hover:text-white"
+          >
+            {' '}
+            <FiX /> Cancel{' '}
+          </button>
+        )}
+        {!isPreparing && duration > 0 && (
           <>
-            {/* Stopwatch time display */}
-            <div
-              className="flex justify-center items-center w-full font-mono text-5xl font-bold tracking-wider text-white sm:text-7xl"
-              style={{ fontVariantNumeric: 'tabular-nums' }} // Ensures numbers align vertically
+            <button
+              onClick={resetTimer}
+              className="p-4 text-white rounded-full transition-colors bg-white/10 hover:bg-white/20"
+              aria-label="Cancel Session"
             >
-              <span>{hours}</span>
-              <span
-                className={`px-2 transition-opacity duration-500 ${stopwatchIsRunning ? 'animate-pulse' : 'opacity-50'}`}
-              >
-                :
-              </span>
-              <span>{minutes}</span>
-              <span
-                className={`px-2 transition-opacity duration-500 ${stopwatchIsRunning ? 'animate-pulse' : 'opacity-50'}`}
-              >
-                :
-              </span>
-              <span>{seconds}</span>
-            </div>
-            {/* Centiseconds display */}
-            <div
-              className="mt-2 font-mono text-lg text-center sm:text-xl text-white/50" // Centered text for centiseconds
-              style={{ fontVariantNumeric: 'tabular-nums' }}
+              <FiX size={24} />
+            </button>
+            <button
+              onClick={isRunning ? pauseTimer : startTimer}
+              className="flex justify-center items-center w-20 h-20 text-xl font-bold text-black bg-white rounded-full transition-transform hover:scale-105"
+              aria-label={isRunning ? 'Pause' : 'Play'}
             >
-              Centiseconds:{' '}
-              {String(Math.floor((stopwatchElapsedTime % 1000) / 10)).padStart(2, '0')}
-            </div>
+              {isRunning ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
+            </button>
+            {!isBreak ? (
+              <button
+                onClick={() => saveSession(false)}
+                disabled={isSaving || remainingTime === duration}
+                className="p-4 text-green-400 rounded-full transition-colors bg-green-600/20 hover:bg-green-500/30 disabled:opacity-50"
+                aria-label="Finish & Save Early"
+              >
+                {isSaving ? <FiLoader className="animate-spin" size={24} /> : <FiSave size={24} />}
+              </button>
+            ) : (
+              <div className="w-16 h-16"></div>
+            )}
           </>
         )}
+      </div>
 
-        {/* Control buttons */}
-        <div className="flex gap-4 justify-center items-center mt-8 sm:mt-10">
-          {/* Reset Button */}
-          <button
-            onClick={handleStopwatchReset}
-            // Disabled if stopwatch is at zero and not running, and not in labeling mode
-            disabled={stopwatchElapsedTime === 0 && !stopwatchIsRunning && !stopwatchIsLabeling}
-            className="flex justify-center items-center w-16 h-16 rounded-full transition-all duration-300 cursor-pointer text-white/70 sm:w-20 sm:h-20 hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-50"
-            aria-label="Reset stopwatch"
-          >
-            <FiRefreshCw size={24} /> {/* Updated icon */}
-          </button>
-
-          {/* Play/Pause Button (only visible when not labeling) */}
-          {!stopwatchIsLabeling && (
-            <button
-              onClick={stopwatchIsRunning ? handleStopwatchPause : handleStopwatchStart}
-              className="flex justify-center items-center w-16 h-16 text-white bg-blue-600 rounded-full transition-all duration-300 cursor-pointer sm:w-20 sm:h-20 hover:bg-blue-500 hover:scale-105 active:scale-95"
-              aria-label={stopwatchIsRunning ? 'Pause stopwatch' : 'Start stopwatch'}
-            >
-              {stopwatchIsRunning ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
-            </button>
-          )}
-
-          {/* Fullscreen Toggle Button */}
-          <button
-            onClick={toggleFullScreen}
-            className="flex justify-center items-center w-16 h-16 rounded-full transition-all duration-300 cursor-pointer text-white/70 sm:w-20 sm:h-20 hover:bg-white/10 hover:text-white active:scale-95"
-            aria-label={isFullScreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          >
-            {isFullScreen ? <FiMinimize size={24} /> : <FiMaximize size={24} />}
-          </button>
+      <div className="flex justify-around pt-6 mt-8 text-center border-t border-white/10">
+        <div>
+          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-white">
+            <FiCheckSquare /> {todaysStats.sessions}
+          </p>
+          <p className="text-sm text-white/60">Sessions Today</p>
+        </div>
+        <div>
+          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-white">
+            <FiActivity /> {formatTotalTime(todaysStats.totalTime)}
+          </p>
+          <p className="text-sm text-white/60">Focus Time Today</p>
         </div>
       </div>
+
+      <button
+        onClick={toggleFullScreen}
+        className="absolute top-4 right-4 p-2 text-white/50 hover:text-white"
+        aria-label="Toggle Fullscreen"
+      >
+        {isFullScreen ? <FiMinimize /> : <FiMaximize />}
+      </button>
     </div>
   );
 };

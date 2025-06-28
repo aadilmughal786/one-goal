@@ -4,89 +4,95 @@
 import { useTimerStore } from '@/store/useTimerStore';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
-import { GoStopwatch } from 'react-icons/go';
+import { FiCoffee, FiZap } from 'react-icons/fi';
 
-/**
- * FloatingStopwatch Component
- *
- * This component displays a floating stopwatch button at the bottom-right of the screen.
- * It is visible only when the stopwatch managed by the useTimerStore is running.
- * The elapsed time is formatted and displayed on the button.
- * Clicking the button navigates the user to the "/stop-watch" page.
- */
 const FloatingStopwatch: React.FC = () => {
-  // Use local state to store the timer values,
-  // and update this state *after* the component has mounted (client-side).
-  const [stopwatchData, setStopwatchData] = useState({
+  // Use local state to store timer values, updated client-side to avoid hydration issues.
+  const [timerData, setTimerData] = useState({
     isRunning: false,
-    elapsedTime: 0,
+    remainingTime: 0,
+    duration: 0,
+    sessionLabel: '',
+    isBreak: false,
   });
 
-  // Effect to subscribe to the Zustand store only on the client-side.
-  // This effectively delays the getServerSnapshot call until hydration is complete.
+  // This effect subscribes to the Zustand store only on the client.
   useEffect(() => {
-    // This is the Zustand listener. It will only run on the client.
     const unsubscribe = useTimerStore.subscribe(state => {
-      // Update local state with the relevant store state
-      setStopwatchData({
+      setTimerData({
         isRunning: state.isRunning,
-        elapsedTime: state.elapsedTime,
+        remainingTime: state.remainingTime,
+        duration: state.duration,
+        sessionLabel: state.sessionLabel,
+        isBreak: state.isBreak,
       });
     });
 
-    // Get the initial state once subscribed
+    // Get the initial state once the component has mounted.
     const currentState = useTimerStore.getState();
-    setStopwatchData({
+    setTimerData({
       isRunning: currentState.isRunning,
-      elapsedTime: currentState.elapsedTime,
+      remainingTime: currentState.remainingTime,
+      duration: currentState.duration,
+      sessionLabel: currentState.sessionLabel,
+      isBreak: currentState.isBreak,
     });
 
-    // Cleanup subscription on component unmount
     return () => unsubscribe();
-  }, []); // Empty dependency array means this effect runs once on mount/hydration
+  }, []);
 
-  // Destructure from the local state
-  const { isRunning: stopwatchIsRunning, elapsedTime: stopwatchElapsedTime } = stopwatchData;
+  const { isRunning, remainingTime, duration, sessionLabel, isBreak } = timerData;
 
-  // If the timer isn't running, render nothing to keep the UI clean.
-  if (!stopwatchIsRunning) {
+  // Don't render if the timer isn't running or has no duration.
+  if (!isRunning || duration === 0) {
     return null;
   }
 
-  /**
-   * Helper function to format milliseconds into HH:MM:SS string.
-   * @param ms The elapsed time in milliseconds.
-   * @returns A formatted time string (e.g., "00:01:23").
-   */
   const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000); // Convert milliseconds to total seconds
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0'); // Calculate hours and pad with leading zero if needed
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0'); // Calculate minutes and pad
-    const seconds = String(totalSeconds % 60).padStart(2, '0'); // Calculate seconds and pad
-    return `${hours}:${minutes}:${seconds}`;
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+    if (parseInt(hours) > 0) {
+      return `${hours}:${minutes}:${seconds}`;
+    }
+    return `${minutes}:${seconds}`;
   };
 
+  // --- Progress Bar Calculation ---
+  const progressPercentage = duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
+
+  const bgColor = isBreak ? 'bg-green-600' : 'bg-blue-600';
+  const hoverBgColor = isBreak ? 'hover:bg-green-500' : 'hover:bg-blue-500';
+  const progressFillColor = isBreak ? 'bg-green-500' : 'bg-blue-500';
+  const Icon = isBreak ? FiCoffee : FiZap;
+
   return (
-    // Link component from Next.js for client-side navigation.
-    // The className uses Tailwind CSS for styling, including fixed positioning,
-    // spacing, colors, rounded corners, shadows, and hover effects.
-    // animate-fade-in is a custom animation class (assumed to be defined in global CSS).
     <Link
       href="/stop-watch"
-      className="flex fixed right-5 bottom-5 z-50 gap-3 items-center px-4 py-3 text-white bg-blue-600 rounded-full shadow-lg transition-all duration-300 cursor-pointer hover:bg-blue-500 hover:scale-105 animate-fade-in"
-      title="Go to Stopwatch" // Accessible title for the button
+      className={`flex overflow-hidden fixed right-5 bottom-5 z-50 items-center px-4 h-12 rounded-full shadow-lg transition-all duration-300 cursor-pointer animate-fade-in ${bgColor} ${hoverBgColor} hover:scale-105`}
+      title="Go to Focus Timer"
     >
-      {/* Stopwatch icon from react-icons, with a pulse animation */}
-      <GoStopwatch size={22} className="animate-pulse" />
-      {/* Display the formatted elapsed time.
-          font-mono and fontVariantNumeric: 'tabular-nums' ensure fixed-width digits
-          for a stable display as time updates. */}
-      <span
-        className="font-mono text-lg font-semibold"
-        style={{ fontVariantNumeric: 'tabular-nums' }}
-      >
-        {formatTime(stopwatchElapsedTime)}
-      </span>
+      {/* Background Progress Bar */}
+      <div
+        className={`absolute top-0 left-0 h-full transition-all duration-500 ease-linear ${progressFillColor}`}
+        style={{ width: `${progressPercentage}%` }}
+      />
+
+      {/* Content inside the button */}
+      <div className="flex relative z-10 gap-3 items-center w-full">
+        <Icon size={20} className="flex-shrink-0" />
+        <div className="flex gap-2 items-baseline leading-none">
+          <span className="text-sm font-semibold truncate">{sessionLabel}</span>
+          <span
+            className="font-mono text-base font-semibold"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {formatTime(remainingTime)}
+          </span>
+        </div>
+      </div>
     </Link>
   );
 };

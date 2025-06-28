@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import { FaGithub, FaLinkedin } from 'react-icons/fa6';
-import { FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiCpu, FiLogOut, FiSettings } from 'react-icons/fi'; // Added FiCpu for Tools
 import { GoBug } from 'react-icons/go';
 import { LuBadgeInfo } from 'react-icons/lu';
 import { MdArrowOutward } from 'react-icons/md';
@@ -32,16 +32,8 @@ interface ProfileDropdownProps {
  */
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   const router = useRouter();
-  // REMOVED: local toast state (toastMessage, toastType)
   // Access showToast from the global notification store
   const showToast = useNotificationStore(state => state.showToast);
-
-  // REMOVED: showMessage function as it's replaced by direct use of global showToast
-  // const showMessage = (text: string, type: 'success' | 'error' | 'info') => {
-  //   setToastMessage(text);
-  //   setToastType(type);
-  //   setTimeout(() => setToastMessage(null), 3000);
-  // };
 
   /**
    * Handles the user sign-out process using the new authService.
@@ -59,6 +51,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
 
   const menuItems = [
     { href: '/profile', label: 'Settings', icon: <FiSettings /> },
+    { href: '/tools', label: 'Tools', icon: <FiCpu /> }, // New link to the Tools page
     { href: '/', label: 'About App', icon: <LuBadgeInfo /> },
     {
       href: 'https://github.com/aadilmughal786/one-goal',
@@ -82,7 +75,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
 
   return (
     <>
-      {/* REMOVED: ToastMessage component as it's rendered globally */}
       <div className="relative w-64 animate-fade-in-right">
         <div className="absolute -left-1.5 bottom-3 w-3 h-3 transform rotate-45 bg-neutral-900 border-b border-l border-white/10"></div>
         <div className="overflow-hidden rounded-xl border shadow-2xl bg-neutral-900 border-white/10">
@@ -100,7 +92,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
             </div>
           </div>
           <div className="py-2">
-            {menuItems.slice(0, 2).map(item => (
+            {menuItems.slice(0, 3).map(item => (
               <Link
                 key={item.label}
                 href={item.href}
@@ -114,7 +106,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
           </div>
           <hr className="border-white/10" />
           <div className="py-2">
-            {menuItems.slice(2).map(item => (
+            {menuItems.slice(3).map(item => (
               <a
                 key={item.label}
                 href={item.href}

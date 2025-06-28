@@ -3,53 +3,40 @@ import { StopwatchSession } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import { create } from 'zustand';
 
-// We need to import the new stopwatchService and the main goal store
-import { addStopwatchSession } from '@/services/stopwatchService';
-import { useGoalStore } from './useGoalStore'; // To get currentUser and activeGoalId
-// NEW: Import useNotificationStore to trigger toasts
+import * as stopwatchService from '@/services/stopwatchService';
+import { useGoalStore } from './useGoalStore';
 import { useNotificationStore } from './useNotificationStore';
 
-/**
- * @file app/store/useTimerStore.ts
- * @description Zustand store for managing the global stopwatch state.
- *
- * This store encapsulates all logic for the application's stopwatch, including
- * its running state, elapsed time, and the process of labeling and saving sessions.
- * This replaces the old TimerProvider and allows any component to interact with the timer.
- */
-
-/**
- * Defines the shape of the timer store's state and actions.
- */
 interface TimerState {
   // --- STATE ---
   isRunning: boolean;
-  isLabeling: boolean;
+  isPreparing: boolean; // True when setting label, before countdown starts
+  isBreak: boolean; // True if the current session is a break
   isSaving: boolean;
-  elapsedTime: number; // in milliseconds
+  duration: number; // Total duration of the timer in ms
+  remainingTime: number; // Time left in ms
   sessionLabel: string;
-  startTime: number; // The timestamp when the timer was started (or resumed)
+  startTime: number; // Timestamp when the timer started
 
   // --- ACTIONS ---
-  start: () => void;
-  pause: () => void;
-  reset: () => void;
-  save: () => Promise<void>;
+  setTimer: (minutes: number, label: string, isBreakSession: boolean) => void;
+  startTimer: () => void;
+  pauseTimer: () => void;
+  resetTimer: () => void;
+  saveSession: (isFinished: boolean) => Promise<void>;
   setSessionLabel: (label: string) => void;
 }
 
-// A simple interval variable outside the store to hold the timer ID.
 let timerInterval: number | null = null;
 
-/**
- * The Zustand store for managing the global stopwatch.
- */
 export const useTimerStore = create<TimerState>((set, get) => ({
   // --- INITIAL STATE ---
   isRunning: false,
-  isLabeling: false,
+  isPreparing: false,
+  isBreak: false,
   isSaving: false,
-  elapsedTime: 0,
+  duration: 0,
+  remainingTime: 0,
   sessionLabel: '',
   startTime: 0,
 
@@ -58,77 +45,112 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   /** Updates the label for the current session. */
   setSessionLabel: label => set({ sessionLabel: label }),
 
-  /** Starts or resumes the stopwatch. */
-  start: () => {
-    // Prevent starting if it's already running.
-    if (get().isRunning) return;
-
-    // Use a simple, efficient interval to update the elapsed time.
-    // This logic is now completely decoupled from any React component's lifecycle.
-    timerInterval = window.setInterval(() => {
-      set(state => ({ elapsedTime: Date.now() - state.startTime }));
-    }, 45); // Update ~22 times per second for a smooth display.
-
-    set({ isRunning: true, startTime: Date.now() - get().elapsedTime });
+  /** Sets up a new timer session but doesn't start it. */
+  setTimer: (minutes, label, isBreakSession) => {
+    if (timerInterval) clearInterval(timerInterval);
+    const durationMs = minutes * 60 * 1000;
+    set({
+      duration: durationMs,
+      remainingTime: durationMs,
+      sessionLabel: label,
+      isBreak: isBreakSession,
+      isRunning: false,
+      isPreparing: true, // Enter preparation mode
+    });
   },
 
-  /** Pauses the stopwatch. */
-  pause: () => {
+  /** Starts or resumes the countdown. */
+  startTimer: () => {
+    if (get().isRunning || get().remainingTime <= 0) return;
+
+    const endTime = Date.now() + get().remainingTime;
+    set({ isRunning: true, isPreparing: false, startTime: Date.now() });
+
+    timerInterval = window.setInterval(() => {
+      const newRemainingTime = endTime - Date.now();
+      if (newRemainingTime <= 0) {
+        if (timerInterval) clearInterval(timerInterval);
+        set({ remainingTime: 0, isRunning: false });
+        // Automatically save if it was a finished focus session
+        if (!get().isBreak) {
+          get().saveSession(true);
+        } else {
+          // If it's a break, just show a notification and reset
+          useNotificationStore.getState().showToast('Break finished! Time to focus.', 'info');
+          get().resetTimer();
+        }
+      } else {
+        set({ remainingTime: newRemainingTime });
+      }
+    }, 45); // Update frequently for smooth centiseconds
+  },
+
+  /** Pauses the countdown. */
+  pauseTimer: () => {
     if (timerInterval) clearInterval(timerInterval);
     set({ isRunning: false });
   },
 
-  /** Resets the stopwatch or enters labeling mode if time has elapsed. */
-  reset: () => {
-    const { elapsedTime, isLabeling } = get();
-    // If the timer has run and we are not already in labeling mode...
-    if (elapsedTime > 0 && !isLabeling) {
-      // ...pause the timer and enter labeling mode.
-      get().pause();
-      set({ isLabeling: true });
-    } else {
-      // Otherwise, perform a full reset.
-      if (timerInterval) clearInterval(timerInterval);
-      set({ isRunning: false, isLabeling: false, elapsedTime: 0, sessionLabel: '' });
-    }
+  /** Resets the timer to its initial state or cancels preparation. */
+  resetTimer: () => {
+    if (timerInterval) clearInterval(timerInterval);
+    set({
+      isRunning: false,
+      isPreparing: false,
+      isBreak: false,
+      duration: 0,
+      remainingTime: 0,
+      sessionLabel: '',
+    });
   },
 
-  /** Saves the completed stopwatch session to Firestore and refreshes the app state. */
-  save: async () => {
-    const { sessionLabel, elapsedTime, startTime } = get();
+  /** Saves the completed stopwatch session. */
+  saveSession: async isFinished => {
+    const { sessionLabel, duration, remainingTime, startTime, isBreak } = get();
     const { currentUser, appState } = useGoalStore.getState();
     const activeGoalId = appState?.activeGoalId;
     const showToast = useNotificationStore.getState().showToast;
 
+    if (isBreak) {
+      get().resetTimer();
+      showToast('Session cancelled.', 'info');
+      return;
+    }
+
     if (!currentUser || !activeGoalId || !sessionLabel.trim()) {
-      showToast('Cannot save session: Missing user, active goal, or label.', 'error');
+      showToast('Cannot save: Missing user, active goal, or label.', 'error');
+      get().resetTimer();
       return;
     }
 
     set({ isSaving: true });
 
+    const timeConsumed = isFinished ? duration : duration - remainingTime;
+
+    // Don't save sessions less than a few seconds long
+    if (timeConsumed < 5000) {
+      set({ isSaving: false });
+      get().resetTimer();
+      showToast('Session too short to save.', 'info');
+      return;
+    }
+
     const newSessionData: Omit<StopwatchSession, 'id' | 'createdAt' | 'updatedAt'> = {
       label: sessionLabel.trim(),
-      duration: elapsedTime,
+      duration: timeConsumed,
       startTime: Timestamp.fromMillis(startTime),
     };
 
     try {
-      // 1. Save the new session to the database.
-      await addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
-
-      // 2. Reset the timer's local state.
-      get().reset();
-      showToast('Focus session saved successfully!', 'success');
-
-      // 3. FIX: Fetch the latest data from the database to update the UI.
-      // This ensures the SessionLog component gets the new session immediately.
+      await stopwatchService.addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
+      showToast('Focus session saved!', 'success');
       await useGoalStore.getState().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Failed to save session', error);
       showToast('Failed to save focus session.', 'error');
     } finally {
-      set({ isSaving: false, isLabeling: false });
+      set({ isSaving: false });
+      get().resetTimer();
     }
   },
 }));
