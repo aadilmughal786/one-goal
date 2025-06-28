@@ -1,6 +1,7 @@
 // app/utils/schemas.ts
 import {
   GoalStatus,
+  ReminderType,
   RoutineLogStatus,
   RoutineType,
   SatisfactionLevel,
@@ -116,6 +117,19 @@ export const userRoutineSettingsSchema = z.object({
   lastRoutineResetDate: timestampSchema.nullable(),
 });
 
+// --- WELLNESS REMINDER SCHEMAS (NEW) ---
+export const reminderSettingSchema = z.object({
+  enabled: z.boolean(),
+  frequency: z.number().int().min(1, 'Frequency must be at least 1 minute.'),
+});
+
+export const wellnessSettingsSchema = z.object({
+  [ReminderType.WATER]: reminderSettingSchema,
+  [ReminderType.EYE_CARE]: reminderSettingSchema,
+  [ReminderType.STRETCH]: reminderSettingSchema,
+  [ReminderType.BREAK]: reminderSettingSchema,
+});
+
 // --- TOP-LEVEL SCHEMAS ---
 export const goalSchema = baseEntitySchema
   .extend({
@@ -132,6 +146,7 @@ export const goalSchema = baseEntitySchema
     notToDoList: z.array(distractionItemSchema),
     stickyNotes: z.array(stickyNoteSchema),
     routineSettings: userRoutineSettingsSchema,
+    wellnessSettings: wellnessSettingsSchema, // <-- ADDED
     starredQuotes: z.array(z.number().int()),
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {

@@ -51,6 +51,14 @@ export enum SatisfactionLevel {
   VERY_SATISFIED = 5,
 }
 
+/** Defines the types of wellness reminders available. */
+export enum ReminderType {
+  WATER = 'water',
+  EYE_CARE = 'eyeCare',
+  STRETCH = 'stretch',
+  BREAK = 'break',
+}
+
 // =================================================================//
 //                      COMPOSABLE INTERFACES
 // =================================================================//
@@ -166,6 +174,21 @@ export interface UserRoutineSettings {
   lastRoutineResetDate: Timestamp | null;
 }
 
+/** Configuration for a single wellness reminder. */
+export interface ReminderSetting {
+  enabled: boolean;
+  /** The frequency of the reminder in minutes. */
+  frequency: number;
+}
+
+/** A centralized object for all wellness reminder configurations. */
+export interface WellnessSettings {
+  [ReminderType.WATER]: ReminderSetting;
+  [ReminderType.EYE_CARE]: ReminderSetting;
+  [ReminderType.STRETCH]: ReminderSetting;
+  [ReminderType.BREAK]: ReminderSetting;
+}
+
 /** Represents a single motivational quote. */
 export interface Quote {
   id: number;
@@ -193,6 +216,7 @@ export interface Goal extends BaseEntity {
   notToDoList: DistractionItem[];
   stickyNotes: StickyNote[];
   routineSettings: UserRoutineSettings;
+  wellnessSettings: WellnessSettings; // <-- ADDED
   /** An array of IDs for the user's favorite quotes for this goal. */
   starredQuotes: number[];
 }

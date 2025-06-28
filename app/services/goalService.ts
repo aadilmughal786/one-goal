@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/services/goalService.ts
-import { AppState, Goal, GoalStatus, ScheduledRoutineBase } from '@/types';
+import { AppState, Goal, GoalStatus, ReminderType, ScheduledRoutineBase } from '@/types';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { appStateSchema, goalSchema } from '@/utils/schemas';
 import { isSameDay } from 'date-fns';
 import { Timestamp, deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from './config'; // Import the shared db instance
+import { db } from './config';
 
 /**
  * @file app/services/goalService.ts
@@ -100,29 +100,23 @@ export const getUserData = async (userId: string): Promise<AppState> => {
         validationResult.error.flatten()
       );
 
-      // Format a detailed error message from Zod's error object.
       const flattenedErrors = validationResult.error.flatten().fieldErrors;
       const errorDetails = Object.entries(flattenedErrors)
         .map(([path, messages]) => {
-          // Attempt to find the name of the goal causing the issue
           const goalIdMatch = path.match(/goals\.(.*?)\./);
           const goalId = goalIdMatch ? goalIdMatch[1] : null;
           const goalName = goalId ? (rawData as AppState)?.goals[goalId]?.name : null;
           const goalContext = goalName ? `in Goal "${goalName}"` : '';
-
-          // Extract the final field name that failed validation
           const field = path.substring(path.lastIndexOf('.') + 1);
-
           return `Field '${field}' ${goalContext} is invalid: ${messages.join('. ')}`;
         })
         .join('; ');
 
-      // Throw a specific error with the details and the raw data.
       throw new ServiceError(
         `Data validation failed. ${errorDetails}`,
         ServiceErrorCode.VALIDATION_FAILED,
         validationResult.error,
-        rawData // Pass the raw data here
+        rawData
       );
     }
 
@@ -155,6 +149,7 @@ export const createGoal = async (
     | 'notToDoList'
     | 'stickyNotes'
     | 'routineSettings'
+    | 'wellnessSettings' // <-- Exclude new settings from input type
     | 'starredQuotes'
   >
 ): Promise<Goal> => {
@@ -172,20 +167,20 @@ export const createGoal = async (
     notToDoList: [],
     stickyNotes: [],
     routineSettings: {
-      sleep: {
-        sleepTime: '22:00',
-        wakeTime: '06:00',
-        naps: [],
-      },
-      water: {
-        goal: 8,
-        current: 0,
-      },
+      sleep: { wakeTime: '06:00', sleepTime: '22:00', naps: [] },
+      water: { goal: 8, current: 0 },
       bath: [],
       exercise: [],
       meal: [],
       teeth: [],
       lastRoutineResetDate: null,
+    },
+    // Add default wellness settings for a new goal
+    wellnessSettings: {
+      [ReminderType.WATER]: { enabled: false, frequency: 60 },
+      [ReminderType.EYE_CARE]: { enabled: false, frequency: 45 },
+      [ReminderType.STRETCH]: { enabled: false, frequency: 90 },
+      [ReminderType.BREAK]: { enabled: false, frequency: 60 },
     },
     starredQuotes: [],
   };

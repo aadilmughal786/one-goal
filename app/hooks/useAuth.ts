@@ -3,6 +3,7 @@
 
 import { onAuthChange } from '@/services/authService';
 import { useGoalStore } from '@/store/useGoalStore';
+import { useWellnessStore } from '@/store/useWellnessStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -16,42 +17,40 @@ import { useEffect, useRef, useState } from 'react';
 export const useAuth = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  // FIX: Use a ref to track if the fetch has been initiated.
-  // This prevents double-fetches caused by React's Strict Mode in development.
   const fetchInitiated = useRef(false);
 
-  // Select state and actions individually to prevent re-renders.
   const fetchInitialData = useGoalStore(state => state.fetchInitialData);
   const currentUser = useGoalStore(state => state.currentUser);
   const appState = useGoalStore(state => state.appState);
+  const initializeWellness = useWellnessStore(state => state.initialize);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async user => {
       if (user) {
-        // Only fetch data if it has not been initiated yet.
         if (!fetchInitiated.current) {
-          fetchInitiated.current = true; // Set the flag immediately
+          fetchInitiated.current = true;
           await fetchInitialData(user);
         }
       } else {
-        // If there's no user, stop loading and redirect to the login page.
         setIsLoading(false);
         router.replace('/login');
       }
     });
 
-    // Clean up the Firebase listener when the component unmounts.
     return () => unsubscribe();
-    // The dependency array is empty because this effect should only run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    // This effect's only job is to turn off the loading spinner once data is available.
     if (currentUser !== null && appState !== null) {
+      // Once the main app state is loaded, initialize the wellness reminders
+      const activeGoal = appState.activeGoalId ? appState.goals[appState.activeGoalId] : null;
+      if (activeGoal?.wellnessSettings) {
+        initializeWellness(activeGoal.wellnessSettings);
+      }
       setIsLoading(false);
     }
-  }, [currentUser, appState]);
+  }, [currentUser, appState, initializeWellness]);
 
   return { isLoading };
 };
