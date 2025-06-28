@@ -20,10 +20,11 @@ import * as goalService from '@/services/goalService';
 import * as quoteService from '@/services/quoteService';
 import * as routineService from '@/services/routineService';
 import * as stickyNoteService from '@/services/stickyNoteService';
-import * as stopwatchService from '@/services/stopwatchService'; // Import stopwatch service
+import * as stopwatchService from '@/services/stopwatchService';
 import * as todoService from '@/services/todoService';
 
 // Import the notification store to show error toasts on failure
+import { serializeGoalsForExport } from '@/services/dataService';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { useNotificationStore } from './useNotificationStore';
 
@@ -57,9 +58,9 @@ interface GoalStore {
   saveDailyProgress: (progressData: DailyProgress) => Promise<void>;
   addStarredQuote: (quoteId: number) => Promise<void>;
   removeStarredQuote: (quoteId: number) => Promise<void>;
-  // FIX: Added missing stopwatch actions to the store interface
   updateStopwatchSession: (dateKey: string, sessionId: string, newLabel: string) => Promise<void>;
   deleteStopwatchSession: (dateKey: string, sessionId: string) => Promise<void>;
+  importGoals: (goalsToImport: Goal[]) => Promise<void>;
 }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
@@ -80,21 +81,45 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
 
       let errorMessage = 'Failed to load your data. It may be corrupted.';
       if (error instanceof ServiceError) {
-        // Use the detailed, formatted message from the service
         errorMessage = error.message;
       }
 
-      // Show the specific error to the user
       useNotificationStore.getState().showToast(errorMessage, 'error');
 
-      // If the error was a validation failure, reset the data to prevent crashes
       if (error instanceof ServiceError && error.code === ServiceErrorCode.VALIDATION_FAILED) {
         const { currentUser } = get();
         if (currentUser) {
+          if (error.rawData) {
+            try {
+              const serializableData = serializeGoalsForExport(
+                Object.values(error.rawData as AppState['goals'])
+              );
+              const dataStr = JSON.stringify(serializableData, null, 2);
+              const dataBlob = new Blob([dataStr], { type: 'application/json' });
+              const url = URL.createObjectURL(dataBlob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `one-goal-corrupted-backup-${
+                new Date().toISOString().split('T')[0]
+              }.json`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              useNotificationStore
+                .getState()
+                .showToast('Corrupted data has been exported for recovery.', 'info');
+            } catch (exportError) {
+              console.error('Failed to export corrupted data:', exportError);
+              useNotificationStore
+                .getState()
+                .showToast('Could not export corrupted data.', 'error');
+            }
+          }
+
           try {
             const defaultState = await goalService.resetUserData(currentUser.uid);
             set({ appState: defaultState, isLoading: false });
-            // Inform the user that a reset has occurred
             useNotificationStore
               .getState()
               .showToast('Your data was incompatible and has been safely reset.', 'info');
@@ -106,6 +131,38 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       } else {
         set({ isLoading: false, currentUser: null, appState: null });
       }
+    }
+  },
+
+  importGoals: async goalsToImport => {
+    const { currentUser, appState } = get();
+    if (!currentUser || !appState) return;
+
+    const originalState = { ...appState };
+
+    const newGoals = { ...appState.goals };
+    goalsToImport.forEach(goal => {
+      newGoals[goal.id] = goal;
+    });
+
+    const newActiveGoalId = appState.activeGoalId ?? goalsToImport[0]?.id;
+
+    const newAppState: AppState = {
+      ...appState,
+      goals: newGoals,
+      activeGoalId: newActiveGoalId,
+    };
+
+    set({ appState: newAppState });
+
+    try {
+      await goalService.setUserData(currentUser.uid, newAppState);
+      useNotificationStore.getState().showToast('Goals imported successfully!', 'success');
+      await get().fetchInitialData(currentUser); // Refresh data from source
+    } catch (error) {
+      console.error('Store: Failed to import goals', error);
+      useNotificationStore.getState().showToast('Failed to import goals. Reverting.', 'error');
+      set({ appState: originalState }); // Rollback on failure
     }
   },
 
@@ -582,7 +639,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     }
   },
 
-  // FIX: Implement the missing stopwatch actions
   updateStopwatchSession: async (dateKey, sessionId, newLabel) => {
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;

@@ -2,13 +2,15 @@
 'use client';
 
 import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal';
+import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
 import { useAuth } from '@/hooks/useAuth';
 import { updateUserProfile } from '@/services/authService';
-import { deserializeAppStateForImport, serializeAppStateForExport } from '@/services/dataService';
-import { resetUserData, setUserData } from '@/services/goalService';
+import { deserializeGoalsForImport, serializeGoalsForExport } from '@/services/dataService';
+import { resetUserData } from '@/services/goalService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { serializableAppStateSchema } from '@/utils/schemas';
+import { Goal } from '@/types';
+import { serializableGoalsArraySchema } from '@/utils/schemas';
 import { format as formatDate } from 'date-fns';
 import Image from 'next/image';
 import React, { useCallback, useState } from 'react';
@@ -37,17 +39,19 @@ const ProfilePageSkeleton = () => (
 export default function ProfilePage() {
   const { isLoading } = useAuth();
 
+  // FIX: Select each piece of state or action individually to prevent infinite loops.
   const currentUser = useGoalStore(state => state.currentUser);
   const appState = useGoalStore(state => state.appState);
   const fetchInitialData = useGoalStore(state => state.fetchInitialData);
-
-  // FIX: Select actions individually to prevent infinite loops.
+  const importGoals = useGoalStore(state => state.importGoals);
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
 
-  const handleImportData = useCallback(
+  const handleImportFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file || !currentUser) return;
@@ -61,32 +65,21 @@ export default function ProfilePage() {
       reader.onload = async e => {
         try {
           const importedRawData = JSON.parse(e.target?.result as string);
-          const validation = serializableAppStateSchema.safeParse(importedRawData);
+          const validation = serializableGoalsArraySchema.safeParse(importedRawData);
           if (!validation.success) {
-            showToast('Import failed. Invalid file format.', 'error');
+            showToast('Import failed. Invalid file format: should be an array of goals.', 'error');
             return;
           }
-          const deserializedData = deserializeAppStateForImport(validation.data);
-
-          showConfirmation({
-            title: 'Overwrite All Data?',
-            message: 'Importing will replace all your current data. This action is irreversible.',
-            action: async () => {
-              if (!currentUser) return;
-              await setUserData(currentUser.uid, deserializedData);
-              await fetchInitialData(currentUser);
-              showToast('Data imported successfully! The page will now refresh.', 'success');
-              setTimeout(() => window.location.reload(), 2000);
-            },
-            actionDelayMs: 10000,
-          });
+          const deserializedGoals = deserializeGoalsForImport(validation.data);
+          setStagedGoalsForImport(deserializedGoals);
+          setIsImportModalOpen(true);
         } catch {
           showToast('Import failed. Please check file format.', 'error');
         }
       };
       reader.readAsText(file);
     },
-    [currentUser, showToast, showConfirmation, fetchInitialData]
+    [currentUser, showToast]
   );
 
   const handleExportData = useCallback(async () => {
@@ -95,7 +88,7 @@ export default function ProfilePage() {
       return;
     }
     try {
-      const serializableData = serializeAppStateForExport(appState);
+      const serializableData = serializeGoalsForExport(Object.values(appState.goals));
       const dataStr = JSON.stringify(serializableData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
@@ -159,7 +152,7 @@ export default function ProfilePage() {
         type="file"
         id="import-file-profile"
         accept=".json"
-        onChange={handleImportData}
+        onChange={handleImportFileSelect}
         className="hidden"
       />
       <div className="p-8 mb-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
@@ -212,9 +205,9 @@ export default function ProfilePage() {
             >
               <FiUpload className="text-green-400" size={24} />
               <div className="ml-4">
-                <div className="font-medium">Import All Data</div>
+                <div className="font-medium">Import Goals</div>
                 <div className="text-sm text-white/60">
-                  Upload a JSON backup file to restore your entire app state.
+                  Upload a JSON backup file to select and import goals.
                 </div>
               </div>
             </label>
@@ -226,7 +219,7 @@ export default function ProfilePage() {
               <div className="ml-4">
                 <div className="font-medium">Export All Data</div>
                 <div className="text-sm text-white/60">
-                  Download all your app data as a single JSON file.
+                  Download all your goals as a single JSON file.
                 </div>
               </div>
             </button>
@@ -274,6 +267,13 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <ImportSelectionModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        goalsToImport={stagedGoalsForImport}
+        onConfirmImport={importGoals}
+      />
 
       {isAvatarModalOpen && (
         <AvatarSelectionModal

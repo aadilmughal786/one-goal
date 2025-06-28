@@ -14,6 +14,7 @@ import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
 import CreateGoalCard from '@/components/goal/CreateGoalCard';
 import GoalList from '@/components/goal/GoalList';
 import GoalModal from '@/components/goal/GoalModal';
+import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
 
 const GoalPageSkeletonLoader = () => (
   <div className="space-y-8 animate-pulse">
@@ -32,9 +33,10 @@ const GoalPageSkeletonLoader = () => (
 const GoalPageContent = () => {
   const { isLoading } = useAuth();
 
-  // FIX: Select actions individually to prevent infinite loops.
+  // FIX: Select each action individually to prevent re-renders from creating a new object.
   const createGoal = useGoalStore(state => state.createGoal);
   const updateGoal = useGoalStore(state => state.updateGoal);
+  const importGoals = useGoalStore(state => state.importGoals);
   const showToast = useNotificationStore(state => state.showToast);
 
   // Local UI State
@@ -45,6 +47,9 @@ const GoalPageContent = () => {
   const [selectedGoalForSummary, setSelectedGoalForSummary] = useState<Goal | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
 
   const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
     setSelectedGoalForModal(goal);
@@ -74,6 +79,11 @@ const GoalPageContent = () => {
   const handleOpenSummaryModal = useCallback((goal: Goal) => {
     setSelectedGoalForSummary(goal);
     setIsSummaryModalOpen(true);
+  }, []);
+
+  const handleGoalsImported = useCallback((goals: Goal[]) => {
+    setStagedGoalsForImport(goals);
+    setIsImportModalOpen(true);
   }, []);
 
   const transformedGoalForModal = useMemo(() => {
@@ -144,7 +154,11 @@ const GoalPageContent = () => {
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${filterStatus === status ? 'text-white border-blue-500 bg-transparent' : 'border-transparent text-white/60 hover:bg-white/10 hover:border-white/5'}`}
+              className={`px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+                filterStatus === status
+                  ? 'text-white border-blue-500 bg-transparent'
+                  : 'border-transparent text-white/60 hover:bg-white/10 hover:border-white/5'
+              }`}
             >
               {getStatusText(status)}
             </button>
@@ -159,7 +173,10 @@ const GoalPageContent = () => {
             searchQuery={searchQuery}
             filterStatus={filterStatus}
           />
-          <CreateGoalCard onOpenGoalModal={handleOpenGoalModal} />
+          <CreateGoalCard
+            onOpenGoalModal={handleOpenGoalModal}
+            onGoalsImported={handleGoalsImported}
+          />
         </section>
       </div>
       <GoalModal
@@ -173,6 +190,12 @@ const GoalPageContent = () => {
         isOpen={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}
         goal={selectedGoalForSummary}
+      />
+      <ImportSelectionModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        goalsToImport={stagedGoalsForImport}
+        onConfirmImport={importGoals}
       />
     </main>
   );

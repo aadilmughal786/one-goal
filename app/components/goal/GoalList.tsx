@@ -15,7 +15,7 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 
-import { serializeGoalForExport } from '@/services/dataService';
+import { serializeGoalsForExport } from '@/services/dataService';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
@@ -32,7 +32,6 @@ const GoalList: React.FC<GoalListProps> = ({
   searchQuery,
   filterStatus,
 }) => {
-  // FIX: Select state and actions individually from the Zustand stores.
   const appState = useGoalStore(state => state.appState);
   const setActiveGoal = useGoalStore(state => state.setActiveGoal);
   const deleteGoal = useGoalStore(state => state.deleteGoal);
@@ -108,13 +107,15 @@ const GoalList: React.FC<GoalListProps> = ({
   const handleExportSingleGoal = useCallback(
     async (goal: Goal) => {
       try {
-        const serializableGoal = serializeGoalForExport(goal);
+        const serializableGoal = serializeGoalsForExport([goal]);
         const dataStr = JSON.stringify(serializableGoal, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `one-goal-${goal.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${formatDate(new Date(), 'yyyy-MM-dd')}.json`;
+        link.download = `one-goal-${goal.name
+          .replace(/[^a-z0-9]/gi, '_')
+          .toLowerCase()}-${formatDate(new Date(), 'yyyy-MM-dd')}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -163,7 +164,11 @@ const GoalList: React.FC<GoalListProps> = ({
         filteredAndSortedGoals.map(goal => (
           <div
             key={goal.id}
-            className={`p-4 rounded-lg border bg-white/[0.02] shadow-md transition-all ${appState?.activeGoalId === goal.id ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-white/10'}`}
+            className={`p-4 rounded-lg border bg-white/[0.02] shadow-md transition-all ${
+              appState?.activeGoalId === goal.id
+                ? 'border-blue-500 ring-2 ring-blue-500/50'
+                : 'border-white/10'
+            }`}
           >
             <div className="flex flex-col justify-between items-start mb-3 md:flex-row md:items-center md:mb-0">
               <div>

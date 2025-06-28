@@ -7,7 +7,7 @@ import {
   StickyNoteColor,
 } from '@/types';
 import { Timestamp } from 'firebase/firestore';
-import { z } from 'zod'; // <--- ADDED: Import 'z' from 'zod'
+import { z } from 'zod';
 
 /**
  * @file app/utils/schemas.ts
@@ -83,7 +83,7 @@ export const dailyProgressSchema = z.object({
   satisfaction: z.nativeEnum(SatisfactionLevel),
   notes: z.string(),
   sessions: z.array(stopwatchSessionSchema),
-  routines: routinesSchema, // FIX: Added routines to the schema for React Hook Form to track
+  routines: routinesSchema,
   totalSessionDuration: z.number().min(0),
 });
 
@@ -119,7 +119,6 @@ export const userRoutineSettingsSchema = z.object({
 export const goalSchema = baseEntitySchema
   .extend({
     name: z.string().min(1, 'Goal name cannot be empty'),
-    // FIX: Reverted to mandatory non-empty description
     description: z
       .string()
       .min(1, 'Goal description cannot be empty.')
@@ -145,14 +144,8 @@ export const appStateSchema = z.object({
 });
 
 // --- SCHEMAS FOR JSON IMPORT/EXPORT (using ISO strings for dates) ---
-// This schema is used to validate the structure of an imported JSON file.
-// It uses a generic `z.any()` for nested objects with timestamps because
-// the actual conversion from string to Timestamp is handled by the dataService.
-// This schema's primary job is to validate the top-level structure.
-export const serializableAppStateSchema = z.object({
-  activeGoalId: z.string().nullable(),
-  goals: z.record(z.string(), z.any()), // Validate that goals is a record of any type
-});
+export const serializableGoalSchema = z.any(); // Kept as 'any' for initial structural validation before deep deserialization.
+export const serializableGoalsArraySchema = z.array(serializableGoalSchema);
 
 // Zod Schema for TodoEditModal form fields
 export const todoEditFormSchema = z.object({
@@ -163,12 +156,11 @@ export const todoEditFormSchema = z.object({
     .nullable()
     .refine(
       date => {
-        // Allow null, or if not null, ensure it's a valid date
         return date === null || !isNaN(date.getTime());
       },
       { message: 'Invalid deadline date.' }
     )
-    .optional(), // Use optional if the field might not be present on form initialization
+    .optional(),
 });
 
 // Zod Schema for ScheduleEditModal form fields
@@ -176,7 +168,7 @@ export const scheduleEditFormSchema = z.object({
   label: z.string().min(1, 'Label cannot be empty.'),
   time: z.date().refine(date => !isNaN(date.getTime()), { message: 'Invalid time selected.' }),
   duration: z.coerce
-    .number() // Use coerce to convert string input to number
+    .number()
     .min(1, 'Duration must be at least 1 minute.')
     .max(1440, 'Duration cannot exceed 24 hours (1440 minutes).')
     .int('Duration must be a whole number.'),
@@ -186,7 +178,6 @@ export const scheduleEditFormSchema = z.object({
 // Zod Schema for GoalModal form fields
 export const goalFormSchema = z.object({
   name: z.string().min(1, 'Goal name cannot be empty.').max(100, 'Goal name is too long.'),
-  // FIX: Reverted to mandatory non-empty and max length
   description: z
     .string()
     .min(1, 'Goal description cannot be empty.')
@@ -194,14 +185,12 @@ export const goalFormSchema = z.object({
   endDate: z
     .date()
     .nullable()
-    .refine(
-      date => date !== null && !isNaN(date.getTime()), // Must be a valid date
-      { message: 'Please select a target date and time.' }
-    )
-    .refine(
-      date => date === null || date.getTime() > new Date().getTime(), // Must be in the future
-      { message: 'Target date and time must be in the future.' }
-    ),
+    .refine(date => date !== null && !isNaN(date.getTime()), {
+      message: 'Please select a target date and time.',
+    })
+    .refine(date => date === null || date.getTime() > new Date().getTime(), {
+      message: 'Target date and time must be in the future.',
+    }),
 });
 
 // Zod Schema for DailyProgressModal form fields

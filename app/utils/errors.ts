@@ -62,12 +62,16 @@ export class AppBaseError extends Error {
  * It extends `AppBaseError` and is the primary error type that should be thrown from service files.
  */
 export class ServiceError extends AppBaseError {
+  public readonly rawData?: unknown;
+
   constructor(
     message: string,
     code: ServiceErrorCode = ServiceErrorCode.UNKNOWN_ERROR,
-    originalError?: unknown
+    originalError?: unknown,
+    rawData?: unknown
   ) {
     // The message passed to the super constructor is for logging and debugging.
     super(`Service Error: ${message}`, code, originalError);
+    this.rawData = rawData;
   }
 }

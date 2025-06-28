@@ -117,11 +117,12 @@ export const getUserData = async (userId: string): Promise<AppState> => {
         })
         .join('; ');
 
-      // Throw a specific error with the details. The store will catch this.
+      // Throw a specific error with the details and the raw data.
       throw new ServiceError(
         `Data validation failed. ${errorDetails}`,
         ServiceErrorCode.VALIDATION_FAILED,
-        validationResult.error
+        validationResult.error,
+        rawData // Pass the raw data here
       );
     }
 
@@ -134,7 +135,7 @@ export const getUserData = async (userId: string): Promise<AppState> => {
 
     return validatedData;
   } catch (error) {
-    if (error instanceof ServiceError) throw error; // Re-throw our custom error
+    if (error instanceof ServiceError) throw error;
     throw new ServiceError('Failed to load user data.', ServiceErrorCode.OPERATION_FAILED, error);
   }
 };
@@ -170,7 +171,6 @@ export const createGoal = async (
     toDoList: [],
     notToDoList: [],
     stickyNotes: [],
-    // FIX: Add default routine settings for both sleep and water when a goal is created.
     routineSettings: {
       sleep: {
         sleepTime: '22:00',

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/services/dataService.ts
-import { AppState, Goal } from '@/types';
+import { Goal } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -12,6 +12,8 @@ import { Timestamp } from 'firebase/firestore';
  * Firebase-compatible objects (with Timestamps) upon import. This separation of
  * concerns keeps the main data services cleaner.
  */
+
+const generateUUID = () => crypto.randomUUID();
 
 /**
  * Recursively traverses an object or array and converts all Firebase Timestamp
@@ -26,7 +28,6 @@ const _serializeTimestamps = (data: any): any => {
   if (Array.isArray(data)) {
     return data.map(_serializeTimestamps);
   }
-  // Check for a plain object to avoid trying to iterate over other classes
   if (data !== null && typeof data === 'object' && data.constructor === Object) {
     const newObj: { [key: string]: any } = {};
     for (const key in data) {
@@ -44,7 +45,6 @@ const _serializeTimestamps = (data: any): any => {
  * @returns A new object or array with ISO strings converted to Timestamps.
  */
 const _deserializeTimestamps = (data: any): any => {
-  // Regex to check for a valid ISO 8601 format (e.g., "2023-10-27T10:00:00.000Z")
   if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(data)) {
     const date = new Date(data);
     if (!isNaN(date.getTime())) {
@@ -65,39 +65,25 @@ const _deserializeTimestamps = (data: any): any => {
 };
 
 /**
- * Serializes the entire AppState object into a JSON-friendly format.
- * @param appState The AppState object to serialize.
- * @returns A plain JavaScript object suitable for `JSON.stringify`.
+ * Serializes an array of Goal objects into a JSON-friendly format.
+ * @param goals The array of Goal objects to serialize.
+ * @returns An array of plain JavaScript objects suitable for `JSON.stringify`.
  */
-export const serializeAppStateForExport = (appState: AppState): object => {
-  return _serializeTimestamps(appState);
+export const serializeGoalsForExport = (goals: Goal[]): object[] => {
+  return _serializeTimestamps(goals);
 };
 
 /**
- * Serializes a single Goal object into a JSON-friendly format.
- * @param goal The Goal object to serialize.
- * @returns A plain JavaScript object suitable for `JSON.stringify`.
+ * Deserializes an array of plain JavaScript objects (from an imported JSON file) back
+ * into a valid array of Goal objects, regenerating their top-level IDs to prevent conflicts.
+ * @param importedData The raw data array parsed from a JSON file.
+ * @returns An array of Goal objects ready to be saved to Firestore.
  */
-export const serializeGoalForExport = (goal: Goal): object => {
-  return _serializeTimestamps(goal);
-};
-
-/**
- * Deserializes a plain JavaScript object (from an imported JSON file) back
- * into a valid AppState object.
- * @param importedData The raw data parsed from a JSON file.
- * @returns An AppState object ready to be saved to Firestore.
- */
-export const deserializeAppStateForImport = (importedData: object): AppState => {
-  return _deserializeTimestamps(importedData);
-};
-
-/**
- * Deserializes a plain JavaScript object (from an imported JSON file) back
- * into a valid Goal object.
- * @param importedData The raw data parsed from a JSON file.
- * @returns A Goal object ready to be saved to Firestore.
- */
-export const deserializeGoalForImport = (importedData: object): Goal => {
-  return _deserializeTimestamps(importedData);
+export const deserializeGoalsForImport = (importedData: object[]): Goal[] => {
+  const deserialized = _deserializeTimestamps(importedData) as Goal[];
+  // Regenerate IDs for each goal to avoid conflicts on re-import.
+  return deserialized.map(goal => ({
+    ...goal,
+    id: generateUUID(),
+  }));
 };
