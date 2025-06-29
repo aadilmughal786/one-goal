@@ -223,7 +223,7 @@ const SleepSchedule: React.FC = () => {
                 <button
                   id="bedtime-picker"
                   onClick={() => setIsBedtimePickerOpen(true)}
-                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
                 >
                   {bedtime}
                 </button>
@@ -236,7 +236,7 @@ const SleepSchedule: React.FC = () => {
                 <button
                   id="wake-time-picker"
                   onClick={() => setIsWakeTimePickerOpen(true)}
-                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
                 >
                   {wakeTime}
                 </button>
@@ -257,7 +257,7 @@ const SleepSchedule: React.FC = () => {
               <button
                 onClick={refreshTip}
                 disabled={isRefreshingTip}
-                className="p-2 rounded-full cursor-pointer hover:bg-white/10 disabled:opacity-50"
+                className="p-2 rounded-full hover:bg-white/10 disabled:opacity-50 cursor-pointer"
                 title="Get a new tip"
               >
                 {isRefreshingTip ? <FiLoader className="animate-spin" /> : <FiRefreshCw />}

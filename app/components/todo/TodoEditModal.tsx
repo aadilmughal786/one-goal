@@ -149,7 +149,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
               </div>
               <button
                 type="button" // Important: set type="button" to prevent form submission
-                className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white"
+                className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white cursor-pointer"
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -193,7 +193,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
                   <button
                     type="button" // Prevent form submission
                     onClick={() => setIsPickerOpen(true)}
-                    className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer"
                   >
                     {currentDeadline ? (
                       format(currentDeadline, "MMMM d,yyyy 'at' h:mm a")
@@ -205,7 +205,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
                     <button
                       type="button" // Prevent form submission
                       onClick={handleClearDeadline}
-                      className="p-3 rounded-md text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
+                      className="p-3 rounded-md text-red-400/80 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
                       aria-label="Clear deadline"
                     >
                       <FiTrash2 size={20} />
@@ -219,7 +219,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({ isOpen, onClose, todoItem
                 type="submit" // Set type="submit" for form submission
                 // FIX: Button disabled when submitting OR not dirty OR not valid
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

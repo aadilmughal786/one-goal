@@ -80,7 +80,7 @@ const ToastMessage: React.FC = () => {
         <div className="flex-grow leading-relaxed text-white/90">{message}</div>
         <button
           onClick={handleClose}
-          className="ml-4 flex-shrink-0 p-1.5 rounded-md transition-colors duration-200 cursor-pointer hover:bg-white/10 group"
+          className="ml-4 flex-shrink-0 p-1.5 rounded-md transition-colors duration-200 hover:bg-white/10 group cursor-pointer"
         >
           <FiX className="w-5 h-5 text-neutral-400 group-hover:text-white" />
         </button>

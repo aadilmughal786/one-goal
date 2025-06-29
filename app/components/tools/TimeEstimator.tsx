@@ -211,7 +211,7 @@ const TimeEstimator: React.FC = () => {
         <div className="flex flex-col gap-4 justify-center items-center mx-auto max-w-3xl sm:flex-row">
           <button
             onClick={() => setIsStartPickerOpen(true)}
-            className="flex flex-1 justify-between items-center p-3 w-full text-white rounded-lg border transition-colors sm:w-auto bg-black/20 border-white/10 hover:bg-white/10"
+            className="flex flex-1 justify-between items-center p-3 w-full text-white rounded-lg border transition-colors sm:w-auto bg-black/20 border-white/10 hover:bg-white/10 cursor-pointer"
           >
             <span className="flex gap-2 items-center">
               <FiCalendar className="text-white/60" />
@@ -222,7 +222,7 @@ const TimeEstimator: React.FC = () => {
 
           <button
             onClick={() => setIsEndPickerOpen(true)}
-            className="flex flex-1 justify-between items-center p-3 w-full text-white rounded-lg border transition-colors sm:w-auto bg-black/20 border-white/10 hover:bg-white/10"
+            className="flex flex-1 justify-between items-center p-3 w-full text-white rounded-lg border transition-colors sm:w-auto bg-black/20 border-white/10 hover:bg-white/10 cursor-pointer"
           >
             <span className="flex gap-2 items-center">
               <FiCalendar className="text-white/60" />
@@ -233,7 +233,7 @@ const TimeEstimator: React.FC = () => {
 
           <button
             onClick={handleCalculate}
-            className="flex gap-2 justify-center items-center px-6 py-3 w-full font-semibold text-black bg-white rounded-lg transition-transform sm:w-auto hover:scale-105"
+            className="flex gap-2 justify-center items-center px-6 py-3 w-full font-semibold text-black bg-white rounded-lg transition-transform sm:w-auto hover:scale-105 cursor-pointer"
           >
             <FiTrendingUp />
             Calculate

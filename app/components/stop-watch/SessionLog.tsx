@@ -220,7 +220,7 @@ export default function SessionLog() {
             <div className="flex gap-4 items-center">
               <button
                 onClick={handleGoToToday}
-                className="px-3 py-1 text-sm text-white rounded-md border transition-colors cursor-pointer bg-white/10 border-white/20 hover:bg-white/20"
+                className="px-3 py-1 text-sm text-white rounded-md border transition-colors bg-white/10 border-white/20 hover:bg-white/20 cursor-pointer"
                 aria-label="Go to today"
               >
                 Today
@@ -230,7 +230,7 @@ export default function SessionLog() {
                 <button
                   onClick={() => handleMonthChange('prev')}
                   disabled={!canGoPrevMonth}
-                  className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                  className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
                   aria-label="Previous month"
                 >
                   <FiChevronLeft className="w-5 h-5" />
@@ -238,7 +238,7 @@ export default function SessionLog() {
                 <button
                   onClick={() => handleMonthChange('next')}
                   disabled={!canGoNextMonth}
-                  className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                  className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
                   aria-label="Next month"
                 >
                   <FiChevronRight className="w-5 h-5" />
@@ -261,10 +261,10 @@ export default function SessionLog() {
                   <button
                     key={dateKey}
                     onClick={() => setSelectedDay(day)}
-                    className={`relative flex flex-col items-center justify-center w-16 h-16 rounded-lg font-semibold transition-all cursor-pointer hover:ring-2 hover:ring-white/50
+                    className={`relative flex flex-col items-center justify-center w-16 h-16 rounded-lg font-semibold transition-all hover:ring-2 hover:ring-white/50
                       ${isSelected ? 'text-white bg-blue-500' : 'bg-white/5'}
                       ${isCurrentDay && !isSelected ? 'border-2 border-blue-400/50' : 'border border-white/20'}
-                    `}
+                     cursor-pointer`}
                     aria-label={`Select day ${format(day, 'd MMMM')}`}
                   >
                     <span className="text-xs text-white/50">{format(day, 'E')}</span>
@@ -309,13 +309,13 @@ export default function SessionLog() {
                             onKeyPress={e => e.key === 'Enter' && handleSaveUpdate(session)}
                             autoFocus
                             disabled={isCurrentlySaving}
-                            className="flex-1 py-1 text-base text-white bg-transparent border-b-2 cursor-pointer outline-none border-white/20 focus:border-blue-400 disabled:opacity-50"
+                            className="flex-1 py-1 text-base text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400 disabled:opacity-50 cursor-pointer"
                             aria-label="Edit session label"
                           />
                           <button
                             onClick={() => handleSaveUpdate(session)}
                             disabled={isCurrentlySaving || !editText.trim()}
-                            className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10 disabled:opacity-50"
+                            className="p-2 text-green-400 rounded-full transition-colors hover:bg-green-500/10 disabled:opacity-50 cursor-pointer"
                             aria-label="Save changes"
                           >
                             {isCurrentlySaving ? (
@@ -341,7 +341,7 @@ export default function SessionLog() {
                         {!isEditing && (
                           <button
                             onClick={() => handleStartEditing(session)}
-                            className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                            className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
                             aria-label="Edit session"
                           >
                             <FiEdit />
@@ -350,7 +350,7 @@ export default function SessionLog() {
                         <button
                           onClick={() => handleDeleteSession(session.id)}
                           disabled={isCurrentlySaving}
-                          className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                          className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
                           aria-label="Delete session"
                         >
                           <FiTrash2 />

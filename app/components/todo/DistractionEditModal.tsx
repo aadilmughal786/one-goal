@@ -106,7 +106,7 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
             </div>
             <button
               type="button"
-              className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white"
+              className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white cursor-pointer"
               onClick={onClose}
               aria-label="Close modal"
             >
@@ -164,7 +164,7 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !isDirty || !isValid}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

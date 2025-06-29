@@ -100,7 +100,7 @@ const WaterTracker: React.FC = () => {
         <div className="flex gap-4 justify-center items-center mb-8">
           <button
             onClick={() => handleWaterChange(-1)}
-            className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50"
+            className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 cursor-pointer"
             aria-label="Remove one glass"
             disabled={currentWater <= 0}
           >
@@ -108,7 +108,7 @@ const WaterTracker: React.FC = () => {
           </button>
           <button
             onClick={() => handleWaterChange(1)}
-            className="flex justify-center items-center w-14 h-14 text-3xl text-blue-400 rounded-full transition-colors bg-blue-500/20 hover:bg-blue-500/30"
+            className="flex justify-center items-center w-14 h-14 text-3xl text-blue-400 rounded-full transition-colors bg-blue-500/20 hover:bg-blue-500/30 cursor-pointer"
             aria-label="Add one glass"
           >
             <MdAdd size={32} />

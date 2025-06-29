@@ -209,40 +209,40 @@ const GoalList: React.FC<GoalListProps> = ({
                   disabled={
                     goal.status === GoalStatus.COMPLETED || goal.status === GoalStatus.CANCELLED
                   }
-                  className="px-3 py-1 text-xs text-blue-300 rounded-full bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50"
+                  className="px-3 py-1 text-xs text-blue-300 rounded-full bg-blue-500/10 hover:bg-blue-500/20 cursor-pointer disabled:opacity-50"
                 >
                   Set as Active
                 </button>
               )}
               <button
                 onClick={() => onOpenSummaryModal(goal)}
-                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20"
+                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer"
               >
                 <FiBookOpen className="inline mr-1" size={12} /> Summary
               </button>
               <button
                 onClick={() => onOpenGoalModal(goal, true)}
-                className="px-3 py-1 text-xs text-green-300 rounded-full bg-green-500/10 hover:bg-green-500/20"
+                className="px-3 py-1 text-xs text-green-300 rounded-full bg-green-500/10 hover:bg-green-500/20 cursor-pointer"
               >
                 <FiEdit className="inline mr-1" size={12} /> Edit
               </button>
               {goal.status === GoalStatus.ACTIVE && (
                 <button
                   onClick={() => handleArchiveGoal(goal)}
-                  className="px-3 py-1 text-xs text-orange-300 rounded-full bg-orange-500/10 hover:bg-orange-500/20"
+                  className="px-3 py-1 text-xs text-orange-300 rounded-full bg-orange-500/10 hover:bg-orange-500/20 cursor-pointer"
                 >
                   Archive
                 </button>
               )}
               <button
                 onClick={() => handleDeleteGoal(goal)}
-                className="px-3 py-1 text-xs text-red-300 rounded-full bg-red-500/10 hover:bg-red-500/20"
+                className="px-3 py-1 text-xs text-red-300 rounded-full bg-red-500/10 hover:bg-red-500/20 cursor-pointer"
               >
                 <FiTrash2 className="inline mr-1" size={12} /> Delete
               </button>
               <button
                 onClick={() => handleExportSingleGoal(goal)}
-                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20"
+                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer"
                 title={`Export "${goal.name}"`}
               >
                 <FiDownload className="inline mr-1" size={12} /> Export

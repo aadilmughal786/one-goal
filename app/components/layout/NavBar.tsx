@@ -78,7 +78,7 @@ export default function NavBar() {
         ) : (
           <Link
             href="/dashboard"
-            className="p-2 rounded-full group hover:bg-white/10"
+            className="p-2 rounded-full group hover:bg-white/10 cursor-pointer"
             title="One Goal Home"
           >
             <MdRocketLaunch
@@ -114,7 +114,7 @@ export default function NavBar() {
         <button
           onClick={() => setIsProfileDropdownOpen(prev => !prev)}
           disabled={authLoading}
-          className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
+          className="rounded-full transition-all duration-200 hover:ring-2 hover:ring-blue-400 cursor-pointer"
           aria-label="Open profile menu"
         >
           {authLoading ? (
@@ -128,7 +128,7 @@ export default function NavBar() {
               className="rounded-full"
             />
           ) : (
-            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
+            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 text-white/70 border-white/20 cursor-pointer">
               {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
             </div>
           )}

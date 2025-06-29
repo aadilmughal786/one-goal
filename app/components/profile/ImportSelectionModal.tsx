@@ -50,7 +50,7 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
             aria-label="Close modal"
           >
             <FiX size={20} />
@@ -98,7 +98,7 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
           <button
             onClick={handleConfirm}
             disabled={selectedGoalIds.length === 0 || isImporting}
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-50"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-50 cursor-pointer"
           >
             {isImporting ? <FiLoader className="animate-spin" /> : <FiCheck />}
             Import ({selectedGoalIds.length}) Selected Goals

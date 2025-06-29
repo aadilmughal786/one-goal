@@ -142,14 +142,14 @@ const TodoListItem: React.FC<{
         <div className="flex gap-1 items-center">
           <button
             onClick={() => onEditTodo(item)}
-            className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+            className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
             aria-label="Edit item details"
           >
             <FiEdit />
           </button>
           <button
             onClick={handleDeleteClick}
-            className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+            className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
             aria-label="Delete item"
           >
             <FiTrash2 />

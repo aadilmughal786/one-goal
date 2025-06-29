@@ -18,7 +18,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { MdColorLens, MdStickyNote2 } from 'react-icons/md';
-import NoActiveGoalMessage from '../common/NoActiveGoalMessage';
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -173,7 +173,7 @@ const StickyNotes: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditColorDropdownOpen(prev => !prev)}
-                className={`flex items-center p-2 rounded-full border ${stickyNoteColorMap[editColor]}`}
+                className={`flex items-center p-2 rounded-full border ${stickyNoteColorMap[editColor]} cursor-pointer`}
                 aria-label="Select note color"
               >
                 <MdColorLens size={20} />
@@ -192,7 +192,7 @@ const StickyNotes: React.FC = () => {
                             setEditColor(colorEnum);
                             setEditColorDropdownOpen(false);
                           }}
-                          className={`w-8 h-8 rounded-full border cursor-pointer ${stickyNoteColorMap[colorEnum]}`}
+                          className={`w-8 h-8 rounded-full border ${stickyNoteColorMap[colorEnum]} cursor-pointer`}
                           aria-label={`Set color to ${colorName.toLowerCase()}`}
                         ></button>
                       );
@@ -203,7 +203,7 @@ const StickyNotes: React.FC = () => {
             <div className="flex gap-2 justify-end mt-4">
               <button
                 onClick={handleCancelEdit}
-                className="p-2 text-gray-600 rounded-full hover:bg-gray-300"
+                className="p-2 text-gray-600 rounded-full hover:bg-gray-300 cursor-pointer"
                 disabled={isSaving}
                 aria-label="Cancel edit"
               >
@@ -211,7 +211,7 @@ const StickyNotes: React.FC = () => {
               </button>
               <button
                 onClick={() => handleSaveEdit(note.id)}
-                className="p-2 text-green-600 rounded-full hover:bg-green-300"
+                className="p-2 text-green-600 rounded-full hover:bg-green-300 cursor-pointer"
                 disabled={isSaving || !editTitle.trim() || !editContent.trim()}
                 aria-label="Save changes"
               >
@@ -230,7 +230,7 @@ const StickyNotes: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => handleStartEditing(note)}
-              className="p-1 text-gray-600 rounded-full hover:bg-gray-300"
+              className="p-1 text-gray-600 rounded-full hover:bg-gray-300 cursor-pointer"
               aria-label="Edit note"
               disabled={isEditing || isSaving || !!editingNoteId}
             >
@@ -238,7 +238,7 @@ const StickyNotes: React.FC = () => {
             </button>
             <button
               onClick={() => handleDeleteConfirmation(note)}
-              className="p-1 text-red-600 rounded-full hover:bg-red-300"
+              className="p-1 text-red-600 rounded-full hover:bg-red-300 cursor-pointer"
               aria-label="Delete note"
               disabled={isEditing || isSaving || !!editingNoteId}
             >
@@ -260,7 +260,7 @@ const StickyNotes: React.FC = () => {
         <button
           onClick={handleCreateDefaultNote}
           disabled={isAddingNote}
-          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all hover:bg-white/90 disabled:opacity-50"
+          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all hover:bg-white/90 disabled:opacity-50 cursor-pointer"
           aria-label="Create new sticky note"
         >
           {isAddingNote ? (
@@ -283,7 +283,7 @@ const StickyNotes: React.FC = () => {
         <div className="flex flex-shrink-0 gap-2">
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-full transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+            className={`p-2 rounded-full transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'} cursor-pointer`}
             title="Grid View"
             aria-label="Switch to grid view"
           >
@@ -291,7 +291,7 @@ const StickyNotes: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-full transition-colors ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+            className={`p-2 rounded-full transition-colors ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'} cursor-pointer`}
             title="List View"
             aria-label="Switch to list view"
           >

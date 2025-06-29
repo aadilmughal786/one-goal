@@ -186,7 +186,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
               </h2>
               <button
                 type="button"
-                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10"
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -210,8 +210,8 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                             shouldDirty: true,
                           })
                         }
-                        className={`flex justify-center items-center p-3 rounded-md transition-all duration-200 cursor-pointer
-                          ${isSelected ? 'text-black bg-white' : 'text-white/70 bg-white/5 hover:bg-white/10 hover:text-white'}`}
+                        className={`flex justify-center items-center p-3 rounded-md transition-all duration-200
+                          ${isSelected ? 'text-black bg-white' : 'text-white/70 bg-white/5 hover:bg-white/10 hover:text-white'} cursor-pointer`}
                         aria-label={`Select ${optionIconName} icon`}
                         title={optionIconName.replace('MdOutline', '').replace('Fa', '')}
                       >
@@ -243,7 +243,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                     id="start-time"
                     type="button" // Prevent form submission
                     onClick={() => setIsTimePickerOpen(true)}
-                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="p-3 w-full text-left text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none cursor-pointer"
                     aria-haspopup="true"
                     aria-expanded={isTimePickerOpen}
                   >
@@ -272,7 +272,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                 type="submit"
                 // FIX: Button disabled when submitting OR not dirty OR not valid
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-60 cursor-pointer"
                 aria-label={buttonLabel}
               >
                 {isSubmitting ? (

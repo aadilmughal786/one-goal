@@ -149,7 +149,7 @@ const ChatCalculator: React.FC = () => {
         <div className="flex gap-2 items-center mx-auto max-w-3xl">
           <button
             onClick={handleClearHistoryWithConfirmation}
-            className="p-3 text-red-400 rounded-full transition-colors bg-white/5 hover:bg-red-500/20"
+            className="p-3 text-red-400 rounded-full transition-colors bg-white/5 hover:bg-red-500/20 cursor-pointer"
             aria-label="Clear chat history"
           >
             <FiTrash2 size={20} />
@@ -165,7 +165,7 @@ const ChatCalculator: React.FC = () => {
             />
             <button
               onClick={handleSend}
-              className="absolute right-3 top-1/2 p-2 text-white bg-blue-500 rounded-lg transition-colors -translate-y-1/2 hover:bg-blue-600 disabled:opacity-50"
+              className="absolute right-3 top-1/2 p-2 text-white bg-blue-500 rounded-lg transition-colors -translate-y-1/2 hover:bg-blue-600 disabled:opacity-50 cursor-pointer"
               disabled={!input.trim()}
               aria-label="Send"
             >

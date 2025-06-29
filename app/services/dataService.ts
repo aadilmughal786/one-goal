@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/services/dataService.ts
 import { Goal } from '@/types';
 import { Timestamp } from 'firebase/firestore';
@@ -21,17 +20,17 @@ const generateUUID = () => crypto.randomUUID();
  * @param data The object or array to process.
  * @returns A new object or array with Timestamps converted to strings.
  */
-const _serializeTimestamps = (data: any): any => {
+const _serializeTimestamps = (data: unknown): unknown => {
   if (data instanceof Timestamp) {
     return data.toDate().toISOString();
   }
   if (Array.isArray(data)) {
     return data.map(_serializeTimestamps);
   }
-  if (data !== null && typeof data === 'object' && data.constructor === Object) {
-    const newObj: { [key: string]: any } = {};
-    for (const key in data) {
-      newObj[key] = _serializeTimestamps(data[key]);
+  if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
+    const newObj: { [key: string]: unknown } = {};
+    for (const key in data as { [key: string]: unknown }) {
+      newObj[key] = _serializeTimestamps((data as { [key: string]: unknown })[key]);
     }
     return newObj;
   }
@@ -44,7 +43,7 @@ const _serializeTimestamps = (data: any): any => {
  * @param data The object or array to process, typically from a parsed JSON file.
  * @returns A new object or array with ISO strings converted to Timestamps.
  */
-const _deserializeTimestamps = (data: any): any => {
+const _deserializeTimestamps = (data: unknown): unknown => {
   if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(data)) {
     const date = new Date(data);
     if (!isNaN(date.getTime())) {
@@ -54,10 +53,10 @@ const _deserializeTimestamps = (data: any): any => {
   if (Array.isArray(data)) {
     return data.map(_deserializeTimestamps);
   }
-  if (data !== null && typeof data === 'object' && data.constructor === Object) {
-    const newObj: { [key: string]: any } = {};
-    for (const key in data) {
-      newObj[key] = _deserializeTimestamps(data[key]);
+  if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
+    const newObj: { [key: string]: unknown } = {};
+    for (const key in data as { [key: string]: unknown }) {
+      newObj[key] = _deserializeTimestamps((data as { [key: string]: unknown })[key]);
     }
     return newObj;
   }
@@ -70,7 +69,7 @@ const _deserializeTimestamps = (data: any): any => {
  * @returns An array of plain JavaScript objects suitable for `JSON.stringify`.
  */
 export const serializeGoalsForExport = (goals: Goal[]): object[] => {
-  return _serializeTimestamps(goals);
+  return _serializeTimestamps(goals) as object[];
 };
 
 /**

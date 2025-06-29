@@ -156,7 +156,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                     <div className="flex gap-1 items-center p-1 rounded-full bg-black/20">
                       <button
                         onClick={() => handleUpdateCount(item.id, item.count, -1)}
-                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50"
+                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50 cursor-pointer"
                         disabled={isUpdatingThis}
                         aria-label="Decrease count"
                       >
@@ -171,7 +171,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                       </span>
                       <button
                         onClick={() => handleUpdateCount(item.id, item.count, 1)}
-                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50"
+                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50 cursor-pointer"
                         disabled={isUpdatingThis}
                         aria-label="Increase count"
                       >
@@ -180,7 +180,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                     </div>
                     <button
                       onClick={() => onEditDistraction(item)}
-                      className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                      className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
                       aria-label="Edit item"
                       disabled={isUpdatingThis}
                     >
@@ -188,7 +188,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                     </button>
                     <button
                       onClick={() => handleDeleteConfirmation(item.id, item.title)}
-                      className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                      className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
                       aria-label="Delete item"
                       disabled={isUpdatingThis}
                     >

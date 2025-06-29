@@ -242,7 +242,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           <button
             onClick={handlePrevMonth}
             disabled={!canGoToPrevMonth}
-            className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+            className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
             aria-label="Previous month"
           >
             <FiChevronLeft className="w-5 h-5" />
@@ -250,7 +250,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           <button
             onClick={handleNextMonth}
             disabled={!canGoToNextMonth}
-            className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+            className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
             aria-label="Next month"
           >
             <FiChevronRight className="w-5 h-5" />

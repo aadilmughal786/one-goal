@@ -69,7 +69,7 @@ const CreateGoalCard: React.FC<CreateGoalCardProps> = ({ onOpenGoalModal, onGoal
       <h3 className="mb-4 text-xl font-bold text-white">New Goal</h3>
       <button
         onClick={() => onOpenGoalModal(null, false)}
-        className="flex flex-col justify-center items-center mb-4 w-24 h-24 text-white rounded-full border-2 transition-all sm:w-32 sm:h-32 border-white/20 hover:bg-white/10 hover:border-white/40"
+        className="flex flex-col justify-center items-center mb-4 w-24 h-24 text-white rounded-full border-2 transition-all sm:w-32 sm:h-32 border-white/20 hover:bg-white/10 hover:border-white/40 cursor-pointer"
         aria-label="Create new goal"
       >
         <FiPlus size={48} />

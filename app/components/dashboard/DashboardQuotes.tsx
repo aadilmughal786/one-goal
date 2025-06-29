@@ -102,7 +102,7 @@ const DashboardQuotes: React.FC = () => {
               <button
                 onClick={getNewRandomQuote}
                 disabled={isFetchingNew}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors bg-white/10 hover:bg-white/20 disabled:opacity-50"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors cursor-pointer bg-white/10 hover:bg-white/20 disabled:opacity-50"
               >
                 {isFetchingNew ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiRefreshCw />}{' '}
                 New Quote
@@ -110,7 +110,7 @@ const DashboardQuotes: React.FC = () => {
               <button
                 onClick={handleToggleStar}
                 disabled={isUpdating}
-                className={`inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${starButtonClasses}`}
+                className={`inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${starButtonClasses}`}
               >
                 {isUpdating ? <FiLoader className="w-5 h-5 animate-spin" /> : starButtonIcon}{' '}
                 <span>{starButtonText}</span>

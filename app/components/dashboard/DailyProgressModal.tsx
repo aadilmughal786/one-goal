@@ -303,8 +303,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-md transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
-              aria-label="Save daily progress"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-md transition-all duration-200 hover:bg-white/90 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

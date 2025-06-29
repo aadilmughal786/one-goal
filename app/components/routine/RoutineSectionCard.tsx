@@ -172,7 +172,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
             <h3 className="font-semibold text-white">{listTitle}</h3>
             <button
               onClick={handleOpenModalForAdd}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors bg-white/10 hover:bg-white/20"
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors bg-white/10 hover:bg-white/20 cursor-pointer"
               aria-label={`Add new ${sectionTitle.toLowerCase()} routine`}
             >
               Add New
@@ -234,14 +234,14 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                         )}
                         <button
                           onClick={() => handleOpenModalForEdit(schedule, index)}
-                          className="p-2 rounded-full transition-colors text-white/60 hover:bg-white/10"
+                          className="p-2 rounded-full transition-colors text-white/60 hover:bg-white/10 cursor-pointer"
                           aria-label={`Edit ${schedule.label}`}
                         >
                           <FiEdit size={16} />
                         </button>
                         <button
                           onClick={() => onRemoveSchedule(index)}
-                          className="p-2 rounded-full transition-colors text-red-400/70 hover:bg-red-500/10"
+                          className="p-2 rounded-full transition-colors text-red-400/70 hover:bg-red-500/10 cursor-pointer"
                           aria-label={`Delete ${schedule.label}`}
                         >
                           <MdDeleteForever size={18} />

@@ -62,7 +62,7 @@ const ReminderModal: React.FC = () => {
       >
         <button
           onClick={dismissReminder}
-          className="absolute top-4 right-4 p-2 rounded-full transition-colors text-white/60 hover:bg-white/10"
+          className="absolute top-4 right-4 p-2 rounded-full transition-colors text-white/60 hover:bg-white/10 cursor-pointer"
           aria-label="Close reminder"
         >
           <FiX size={24} />
@@ -84,7 +84,7 @@ const ReminderModal: React.FC = () => {
         <p className="mb-8 text-white/80">{message}</p>
         <button
           onClick={dismissReminder}
-          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors hover:bg-white/90"
+          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors hover:bg-white/90 cursor-pointer"
         >
           {/* Button text changes if more reminders are in the queue */}
           {reminderQueue.length > 1 ? 'Next Reminder' : 'Got it!'}

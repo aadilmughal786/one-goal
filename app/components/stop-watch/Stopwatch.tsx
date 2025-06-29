@@ -116,7 +116,7 @@ const Stopwatch: React.FC = () => {
             <button
               key={`f-${p.minutes}`}
               onClick={() => handlePresetClick(p.minutes, `${p.label} Focus`, false)}
-              className="p-3 rounded-lg bg-white/5 hover:bg-white/10"
+              className="p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer"
             >
               {p.label}
             </button>
@@ -130,7 +130,7 @@ const Stopwatch: React.FC = () => {
             <button
               key={`b-${p.minutes}`}
               onClick={() => handlePresetClick(p.minutes, `${p.label} Break`, true)}
-              className="p-3 rounded-lg bg-white/5 hover:bg-white/10"
+              className="p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer"
             >
               {p.label}
             </button>
@@ -152,7 +152,7 @@ const Stopwatch: React.FC = () => {
       />
       <button
         onClick={startTimer}
-        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors hover:bg-white/90"
+        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors hover:bg-white/90 cursor-pointer"
       >
         Start Timer
       </button>
@@ -219,7 +219,7 @@ const Stopwatch: React.FC = () => {
         {isPreparing && (
           <button
             onClick={resetTimer}
-            className="flex gap-2 items-center px-4 py-2 text-sm text-white/70 hover:text-white"
+            className="flex gap-2 items-center px-4 py-2 text-sm text-white/70 hover:text-white cursor-pointer"
           >
             {' '}
             <FiX /> Cancel{' '}
@@ -229,14 +229,14 @@ const Stopwatch: React.FC = () => {
           <>
             <button
               onClick={resetTimer}
-              className="p-4 text-white rounded-full transition-colors bg-white/10 hover:bg-white/20"
+              className="p-4 text-white rounded-full transition-colors bg-white/10 hover:bg-white/20 cursor-pointer"
               aria-label="Cancel Session"
             >
               <FiX size={24} />
             </button>
             <button
               onClick={isRunning ? pauseTimer : startTimer}
-              className="flex justify-center items-center w-20 h-20 text-xl font-bold text-black bg-white rounded-full transition-transform hover:scale-105"
+              className="flex justify-center items-center w-20 h-20 text-xl font-bold text-black bg-white rounded-full transition-transform hover:scale-105 cursor-pointer"
               aria-label={isRunning ? 'Pause' : 'Play'}
             >
               {isRunning ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
@@ -245,7 +245,7 @@ const Stopwatch: React.FC = () => {
               <button
                 onClick={() => saveSession(false)}
                 disabled={isSaving || remainingTime === duration}
-                className="p-4 text-green-400 rounded-full transition-colors bg-green-600/20 hover:bg-green-500/30 disabled:opacity-50"
+                className="p-4 text-green-400 rounded-full transition-colors bg-green-600/20 hover:bg-green-500/30 disabled:opacity-50 cursor-pointer"
                 aria-label="Finish & Save Early"
               >
                 {isSaving ? <FiLoader className="animate-spin" size={24} /> : <FiSave size={24} />}
@@ -274,7 +274,7 @@ const Stopwatch: React.FC = () => {
 
       <button
         onClick={toggleFullScreen}
-        className="absolute top-4 right-4 p-2 text-white/50 hover:text-white"
+        className="absolute top-4 right-4 p-2 text-white/50 hover:text-white cursor-pointer"
         aria-label="Toggle Fullscreen"
       >
         {isFullScreen ? <FiMinimize /> : <FiMaximize />}

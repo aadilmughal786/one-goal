@@ -1,12 +1,12 @@
 // app/components/archive/GoalSummaryModal.tsx
 'use client';
 
-import React from 'react';
-import { Goal, TodoItem, DistractionItem, StickyNote, GoalStatus } from '@/types'; // Import GoalStatus
-import { FiX, FiInfo, FiCheckSquare, FiBookOpen } from 'react-icons/fi';
-import { RiAlarmWarningLine } from 'react-icons/ri';
-import { format } from 'date-fns';
 import Charts from '@/components/dashboard/Charts'; // Assuming Charts component is correct
+import { DistractionItem, Goal, GoalStatus, StickyNote, TodoItem } from '@/types'; // Import GoalStatus
+import { format } from 'date-fns';
+import React from 'react';
+import { FiBookOpen, FiCheckSquare, FiInfo, FiX } from 'react-icons/fi';
+import { RiAlarmWarningLine } from 'react-icons/ri';
 
 // Removed local definition of ArchivedGoal based on user instruction.
 
@@ -127,7 +127,7 @@ const GoalSummaryModal: React.FC<GoalSummaryModalProps> = ({ isOpen, onClose, go
             </div>
           </div>
           <button
-            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
             onClick={onClose}
             aria-label="Close modal"
           >

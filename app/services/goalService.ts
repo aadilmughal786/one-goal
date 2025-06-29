@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/services/goalService.ts
 import { AppState, Goal, GoalStatus, ReminderType, ScheduledRoutineBase } from '@/types';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
@@ -92,7 +91,7 @@ export const getUserData = async (userId: string): Promise<AppState> => {
     }
 
     const rawData = docSnap.data();
-    const validationResult = appStateSchema.safeParse(rawData as any);
+    const validationResult = appStateSchema.safeParse(rawData);
 
     if (!validationResult.success) {
       console.error(
@@ -212,6 +211,8 @@ export const createGoal = async (
   }
 };
 
+type GoalUpdatePayload = { [key: string]: unknown };
+
 /**
  * Updates properties of an existing goal within the user's main document.
  */
@@ -223,7 +224,7 @@ export const updateGoal = async (
   const userDocRef = doc(db, 'users', userId);
   const updatePayload = { ...updates, updatedAt: Timestamp.now() };
 
-  const userDocUpdatePayload: { [key: string]: any } = {};
+  const userDocUpdatePayload: GoalUpdatePayload = {};
   for (const [key, value] of Object.entries(updatePayload)) {
     userDocUpdatePayload[`goals.${goalId}.${key}`] = value;
   }
@@ -252,7 +253,7 @@ export const deleteGoal = async (userId: string, goalId: string): Promise<void> 
     }
     const appState = userDocSnap.data() as AppState;
 
-    const updatePayload: { [key: string]: any } = {
+    const updatePayload: GoalUpdatePayload = {
       [`goals.${goalId}`]: deleteField(),
     };
 

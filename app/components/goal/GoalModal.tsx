@@ -209,7 +209,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsPickerOpen(true)}
-                    className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="p-3 w-full text-base text-left text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer"
                   >
                     {currentEndDate ? (
                       format(currentEndDate, "MMMM d,yyyy 'at' h:mm a")
@@ -225,7 +225,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

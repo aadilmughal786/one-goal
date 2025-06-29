@@ -103,7 +103,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
         <div className="flex justify-between items-center p-6 border-b border-white/10">
           <h2 className="text-xl font-semibold text-white">Choose Your Avatar</h2>
           <button
-            className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white"
+            className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white cursor-pointer"
             onClick={onClose}
             aria-label="Close modal"
           >
@@ -120,7 +120,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
               <div key={avatar.url} className="flex flex-col items-center">
                 <button
                   onClick={() => setSelectedAvatar(avatar.url)}
-                  className={`relative p-1 rounded-full transition-all duration-200 aspect-square w-24 h-24
+                  className={`relative p-1 rounded-full transition-all duration-200 aspect-square w-24 h-24 cursor-pointer
                     ${selectedAvatar === avatar.url ? 'ring-2 ring-blue-500' : 'ring-2 ring-transparent'}`}
                 >
                   <Image
@@ -152,7 +152,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
           >
             {isSaving ? (
               <>
