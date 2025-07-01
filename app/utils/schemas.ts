@@ -157,6 +157,7 @@ export const goalSchema = baseEntitySchema
     wellnessSettings: wellnessSettingsSchema,
     starredQuotes: z.array(z.number().int()),
     timeBlocks: z.array(timeBlockSchema).default([]),
+    randomPickerItems: z.array(z.string()).default([]),
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {
     message: 'End date must be after or the same as start date',

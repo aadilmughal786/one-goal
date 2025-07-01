@@ -1,0 +1,232 @@
+// app/components/todo/RandomPicker.tsx
+'use client';
+
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import React, { useEffect, useState } from 'react';
+import { FiLoader, FiPlus, FiShuffle, FiTrash2, FiX } from 'react-icons/fi';
+
+// --- Sub-component for the Picker Modal ---
+const PickerModal = ({
+  isOpen,
+  items,
+  onClose,
+}: {
+  isOpen: boolean;
+  items: string[];
+  onClose: () => void;
+}) => {
+  const [isPicking, setIsPicking] = useState(true);
+  const [currentItem, setCurrentItem] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setIsPicking(true);
+    let shuffleCount = 0;
+    const maxShuffles = 20 + Math.floor(Math.random() * 15);
+
+    const shuffleInterval = setInterval(() => {
+      shuffleCount++;
+      const randomIndex = Math.floor(Math.random() * items.length);
+      setCurrentItem(items[randomIndex]);
+
+      if (shuffleCount >= maxShuffles) {
+        clearInterval(shuffleInterval);
+        setIsPicking(false);
+      }
+    }, 100);
+
+    return () => clearInterval(shuffleInterval);
+  }, [isOpen, items]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="relative p-8 w-full max-w-md text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-xl font-semibold text-white">
+          {isPicking ? 'Picking a Topic...' : 'Your Topic Is...'}
+        </h2>
+        <div className="flex justify-center items-center my-8 min-h-[80px]">
+          <p className="text-4xl font-bold text-blue-300 transition-all duration-100">
+            {currentItem}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors cursor-pointer hover:bg-white/90"
+        >
+          {isPicking ? 'Cancel' : 'Close'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Component ---
+const RandomPicker: React.FC = () => {
+  const [inputValue, setInputValue] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUpdatingList, setIsUpdatingList] = useState(false); // For loaders
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const showToast = useNotificationStore(state => state.showToast);
+
+  const activeGoal = useGoalStore(state =>
+    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  );
+  const updateRandomPickerItems = useGoalStore(state => state.updateRandomPickerItems);
+  const items = activeGoal?.randomPickerItems || [];
+
+  const handleAddItem = async () => {
+    if (inputValue.trim() === '' || isUpdatingList) return;
+    if (items.includes(inputValue.trim())) {
+      showToast('This item is already in the list.', 'error');
+      return;
+    }
+
+    setIsUpdatingList(true);
+    try {
+      await updateRandomPickerItems([...items, inputValue.trim()]);
+      setInputValue('');
+    } finally {
+      setIsUpdatingList(false);
+    }
+  };
+
+  const handleDeleteItem = (indexToDelete: number, itemText: string) => {
+    showConfirmation({
+      title: 'Delete Item?',
+      message: `Are you sure you want to delete "${itemText}" from your list?`,
+      action: async () => {
+        if (isUpdatingList) return;
+        setIsUpdatingList(true);
+        try {
+          const newItems = items.filter((_, index) => index !== indexToDelete);
+          await updateRandomPickerItems(newItems);
+          showToast('Item deleted.', 'info');
+        } finally {
+          setIsUpdatingList(false);
+        }
+      },
+    });
+  };
+
+  const handleClearAll = () => {
+    showConfirmation({
+      title: 'Clear All Items?',
+      message: 'Are you sure you want to delete all items from your list? This cannot be undone.',
+      action: async () => {
+        if (isUpdatingList) return;
+        setIsUpdatingList(true);
+        try {
+          await updateRandomPickerItems([]);
+          showToast('List cleared.', 'info');
+        } finally {
+          setIsUpdatingList(false);
+        }
+      },
+    });
+  };
+
+  const handleOpenPicker = () => {
+    if (items.length < 2) {
+      showToast('Please add at least two items to the list.', 'info');
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
+  return (
+    <>
+      <div className="mx-auto space-y-8 w-full max-w-4xl">
+        <div className="text-center">
+          <button
+            onClick={handleOpenPicker}
+            disabled={items.length < 2 || isUpdatingList}
+            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl disabled:opacity-50"
+          >
+            <FiShuffle />
+            <span>Pick a Topic</span>
+          </button>
+        </div>
+
+        <p className="mx-auto max-w-2xl text-white/60">
+          Add items to the list and let fate decide. Perfect for study topics, choosing tasks, or
+          making decisions.
+        </p>
+
+        <div className="p-6 bg-white/[0.03] border border-white/10 rounded-2xl">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handleAddItem()}
+              placeholder="Add a new item or topic..."
+              disabled={isUpdatingList}
+              className="flex-grow p-3 text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            />
+            <button
+              onClick={handleAddItem}
+              disabled={isUpdatingList || !inputValue.trim()}
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors cursor-pointer bg-white/10 hover:bg-white/20 disabled:opacity-50"
+            >
+              {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiPlus />}
+              Add Item
+            </button>
+          </div>
+
+          <div className="my-6 border-t border-white/10"></div>
+
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-white">Your List ({items.length})</h3>
+            <button
+              onClick={handleClearAll}
+              disabled={items.length === 0 || isUpdatingList}
+              className="flex gap-2 items-center px-3 py-1 text-sm text-red-400 rounded-md transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
+            >
+              {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiTrash2 />}
+              Clear All
+            </button>
+          </div>
+
+          {items.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex gap-2 items-center p-3 rounded-lg animate-fade-in-down bg-white/5"
+                >
+                  <span className="flex-grow break-all text-white/90">{item}</span>
+                  <button
+                    onClick={() => handleDeleteItem(index, item)}
+                    disabled={isUpdatingList}
+                    className="p-2 text-red-400 rounded-full transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
+                    aria-label={`Delete ${item}`}
+                  >
+                    <FiX />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-white/50">
+              <FiShuffle size={32} className="mx-auto mb-4" />
+              <p>Your list is empty. Add an item to get started.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      <PickerModal isOpen={isModalOpen} items={items} onClose={() => setIsModalOpen(false)} />
+    </>
+  );
+};
+
+export default RandomPicker;

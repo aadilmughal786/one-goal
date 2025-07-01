@@ -66,6 +66,7 @@ interface GoalStore {
   updateStopwatchSession: (dateKey: string, sessionId: string, newLabel: string) => Promise<void>;
   deleteStopwatchSession: (dateKey: string, sessionId: string) => Promise<void>;
   importGoals: (goalsToImport: Goal[]) => Promise<void>;
+  updateRandomPickerItems: (items: string[]) => Promise<void>;
   // Add new actions for time blocks
   addTimeBlock: (label: string, startTime: string, endTime: string, color: string) => Promise<void>;
   updateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => Promise<void>;
@@ -785,6 +786,38 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     } catch (error) {
       console.error('Store: Failed to delete stopwatch session', error);
       useNotificationStore.getState().showToast('Failed to delete session. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  updateRandomPickerItems: async (items: string[]) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedGoal = { ...goal, randomPickerItems: items };
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: updatedGoal,
+          },
+        },
+      };
+    });
+
+    try {
+      await goalService.updateGoal(currentUser.uid, activeGoalId, { randomPickerItems: items });
+    } catch (error) {
+      console.error('Store: Failed to update picker items', error);
+      useNotificationStore
+        .getState()
+        .showToast('Failed to update picker list. Reverting.', 'error');
       set({ appState: originalState });
     }
   },

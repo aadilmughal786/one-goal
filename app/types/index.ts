@@ -227,10 +227,11 @@ export interface Goal extends BaseEntity {
   notToDoList: DistractionItem[];
   stickyNotes: StickyNote[];
   routineSettings: UserRoutineSettings;
-  wellnessSettings: WellnessSettings; // <-- ADDED
+  wellnessSettings: WellnessSettings;
   /** An array of IDs for the user's favorite quotes for this goal. */
   starredQuotes: number[];
   timeBlocks: TimeBlock[];
+  randomPickerItems: string[];
 }
 
 /**

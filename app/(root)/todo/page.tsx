@@ -3,13 +3,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { FiList } from 'react-icons/fi';
+import { FiList, FiShuffle } from 'react-icons/fi';
 import { MdStickyNote2, MdWarning } from 'react-icons/md';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import DistractionEditModal from '@/components/todo/DistractionEditModal';
 import DistractionList from '@/components/todo/DistractionList';
+import RandomPicker from '@/components/todo/RandomPicker';
 import StickyNotes from '@/components/todo/StickyNotes';
 import TodoEditModal from '@/components/todo/TodoEditModal';
 import TodoList from '@/components/todo/TodoList';
@@ -34,6 +35,7 @@ const tabItems: TabItem[] = [
     component: DistractionList,
   },
   { id: 'notes', label: 'Sticky Notes', icon: <MdStickyNote2 size={18} />, component: StickyNotes },
+  { id: 'picker', label: 'Random Picker', icon: <FiShuffle size={18} />, component: RandomPicker },
 ];
 
 const TodoPageContent = () => {
@@ -56,7 +58,7 @@ const TodoPageContent = () => {
   const [selectedDistractionForEdit, setSelectedDistractionForEdit] =
     useState<DistractionItem | null>(null);
 
-  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+  const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
   useEffect(() => {
     if (!isLoading) {
