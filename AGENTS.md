@@ -30,3 +30,4 @@
 - Apply the `cursor-pointer` Tailwind CSS utility class to all clickable UI elements to ensure a clear user experience.
 - Avoid vague comments like `adding this line here.` All comments should be meaningful and explain the `why` behind the code, not just the `what`.
 - To prevent infinite render loops with Zustand, always select state slices individually. Do not create new objects or arrays within the selector. For example, `const myVal = useStore(state => state.myVal)` is correct, but `const { myVal } = useStore(state => ({ myVal: state.myVal }))` will cause issues.
+- Do not use the `disabled:cursor-not-allowed` utility class. Instead, rely on the default browser behavior for disabled elements.
