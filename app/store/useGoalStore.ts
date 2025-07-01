@@ -148,18 +148,26 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     if (!currentUser || !appState) return;
 
     const originalState = { ...appState };
-
     const newGoals = { ...appState.goals };
+
+    // Process the imported goals
     goalsToImport.forEach(goal => {
+      // If an imported goal is marked as ACTIVE, change its status to PAUSED.
+      if (goal.status === GoalStatus.ACTIVE) {
+        goal.status = GoalStatus.PAUSED;
+        goal.updatedAt = Timestamp.now(); // Also update the timestamp
+      }
+      // Add the processed goal to our collection.
       newGoals[goal.id] = goal;
     });
 
-    const newActiveGoalId = appState.activeGoalId ?? goalsToImport[0]?.id;
+    // The activeGoalId remains unchanged.
+    const newActiveGoalId = appState.activeGoalId;
 
     const newAppState: AppState = {
       ...appState,
       goals: newGoals,
-      activeGoalId: newActiveGoalId,
+      activeGoalId: newActiveGoalId, // Keep the existing active goal ID
     };
 
     set({ appState: newAppState });
@@ -167,7 +175,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     try {
       await goalService.setUserData(currentUser.uid, newAppState);
       useNotificationStore.getState().showToast('Goals imported successfully!', 'success');
-      await get().fetchInitialData(currentUser); // Refresh data from source
+      await get().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Store: Failed to import goals', error);
       useNotificationStore.getState().showToast('Failed to import goals. Reverting.', 'error');

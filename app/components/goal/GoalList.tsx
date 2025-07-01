@@ -12,7 +12,10 @@ import {
   FiClock,
   FiDownload,
   FiEdit,
+  FiPauseCircle,
+  FiPlayCircle,
   FiTrash2,
+  FiXCircle,
 } from 'react-icons/fi';
 
 import { serializeGoalsForExport } from '@/services/dataService';
@@ -59,12 +62,65 @@ const GoalList: React.FC<GoalListProps> = ({
     });
   }, [allGoals, filterStatus, searchQuery, fuseOptions]);
 
-  const handleSetGoalAsActive = useCallback(
-    async (goalId: string) => {
-      await setActiveGoal(goalId);
-      showToast('Goal set as active!', 'success');
+  const handleActivateGoal = useCallback(
+    async (goalToActivate: Goal) => {
+      const currentActiveGoal = appState?.goals[appState.activeGoalId || ''];
+      const confirmationMessage =
+        goalToActivate.status === GoalStatus.COMPLETED
+          ? `This will reactivate your completed goal "${goalToActivate.name}" and set it as your primary focus.`
+          : `This will switch your primary focus to "${goalToActivate.name}".`;
+
+      showConfirmation({
+        title: 'Set Active Goal?',
+        message: confirmationMessage,
+        action: async () => {
+          // Pause the current active goal if it exists and is different
+          if (currentActiveGoal && currentActiveGoal.id !== goalToActivate.id) {
+            await updateGoal(currentActiveGoal.id, { status: GoalStatus.PAUSED });
+          }
+          // Activate the new goal
+          await updateGoal(goalToActivate.id, { status: GoalStatus.ACTIVE });
+          await setActiveGoal(goalToActivate.id);
+          showToast('New goal set as active!', 'success');
+        },
+      });
     },
-    [setActiveGoal, showToast]
+    [appState, setActiveGoal, updateGoal, showToast, showConfirmation]
+  );
+
+  const handleStatusChange = useCallback(
+    (goal: Goal, newStatus: GoalStatus, verb: string) => {
+      let title = '';
+      let message = '';
+
+      switch (newStatus) {
+        case GoalStatus.PAUSED:
+          title = `Pause Goal?`;
+          message = `Are you sure you want to pause "${goal.name}"? You can resume it later.`;
+          break;
+        case GoalStatus.COMPLETED:
+          title = `Complete Goal?`;
+          message = `Are you sure you want to mark "${goal.name}" as completed?`;
+          break;
+        case GoalStatus.CANCELLED:
+          title = `Cancel Goal?`;
+          message = `Are you sure you want to cancel "${goal.name}"? This is usually for goals you no longer plan to pursue.`;
+          break;
+      }
+
+      showConfirmation({
+        title,
+        message,
+        action: async () => {
+          await updateGoal(goal.id, { status: newStatus });
+          if (appState?.activeGoalId === goal.id) {
+            await setActiveGoal(null);
+          }
+          showToast(`Goal ${verb.toLowerCase()}!`, 'success');
+        },
+      });
+    },
+    [updateGoal, appState?.activeGoalId, setActiveGoal, showToast, showConfirmation]
   );
 
   const handleDeleteGoal = useCallback(
@@ -80,28 +136,6 @@ const GoalList: React.FC<GoalListProps> = ({
       });
     },
     [deleteGoal, showToast, showConfirmation]
-  );
-
-  const handleArchiveGoal = useCallback(
-    (goal: Goal) => {
-      if (goal.status !== GoalStatus.ACTIVE) {
-        showToast('Only active goals can be archived.', 'info');
-        return;
-      }
-      showConfirmation({
-        title: `Archive Goal: ${goal.name}?`,
-        message: `This will mark "${goal.name}" as 'Completed'. If it is your active goal, it will be deactivated.`,
-        action: async () => {
-          await updateGoal(goal.id, { status: GoalStatus.COMPLETED });
-          if (appState?.activeGoalId === goal.id) {
-            await setActiveGoal(null);
-          }
-          showToast('Goal archived successfully!', 'success');
-        },
-        actionDelayMs: 3000,
-      });
-    },
-    [updateGoal, appState?.activeGoalId, setActiveGoal, showToast, showConfirmation]
   );
 
   const handleExportSingleGoal = useCallback(
@@ -146,15 +180,15 @@ const GoalList: React.FC<GoalListProps> = ({
   const getStatusColor = useCallback((status: GoalStatus) => {
     switch (status) {
       case GoalStatus.ACTIVE:
-        return 'text-green-400';
+        return 'bg-green-500';
       case GoalStatus.COMPLETED:
-        return 'text-blue-400';
+        return 'bg-blue-500';
       case GoalStatus.PAUSED:
-        return 'text-yellow-400';
+        return 'bg-yellow-500';
       case GoalStatus.CANCELLED:
-        return 'text-red-400';
+        return 'bg-red-500';
       default:
-        return 'text-gray-400';
+        return 'bg-gray-500';
     }
   }, []);
 
@@ -164,89 +198,128 @@ const GoalList: React.FC<GoalListProps> = ({
         filteredAndSortedGoals.map(goal => (
           <div
             key={goal.id}
-            className={`p-4 rounded-lg border bg-white/[0.02] shadow-md transition-all ${
+            className={`relative flex flex-col rounded-xl border bg-white/[0.02] shadow-md transition-all overflow-hidden ${
               appState?.activeGoalId === goal.id
                 ? 'border-blue-500 ring-2 ring-blue-500/50'
                 : 'border-white/10'
             }`}
           >
-            <div className="flex flex-col justify-between items-start mb-3 md:flex-row md:items-center md:mb-0">
-              <div>
-                <h3 className="text-lg font-bold text-white">{goal.name}</h3>
-                <p className="text-sm text-white/70">{goal.description}</p>
+            {/* Status Ribbon */}
+            <div className="absolute top-0 right-0 w-24 h-24">
+              <div
+                className={`absolute transform rotate-45 text-white text-xs font-semibold text-center py-1 ${getStatusColor(
+                  goal.status
+                )} shadow-md`}
+                style={{ width: '150px', right: '-40px', top: '25px' }}
+              >
+                {getStatusText(goal.status)}
               </div>
-              <div className="flex items-center mt-2 md:mt-0">
-                <span className={`text-xs font-semibold mr-2 ${getStatusColor(goal.status)}`}>
-                  {getStatusText(goal.status).toUpperCase()}
-                </span>
-                {goal.status === GoalStatus.ACTIVE && appState?.activeGoalId === goal.id && (
-                  <FiCheckCircle size={16} className="text-blue-500" title="Currently active" />
+            </div>
+
+            <div className="flex-grow p-5">
+              <h3 className="pr-16 text-lg font-bold text-white truncate">{goal.name}</h3>
+              <p className="mt-2 mb-4 h-10 text-sm text-white/70 line-clamp-2">
+                {goal.description}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-end">
+                {/* --- ACTION BUTTONS --- */}
+                {goal.status !== GoalStatus.ACTIVE && (
+                  <button
+                    onClick={() => handleActivateGoal(goal)}
+                    className="p-2 text-green-300 rounded-full transition-colors cursor-pointer bg-green-500/10 hover:bg-green-500/20"
+                    title="Activate Goal"
+                  >
+                    <FiPlayCircle size={18} />
+                  </button>
+                )}
+                {goal.status === GoalStatus.ACTIVE && (
+                  <>
+                    <button
+                      onClick={() => handleStatusChange(goal, GoalStatus.PAUSED, 'Paused')}
+                      className="p-2 text-yellow-300 rounded-full transition-colors cursor-pointer bg-yellow-500/10 hover:bg-yellow-500/20"
+                      title="Pause Goal"
+                    >
+                      <FiPauseCircle size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(goal, GoalStatus.COMPLETED, 'Completed')}
+                      className="p-2 text-blue-300 rounded-full transition-colors cursor-pointer bg-blue-500/10 hover:bg-blue-500/20"
+                      title="Complete Goal"
+                    >
+                      <FiCheckCircle size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(goal, GoalStatus.CANCELLED, 'Cancelled')}
+                      className="p-2 text-orange-300 rounded-full transition-colors cursor-pointer bg-orange-500/10 hover:bg-orange-500/20"
+                      title="Cancel Goal"
+                    >
+                      <FiXCircle size={18} />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 pt-3 mt-3 text-sm border-t sm:grid-cols-2 text-white/60 border-white/10">
-              <div className="flex gap-1 items-center">
-                <FiCalendar size={14} />
-                <span>Start: {formatDate(goal.startDate.toDate(), 'd MMM yy')}</span>
-              </div>
-              <div className="flex gap-1 items-center">
-                <FiCalendar size={14} />
-                <span>End: {formatDate(goal.endDate.toDate(), 'd MMM yy')}</span>
-              </div>
-              <div className="flex gap-1 items-center">
-                <FiClock size={14} />
-                <span>
-                  Total Days: {differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1}
-                </span>
+            <div className="border-t border-white/10">
+              <div className="p-5 space-y-2 text-sm text-white/60">
+                <div className="flex justify-between">
+                  <span className="flex gap-1.5 items-center">
+                    <FiCalendar size={14} />
+                    Start:
+                  </span>
+                  <span>{formatDate(goal.startDate.toDate(), 'd MMM yy')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="flex gap-1.5 items-center">
+                    <FiCalendar size={14} />
+                    End:
+                  </span>
+                  <span>{formatDate(goal.endDate.toDate(), 'd MMM yy')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="flex gap-1.5 items-center">
+                    <FiClock size={14} />
+                    Duration:
+                  </span>
+                  <span>
+                    {differenceInDays(goal.endDate.toDate(), goal.startDate.toDate()) + 1} days
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 justify-end pt-4 mt-4 border-t border-white/10">
-              {goal.id !== appState?.activeGoalId && (
+            <div className="border-t border-white/10">
+              <div className="flex flex-wrap gap-2 justify-end p-5">
+                {/* --- MANAGEMENT BUTTONS --- */}
                 <button
-                  onClick={() => handleSetGoalAsActive(goal.id)}
-                  disabled={
-                    goal.status === GoalStatus.COMPLETED || goal.status === GoalStatus.CANCELLED
-                  }
-                  className="px-3 py-1 text-xs text-blue-300 rounded-full bg-blue-500/10 hover:bg-blue-500/20 cursor-pointer disabled:opacity-50"
+                  onClick={() => onOpenSummaryModal(goal)}
+                  className="p-2 text-purple-300 rounded-full transition-colors cursor-pointer bg-purple-500/10 hover:bg-purple-500/20"
+                  title="View Summary"
                 >
-                  Set as Active
+                  <FiBookOpen size={18} />
                 </button>
-              )}
-              <button
-                onClick={() => onOpenSummaryModal(goal)}
-                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer"
-              >
-                <FiBookOpen className="inline mr-1" size={12} /> Summary
-              </button>
-              <button
-                onClick={() => onOpenGoalModal(goal, true)}
-                className="px-3 py-1 text-xs text-green-300 rounded-full bg-green-500/10 hover:bg-green-500/20 cursor-pointer"
-              >
-                <FiEdit className="inline mr-1" size={12} /> Edit
-              </button>
-              {goal.status === GoalStatus.ACTIVE && (
                 <button
-                  onClick={() => handleArchiveGoal(goal)}
-                  className="px-3 py-1 text-xs text-orange-300 rounded-full bg-orange-500/10 hover:bg-orange-500/20 cursor-pointer"
+                  onClick={() => onOpenGoalModal(goal, true)}
+                  className="p-2 text-indigo-300 rounded-full transition-colors cursor-pointer bg-indigo-500/10 hover:bg-indigo-500/20"
+                  title="Edit Goal"
                 >
-                  Archive
+                  <FiEdit size={18} />
                 </button>
-              )}
-              <button
-                onClick={() => handleDeleteGoal(goal)}
-                className="px-3 py-1 text-xs text-red-300 rounded-full bg-red-500/10 hover:bg-red-500/20 cursor-pointer"
-              >
-                <FiTrash2 className="inline mr-1" size={12} /> Delete
-              </button>
-              <button
-                onClick={() => handleExportSingleGoal(goal)}
-                className="px-3 py-1 text-xs text-purple-300 rounded-full bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer"
-                title={`Export "${goal.name}"`}
-              >
-                <FiDownload className="inline mr-1" size={12} /> Export
-              </button>
+                <button
+                  onClick={() => handleExportSingleGoal(goal)}
+                  className="p-2 text-teal-300 rounded-full transition-colors cursor-pointer bg-teal-500/10 hover:bg-teal-500/20"
+                  title="Export Goal"
+                >
+                  <FiDownload size={18} />
+                </button>
+                <button
+                  onClick={() => handleDeleteGoal(goal)}
+                  className="p-2 text-red-300 rounded-full transition-colors cursor-pointer bg-red-500/10 hover:bg-red-500/20"
+                  title="Delete Goal"
+                >
+                  <FiTrash2 size={18} />
+                </button>
+              </div>
             </div>
           </div>
         ))
