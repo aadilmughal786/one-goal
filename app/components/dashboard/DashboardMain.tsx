@@ -4,7 +4,6 @@
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import CountdownCard from '@/components/dashboard/CountdownCard';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
-import RoutineTimeline from '@/components/dashboard/RoutineTimeline';
 import { useGoalStore } from '@/store/useGoalStore';
 import React from 'react';
 
@@ -35,11 +34,6 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
           </p>
         </div>
         <CountdownCard goal={activeGoal} />
-      </section>
-
-      <section>
-        {/* FIX: RoutineTimeline is now self-sufficient and doesn't need props. */}
-        <RoutineTimeline />
       </section>
 
       <section>
