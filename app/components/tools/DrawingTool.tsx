@@ -87,7 +87,7 @@ const DrawingTool: React.FC = () => {
 
   return (
     <div
-      className={`drawing-canvas-container relative flex flex-col bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg transition-all duration-300 ${
+      className={`drawing-canvas-container relative flex flex-col bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-md shadow-lg transition-all duration-300 ${
         isFullScreen ? 'w-screen h-screen' : 'w-full'
       }`}
     >
@@ -103,7 +103,7 @@ const DrawingTool: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex-shrink-0 p-4 border-t border-white/10">
+      <div className="flex-shrink-0 p-4">
         <div className="flex flex-wrap gap-4 justify-center items-center">
           {/* Undo/Redo/Clear */}
           <div className="flex gap-2 p-2 rounded-lg bg-black/20">
