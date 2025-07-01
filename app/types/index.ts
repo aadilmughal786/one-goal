@@ -58,6 +58,7 @@ export enum ReminderType {
   EYE_CARE = 'eyeCare',
   STRETCH = 'stretch',
   BREAK = 'break',
+  POSTURE = 'posture',
 }
 
 // =================================================================//
@@ -196,6 +197,7 @@ export interface WellnessSettings {
   [ReminderType.EYE_CARE]: ReminderSetting;
   [ReminderType.STRETCH]: ReminderSetting;
   [ReminderType.BREAK]: ReminderSetting;
+  [ReminderType.POSTURE]: ReminderSetting;
 }
 
 /** Represents a single motivational quote. */

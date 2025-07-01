@@ -4,7 +4,7 @@
 import { useWellnessStore } from '@/store/useWellnessStore';
 import { ReminderType } from '@/types';
 import React from 'react';
-import { FiClock, FiDroplet, FiEye, FiRefreshCw, FiX } from 'react-icons/fi';
+import { FiArrowUpCircle, FiClock, FiDroplet, FiEye, FiRefreshCw, FiX } from 'react-icons/fi';
 
 const reminderDetails: Record<
   ReminderType,
@@ -32,6 +32,11 @@ const reminderDetails: Record<
     title: 'Take a Short Break',
     message:
       'Step away from your work for a few minutes. A quick break can refresh your mind and improve productivity.',
+  },
+  [ReminderType.POSTURE]: {
+    icon: FiArrowUpCircle,
+    title: 'Posture Check',
+    message: 'Sit up straight! A good posture prevents back pain and improves focus.',
   },
 };
 
@@ -62,7 +67,7 @@ const ReminderModal: React.FC = () => {
       >
         <button
           onClick={dismissReminder}
-          className="absolute top-4 right-4 p-2 rounded-full transition-colors text-white/60 hover:bg-white/10 cursor-pointer"
+          className="absolute top-4 right-4 p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:bg-white/10"
           aria-label="Close reminder"
         >
           <FiX size={24} />
@@ -84,7 +89,7 @@ const ReminderModal: React.FC = () => {
         <p className="mb-8 text-white/80">{message}</p>
         <button
           onClick={dismissReminder}
-          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors hover:bg-white/90 cursor-pointer"
+          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors cursor-pointer hover:bg-white/90"
         >
           {/* Button text changes if more reminders are in the queue */}
           {reminderQueue.length > 1 ? 'Next Reminder' : 'Got it!'}

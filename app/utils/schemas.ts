@@ -135,6 +135,7 @@ export const wellnessSettingsSchema = z.object({
   [ReminderType.EYE_CARE]: reminderSettingSchema,
   [ReminderType.STRETCH]: reminderSettingSchema,
   [ReminderType.BREAK]: reminderSettingSchema,
+  [ReminderType.POSTURE]: reminderSettingSchema,
 });
 
 // --- TOP-LEVEL SCHEMAS ---

@@ -128,10 +128,7 @@ const Stopwatch: React.FC = () => {
 
   const renderInitialState = () => (
     <div className="w-full text-center animate-fade-in">
-      <div className="mb-8">
-        <h3 className="text-xl font-bold text-white">Choose a Timer</h3>
-        <p className="text-white/60">Select a preset to begin a session.</p>
-      </div>
+      <p className="mb-8 text-white/60">Select a preset to begin a session.</p>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {/* Focus Section */}
         <div className="p-4 rounded-lg bg-white/5">

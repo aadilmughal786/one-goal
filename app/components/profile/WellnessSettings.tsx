@@ -5,7 +5,14 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useWellnessStore } from '@/store/useWellnessStore';
 import { ReminderSetting, ReminderType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
-import { FiChevronDown, FiClock, FiEye, FiHeart, FiRefreshCw } from 'react-icons/fi';
+import {
+  FiArrowUpCircle,
+  FiChevronDown,
+  FiClock,
+  FiEye,
+  FiHeart,
+  FiRefreshCw,
+} from 'react-icons/fi';
 // CORRECTED: Using a consistent icon set. All icons are now from react-icons/fi.
 import { FiDroplet } from 'react-icons/fi';
 
@@ -14,6 +21,7 @@ const reminderOptions = [
   { type: ReminderType.EYE_CARE, label: 'Eye Care', icon: FiEye },
   { type: ReminderType.STRETCH, label: 'Stretch', icon: FiRefreshCw },
   { type: ReminderType.BREAK, label: 'Take a Break', icon: FiClock },
+  { type: ReminderType.POSTURE, label: 'Posture Check', icon: FiArrowUpCircle },
 ];
 
 // ADDED: 15 minutes option and sorted the array for better UX.

@@ -195,6 +195,7 @@ export const createGoal = async (
       [ReminderType.EYE_CARE]: { enabled: false, frequency: 45 },
       [ReminderType.STRETCH]: { enabled: false, frequency: 90 },
       [ReminderType.BREAK]: { enabled: false, frequency: 60 },
+      [ReminderType.POSTURE]: { enabled: false, frequency: 30 },
     },
     starredQuotes: [],
   };
