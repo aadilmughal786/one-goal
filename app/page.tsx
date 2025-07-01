@@ -1,6 +1,8 @@
 // app/page.tsx
 'use client';
 
+import { onAuthChange } from '@/services/authService';
+import { User } from 'firebase/auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
@@ -8,58 +10,57 @@ import { FaCode, FaGithub, FaLinkedin, FaPencil, FaUserGraduate } from 'react-ic
 import {
   FiArrowRight,
   FiBarChart2,
-  FiCheckCircle,
   FiClock,
+  FiCommand,
+  FiCpu,
   FiEye,
   FiGlobe,
   FiGrid,
-  FiInfo,
+  FiHeart,
   FiMail,
   FiMinus,
   FiPlus,
-  FiShare2,
   FiTarget,
 } from 'react-icons/fi';
-import { MdRocketLaunch } from 'react-icons/md';
-// REMOVED: import { firebaseService } from '@/services/firebaseService'; // No longer using this
-import { User } from 'firebase/auth';
-
-// NEW: Import the specific auth service function
-import { onAuthChange } from '@/services/authService';
+import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md';
 
 // --- Data for Features Section ---
 const featuresData = [
   {
-    icon: <FiTarget className="w-6 h-6 text-white" />,
-    title: 'Single Goal Clarity',
+    icon: <FiCommand className="w-6 h-6 text-white" />,
+    title: 'Blazing-Fast Navigation',
     description:
-      'Cut through the clutter. Define your one overarching goal and keep it front and center.',
+      'Summon the command palette with ⌘K to instantly navigate, switch themes, or perform actions without lifting your fingers from the keyboard.',
   },
   {
-    icon: <FiCheckCircle className="w-6 h-6 text-white" />,
-    title: 'Distraction Control',
-    description: "Identify and track 'What Not To Do' items. Actively avoid time-wasting habits.",
+    icon: <MdOutlineRepeat className="w-6 h-6 text-white" />,
+    title: 'Holistic Routine Tracking',
+    description:
+      'Log everything from sleep schedules and water intake to exercise, meals, and dental care with dedicated, interactive modules.',
   },
   {
     icon: <FiClock className="w-6 h-6 text-white" />,
-    title: 'Progress Feedback',
-    description: 'Integrated stopwatch for focused work sprints and live countdown to deadlines.',
-  },
-  {
-    icon: <FiShare2 className="w-6 h-6 text-white" />,
-    title: 'Secure & Flexible',
-    description: 'Save progress securely with Google Sign-in. Export/import data easily.',
-  },
-  {
-    icon: <FiInfo className="w-6 h-6 text-white" />,
-    title: 'Clean Design',
+    title: 'Daily Timeline',
     description:
-      'Minimalist, distraction-free interface that works beautifully across all devices.',
+      'Visualize your day with custom time blocks and scheduled routines, creating a clear plan for maximum productivity.',
   },
   {
-    icon: <FiCheckCircle className="w-6 h-6 text-white" />,
-    title: 'Contextual Insights',
-    description: 'Record past successes, key learnings, and relevant notes to inform your journey.',
+    icon: <FiCpu className="w-6 h-6 text-white" />,
+    title: 'Powerful Productivity Tools',
+    description:
+      'Go beyond goal tracking with a built-in drawing pad for brainstorming, a random picker for decisions, and a time estimator.',
+  },
+  {
+    icon: <FiBarChart2 className="w-6 h-6 text-white" />,
+    title: 'Insightful Analytics',
+    description:
+      'Dive deep into your performance with charts for weekly consistency, cumulative progress, and satisfaction trends.',
+  },
+  {
+    icon: <FiHeart className="w-6 h-6 text-white" />,
+    title: 'Wellness Reminders',
+    description:
+      'Enable gentle, periodic reminders for posture checks, hydration, stretching, and eye care to maintain your well-being while you work.',
   },
 ];
 
@@ -68,17 +69,19 @@ const howItWorksData = [
   {
     icon: <FiTarget className="w-8 h-8 text-blue-400" />,
     title: 'Define Your Mission',
-    description: 'Set one clear, ambitious goal. This is your north star.',
+    description: 'Set one clear, ambitious goal. This is your north star for the journey ahead.',
   },
   {
     icon: <FiEye className="w-8 h-8 text-green-400" />,
-    title: 'Track Your Journey',
-    description: 'Log daily satisfaction and effort in seconds to stay mindful of your progress.',
+    title: 'Execute & Track',
+    description:
+      'Use the timeline, to-do lists, and stopwatch to execute your plan. Log daily progress and routines in seconds.',
   },
   {
     icon: <FiBarChart2 className="w-8 h-8 text-red-400" />,
-    title: 'Visualize & Adapt',
-    description: 'Use insightful graphs to stay motivated and adapt your strategy as you go.',
+    title: 'Analyze & Adapt',
+    description:
+      'Review insightful analytics to understand your patterns, stay motivated, and adapt your strategy.',
   },
 ];
 
@@ -120,29 +123,14 @@ const faqData = [
       "This is the core philosophy of the app. By focusing on a single objective, you eliminate context-switching and channel all your energy into what's most important, leading to better and faster results.",
   },
   {
+    question: 'What is the Command Palette?',
+    answer:
+      'The Command Palette, accessed with ⌘K or Ctrl+K, is a powerful tool for power users. It allows you to instantly navigate anywhere in the app, switch themes, or access external links without ever touching your mouse, dramatically speeding up your workflow.',
+  },
+  {
     question: 'Is the app free to use?',
     answer:
       'Yes, One Goal is completely free to use. It was created as a tool to help people focus and achieve their most important objectives without a paywall.',
-  },
-  {
-    question: 'Can I use this app on my phone?',
-    answer:
-      "Absolutely. One Goal is designed to be fully responsive and works beautifully on any device, whether it's your desktop, tablet, or smartphone.",
-  },
-  {
-    question: "What happens when my goal's deadline passes?",
-    answer:
-      'The countdown will stop, but all your data, including daily progress and lists, will remain exactly as it was. You can then review your journey and decide whether to set a new goal, which will reset the application.',
-  },
-  {
-    question: "Can I edit my goal after I've set it?",
-    answer:
-      "Yes! You can edit your goal's name, description, and even extend the deadline at any time from the dashboard. This allows you to adapt as your priorities or timelines change.",
-  },
-  {
-    question: 'What kind of insights can I get from the graphs?',
-    answer:
-      'The graphs help you visualize your journey. You can see how your satisfaction trends over time, identify which days of the week are most productive, and understand the relationship between the time you invest and how you feel about your progress.',
   },
 ];
 
@@ -245,13 +233,12 @@ export default function LandingPage() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    // NEW: Use onAuthChange from authService
     const unsubscribe = onAuthChange(user => {
       setCurrentUser(user);
       setAuthLoading(false);
     });
 
-    return () => unsubscribe(); // Clean up the listener
+    return () => unsubscribe();
   }, []);
 
   const renderCtaButton = () => {
