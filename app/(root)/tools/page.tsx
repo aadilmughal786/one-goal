@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
 import { FaCalculator } from 'react-icons/fa';
-import { FiWatch } from 'react-icons/fi';
+import { FiEdit, FiWatch } from 'react-icons/fi';
 
 // Import only the components we are keeping
 import ChatCalculator from '@/components/tools/ChatCalculator';
+import DrawingTool from '@/components/tools/DrawingTool'; // Import the new DrawingTool
 import TimeEstimator from '@/components/tools/TimeEstimator';
 
 // Import the skeleton loader
@@ -23,6 +24,7 @@ const tabItems: {
 }[] = [
   { id: 'calculator', label: 'Calculator', icon: FaCalculator, component: ChatCalculator },
   { id: 'estimator', label: 'Time Estimator', icon: FiWatch, component: TimeEstimator },
+  { id: 'drawing', label: 'Drawing Pad', icon: FiEdit, component: DrawingTool }, // Add the new drawing tool tab
 ];
 
 const ToolsPageContent: React.FC = () => {
