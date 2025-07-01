@@ -150,8 +150,8 @@ const ConsolidatedDashboardPageContent = () => {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
-                    ${isActive ? 'text-white border-blue-500' : 'border-transparent text-white/60 hover:text-white'}`}
+                    className={`flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none
+                    ${isActive ? 'text-white border-white' : 'border-transparent text-white/60 hover:text-white'}`}
                     aria-label={item.label}
                   >
                     <Icon size={18} />

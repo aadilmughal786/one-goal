@@ -76,9 +76,9 @@ const ProfilePageContent = () => {
         <div className="flex space-x-2">
           <button
             onClick={() => handleTabChange('profile')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
               activeTab === 'profile'
-                ? 'text-white border-blue-500'
+                ? 'text-white border-white'
                 : 'border-transparent text-white/60 hover:text-white'
             }`}
           >
@@ -86,9 +86,9 @@ const ProfilePageContent = () => {
           </button>
           <button
             onClick={() => handleTabChange('data')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
               activeTab === 'data'
-                ? 'text-white border-blue-500'
+                ? 'text-white border-white'
                 : 'border-transparent text-white/60 hover:text-white'
             }`}
           >
@@ -96,9 +96,9 @@ const ProfilePageContent = () => {
           </button>
           <button
             onClick={() => handleTabChange('wellness')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
               activeTab === 'wellness'
-                ? 'text-white border-blue-500'
+                ? 'text-white border-white'
                 : 'border-transparent text-white/60 hover:text-white'
             }`}
           >

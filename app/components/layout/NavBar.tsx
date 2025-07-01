@@ -61,8 +61,8 @@ export default function NavBar() {
 
   const getNavLinkClasses = (navPath: string) => {
     const baseClasses =
-      'flex items-center justify-center w-full h-14 rounded-lg transition-colors duration-200 cursor-pointer';
-    const activeClasses = 'bg-blue-500/80 text-white';
+      'flex items-center justify-center w-full h-12 rounded-lg transition-colors duration-200 cursor-pointer';
+    const activeClasses = 'bg-white text-black';
     const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
     const currentMainPath = pathname.split('?')[0];
     return currentMainPath === navPath
@@ -78,7 +78,7 @@ export default function NavBar() {
         ) : (
           <Link
             href="/dashboard"
-            className="p-2 rounded-full group hover:bg-white/10 cursor-pointer"
+            className="p-2 rounded-full cursor-pointer group hover:bg-white/10"
             title="One Goal Home"
           >
             <MdRocketLaunch
@@ -93,7 +93,7 @@ export default function NavBar() {
         {authLoading ? (
           <div className="flex flex-col gap-4 items-center">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-14 h-14 rounded-lg animate-pulse bg-white/10"></div>
+              <div key={i} className="w-12 h-12 rounded-lg animate-pulse bg-white/10"></div>
             ))}
           </div>
         ) : (
@@ -114,7 +114,7 @@ export default function NavBar() {
         <button
           onClick={() => setIsProfileDropdownOpen(prev => !prev)}
           disabled={authLoading}
-          className="rounded-full transition-all duration-200 hover:ring-2 hover:ring-blue-400 cursor-pointer"
+          className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
           aria-label="Open profile menu"
         >
           {authLoading ? (
@@ -128,7 +128,7 @@ export default function NavBar() {
               className="rounded-full"
             />
           ) : (
-            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 text-white/70 border-white/20 cursor-pointer">
+            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
               {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
             </div>
           )}

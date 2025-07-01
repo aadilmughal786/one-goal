@@ -154,9 +154,9 @@ const GoalPageContent = () => {
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+              className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                 filterStatus === status
-                  ? 'text-white border-blue-500 bg-transparent'
+                  ? 'text-white border-white bg-transparent'
                   : 'border-transparent text-white/60 hover:bg-white/10 hover:border-white/5'
               }`}
             >
