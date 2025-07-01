@@ -1,6 +1,7 @@
 // app/components/todo/StickyNotes.tsx
 'use client';
 
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { StickyNote, StickyNoteColor } from '@/types';
 import { format as formatDate } from 'date-fns';
 import Fuse from 'fuse.js';
@@ -18,23 +19,20 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { MdColorLens, MdStickyNote2 } from 'react-icons/md';
-import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 const StickyNotes: React.FC = () => {
-  // FIX: Select each piece of state and action individually.
   const appState = useGoalStore(state => state.appState);
   const addStickyNote = useGoalStore(state => state.addStickyNote);
   const updateStickyNote = useGoalStore(state => state.updateStickyNote);
   const deleteStickyNote = useGoalStore(state => state.deleteStickyNote);
 
-  // FIX: Select each action individually from the notification store as well.
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
-  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
+  const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
   const stickyNotes = useMemo(() => activeGoal?.stickyNotes || [], [activeGoal]);
 
@@ -118,6 +116,7 @@ const StickyNotes: React.FC = () => {
           setIsUpdatingNote(note.id);
           await deleteStickyNote(note.id);
           setIsUpdatingNote(null);
+          setEditingNoteId(null);
         },
       });
     },
@@ -143,67 +142,93 @@ const StickyNotes: React.FC = () => {
     return (
       <div
         key={note.id}
-        className={`relative p-4 rounded-lg shadow-md border ${colorClasses} ${isSaving ? 'opacity-70' : ''}`}
+        className={`relative flex flex-col p-4 rounded-lg shadow-md border ${colorClasses} ${
+          isSaving ? 'opacity-70' : ''
+        }`}
       >
         {isSaving && (
           <div className="flex absolute inset-0 z-10 justify-center items-center rounded-lg bg-black/50">
             <FiLoader className="text-3xl text-white animate-spin" />
           </div>
         )}
+        <div className="flex-grow">
+          {isEditing ? (
+            <>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                className="mb-2 w-full text-lg font-semibold bg-transparent border-b border-gray-400 focus:outline-none"
+                placeholder="Title"
+                disabled={isSaving}
+                aria-label="Edit note title"
+              />
+              <textarea
+                value={editContent}
+                onChange={e => setEditContent(e.target.value)}
+                className="mb-4 w-full h-24 bg-transparent border-b border-gray-400 resize-none focus:outline-none"
+                placeholder="Content"
+                disabled={isSaving}
+                aria-label="Edit note content"
+              />
+            </>
+          ) : (
+            <>
+              <h3 className="mb-2 text-lg font-semibold">{note.title}</h3>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                {note.content}
+              </p>
+            </>
+          )}
+        </div>
+
         {isEditing ? (
-          <>
-            <input
-              type="text"
-              value={editTitle}
-              onChange={e => setEditTitle(e.target.value)}
-              className="mb-2 w-full text-lg font-semibold bg-transparent border-b border-gray-400 focus:outline-none"
-              placeholder="Title"
-              disabled={isSaving}
-              aria-label="Edit note title"
-            />
-            <textarea
-              value={editContent}
-              onChange={e => setEditContent(e.target.value)}
-              className="mb-4 w-full h-24 bg-transparent border-b border-gray-400 resize-y focus:outline-none"
-              placeholder="Content"
-              disabled={isSaving}
-              aria-label="Edit note content"
-            />
-            <div className="inline-block relative" ref={colorDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setEditColorDropdownOpen(prev => !prev)}
-                className={`flex items-center p-2 rounded-full border ${stickyNoteColorMap[editColor]} cursor-pointer`}
-                aria-label="Select note color"
-              >
-                <MdColorLens size={20} />
-                <FiInfo size={16} className="ml-2" />
-              </button>
-              {isEditColorDropdownOpen && (
-                <div className="grid absolute z-20 grid-cols-4 gap-2 p-2 mt-1 rounded-lg border shadow-lg bg-neutral-800 border-white/10">
-                  {Object.keys(StickyNoteColor)
-                    .filter(key => isNaN(Number(key)))
-                    .map(colorName => {
-                      const colorEnum = StickyNoteColor[colorName as keyof typeof StickyNoteColor];
-                      return (
-                        <button
-                          key={colorName}
-                          onClick={() => {
-                            setEditColor(colorEnum);
-                            setEditColorDropdownOpen(false);
-                          }}
-                          className={`w-8 h-8 rounded-full border ${stickyNoteColorMap[colorEnum]} cursor-pointer`}
-                          aria-label={`Set color to ${colorName.toLowerCase()}`}
-                        ></button>
-                      );
-                    })}
-                </div>
-              )}
+          <div className="flex justify-between items-center mt-4">
+            <div className="flex gap-2 items-center">
+              <div className="inline-block relative" ref={colorDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setEditColorDropdownOpen(prev => !prev)}
+                  className="flex items-center p-2 text-gray-600 rounded-full cursor-pointer hover:bg-gray-300"
+                  aria-label="Select note color"
+                >
+                  <MdColorLens size={20} />
+                </button>
+                {isEditColorDropdownOpen && (
+                  <div className="absolute bottom-full left-1/2 z-20 p-2 mb-2 w-32 rounded-lg border shadow-lg -translate-x-1/2 bg-neutral-800 border-white/10 animate-fade-in-down">
+                    <div className="grid grid-cols-4 gap-2">
+                      {Object.keys(StickyNoteColor)
+                        .filter(key => isNaN(Number(key)))
+                        .map(colorName => {
+                          const colorEnum =
+                            StickyNoteColor[colorName as keyof typeof StickyNoteColor];
+                          const bgColorClass = stickyNoteColorMap[colorEnum].split(' ')[0];
+                          return (
+                            <button
+                              key={colorName}
+                              type="button"
+                              onClick={() => {
+                                setEditColor(colorEnum);
+                                setEditColorDropdownOpen(false);
+                              }}
+                              className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${bgColorClass} ${
+                                editColor === colorEnum ? 'border-white' : 'border-transparent'
+                              }`}
+                              aria-label={`Set color to ${colorName.toLowerCase()}`}
+                            ></button>
+                          );
+                        })}
+                    </div>
+                    <div className="absolute top-full left-1/2 w-3 h-3 border-r border-b transform rotate-45 -translate-x-1/2 -translate-y-1/2 bg-neutral-800 border-white/10"></div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2 justify-end mt-4">
+
+            <div className="flex gap-2">
               <button
                 onClick={handleCancelEdit}
-                className="p-2 text-gray-600 rounded-full hover:bg-gray-300 cursor-pointer"
+                className="p-2 text-gray-600 rounded-full cursor-pointer hover:bg-gray-300"
                 disabled={isSaving}
                 aria-label="Cancel edit"
               >
@@ -211,41 +236,37 @@ const StickyNotes: React.FC = () => {
               </button>
               <button
                 onClick={() => handleSaveEdit(note.id)}
-                className="p-2 text-green-600 rounded-full hover:bg-green-300 cursor-pointer"
+                className="p-2 text-green-600 rounded-full cursor-pointer hover:bg-green-300"
                 disabled={isSaving || !editTitle.trim() || !editContent.trim()}
                 aria-label="Save changes"
               >
                 <FiCheck size={20} />
               </button>
             </div>
-          </>
-        ) : (
-          <>
-            <h3 className="mb-2 text-lg font-semibold">{note.title}</h3>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{note.content}</p>
-          </>
-        )}
-        <div className="flex justify-between items-center pt-4 mt-4 text-xs text-gray-700 border-t border-gray-300/30">
-          <span>{formatDate(note.createdAt.toDate(), 'MMM d,yyyy')}</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleStartEditing(note)}
-              className="p-1 text-gray-600 rounded-full hover:bg-gray-300 cursor-pointer"
-              aria-label="Edit note"
-              disabled={isEditing || isSaving || !!editingNoteId}
-            >
-              <FiEdit size={16} />
-            </button>
-            <button
-              onClick={() => handleDeleteConfirmation(note)}
-              className="p-1 text-red-600 rounded-full hover:bg-red-300 cursor-pointer"
-              aria-label="Delete note"
-              disabled={isEditing || isSaving || !!editingNoteId}
-            >
-              <FiTrash2 size={16} />
-            </button>
           </div>
-        </div>
+        ) : (
+          <div className="flex justify-between items-center px-4 pt-4 -mx-4 mt-4 text-xs text-gray-700 border-t border-gray-300/30">
+            <span>{formatDate(note.createdAt.toDate(), 'MMM d,yyyy')}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleStartEditing(note)}
+                className="p-1 text-gray-600 rounded-full cursor-pointer hover:bg-gray-300"
+                aria-label="Edit note"
+                disabled={isSaving || !!editingNoteId}
+              >
+                <FiEdit size={16} />
+              </button>
+              <button
+                onClick={() => handleDeleteConfirmation(note)}
+                className="p-1 text-red-600 rounded-full cursor-pointer hover:bg-red-300"
+                aria-label="Delete note"
+                disabled={isSaving || !!editingNoteId}
+              >
+                <FiTrash2 size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -260,7 +281,7 @@ const StickyNotes: React.FC = () => {
         <button
           onClick={handleCreateDefaultNote}
           disabled={isAddingNote}
-          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all hover:bg-white/90 disabled:opacity-50 cursor-pointer"
+          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all cursor-pointer hover:bg-white/90 disabled:opacity-50"
           aria-label="Create new sticky note"
         >
           {isAddingNote ? (
@@ -283,7 +304,11 @@ const StickyNotes: React.FC = () => {
         <div className="flex flex-shrink-0 gap-2">
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-full transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'} cursor-pointer`}
+            className={`p-2 rounded-full transition-colors cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
             title="Grid View"
             aria-label="Switch to grid view"
           >
@@ -291,7 +316,11 @@ const StickyNotes: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-full transition-colors ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'} cursor-pointer`}
+            className={`p-2 rounded-full transition-colors cursor-pointer ${
+              viewMode === 'list'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
             title="List View"
             aria-label="Switch to list view"
           >

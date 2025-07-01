@@ -1,6 +1,7 @@
-// app/components/time-block/TimeBlockUI.tsx
+// app/components/dashboard/TimeBlockUI.tsx
 'use client';
 
+import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { ScheduledRoutineBase, TimeBlock, UserRoutineSettings } from '@/types';
@@ -120,6 +121,8 @@ const TimeBlockUI = () => {
   const { appState, addTimeBlock, deleteTimeBlock, updateTimeBlock, updateRoutineSettings } =
     useGoalStore();
   const showToast = useNotificationStore(state => state.showToast);
+  // FIX: Get showConfirmation from the store to trigger the global modal
+  const showConfirmation = useNotificationStore(state => state.showConfirmation);
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
   useEffect(() => {
@@ -206,6 +209,7 @@ const TimeBlockUI = () => {
       await addTimeBlock(data.label, data.startTime, data.endTime, data.color);
       showToast('Time block added!', 'success');
     }
+    setIsModalOpen(false);
   };
 
   const handleToggleComplete = async (block: TimeBlock) => {
@@ -218,6 +222,25 @@ const TimeBlockUI = () => {
     } finally {
       setUpdatingBlockId(null);
     }
+  };
+
+  // FIX: This function now uses the global confirmation modal from the store
+  const handleDeleteBlock = (block: TimeBlock) => {
+    showConfirmation({
+      title: 'Delete Time Block?',
+      message: `Are you sure you want to delete the time block "${block.label}"? This action cannot be undone.`,
+      action: async () => {
+        setUpdatingBlockId(block.id);
+        try {
+          await deleteTimeBlock(block.id);
+          showToast('Time block deleted.', 'info');
+        } catch {
+          showToast('Failed to delete time block.', 'error');
+        } finally {
+          setUpdatingBlockId(null);
+        }
+      },
+    });
   };
 
   const handleToggleRoutineComplete = async (routine: RoutineWithType) => {
@@ -294,6 +317,10 @@ const TimeBlockUI = () => {
     return `${(totalMinutes / (24 * 60)) * 100}%`;
   };
 
+  if (!activeGoal) {
+    return <NoActiveGoalMessage />;
+  }
+
   return (
     <div className="space-y-8">
       <div className="p-6 pl-12 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
@@ -304,7 +331,7 @@ const TimeBlockUI = () => {
           </h2>
           <button
             onClick={() => handleOpenModal(null)}
-            className="flex justify-center items-center w-8 h-8 text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 hover:scale-110"
+            className="flex justify-center items-center w-8 h-8 text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90"
             aria-label="Add new time block"
             title="Add new time block"
           >
@@ -332,7 +359,9 @@ const TimeBlockUI = () => {
               {Array.from({ length: 143 }).map((_, i) => (
                 <div
                   key={`line-block-${i}`}
-                  className={`absolute w-full border-t ${(i + 1) % 6 === 0 ? 'border-white/20' : 'border-dashed border-white/10'}`}
+                  className={`absolute w-full border-t ${
+                    (i + 1) % 6 === 0 ? 'border-white/20' : 'border-dashed border-white/10'
+                  }`}
                   style={{ top: `${((i + 1) / 144) * 100}%` }}
                 ></div>
               ))}
@@ -356,7 +385,9 @@ const TimeBlockUI = () => {
                 return (
                   <div
                     key={block.id}
-                    className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group ${blockBorderStyle} ${isActive ? 'animate-pulse' : ''}`}
+                    className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group ${blockBorderStyle} ${
+                      isActive ? 'animate-pulse' : ''
+                    }`}
                     style={{
                       ...calculatePosition(block.startTime, block.endTime),
                       backgroundColor: blockBgColor,
@@ -378,7 +409,7 @@ const TimeBlockUI = () => {
                         <button
                           onClick={() => handleToggleComplete(block)}
                           disabled={isUpdating}
-                          className={`p-1 rounded-full transition-colors ${
+                          className={`p-1 rounded-full transition-colors cursor-pointer disabled:opacity-60 ${
                             isCompleted
                               ? 'bg-green-500 text-white'
                               : isColorDark(block.color)
@@ -396,14 +427,22 @@ const TimeBlockUI = () => {
                         </button>
                         <button
                           onClick={() => handleOpenModal(block)}
-                          className={`p-1 rounded-full ${isColorDark(block.color) ? 'text-white/70 hover:bg-white/20' : 'text-black/70 hover:bg-black/20'}`}
+                          className={`p-1 rounded-full transition-colors cursor-pointer disabled:opacity-60 ${
+                            isColorDark(block.color)
+                              ? 'text-white/70 hover:bg-white/20'
+                              : 'text-black/70 hover:bg-black/20'
+                          }`}
                           disabled={isUpdating}
                         >
                           <FiEdit size={12} />
                         </button>
                         <button
-                          onClick={() => deleteTimeBlock(block.id)}
-                          className={`p-1 rounded-full ${isColorDark(block.color) ? 'text-white/50 hover:bg-white/20' : 'text-black/50 hover:bg-black/20'}`}
+                          onClick={() => handleDeleteBlock(block)}
+                          className={`p-1 rounded-full transition-colors cursor-pointer disabled:opacity-60 ${
+                            isColorDark(block.color)
+                              ? 'text-white/50 hover:bg-white/20'
+                              : 'text-black/50 hover:bg-black/20'
+                          }`}
                           disabled={isUpdating}
                         >
                           <FiTrash2 size={12} />
@@ -469,11 +508,15 @@ const TimeBlockUI = () => {
                 return (
                   <div
                     key={routine.id}
-                    className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group ${routineBorderStyle} ${isActive ? 'animate-pulse' : ''}`}
+                    className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group ${routineBorderStyle} ${
+                      isActive ? 'animate-pulse' : ''
+                    }`}
                     style={{ ...calculatePosition(routine.time, routineEndTime) }}
                   >
                     <div
-                      className={`flex justify-between items-center h-full text-xs truncate ${routine.completed ? 'text-green-300 line-through' : 'text-gray-300'}`}
+                      className={`flex justify-between items-center h-full text-xs truncate ${
+                        routine.completed ? 'text-green-300 line-through' : 'text-gray-300'
+                      }`}
                     >
                       <div className="flex gap-2 items-center">
                         <RoutineIcon size={16} />
@@ -483,7 +526,11 @@ const TimeBlockUI = () => {
                         <button
                           onClick={() => handleToggleRoutineComplete(routine)}
                           disabled={isUpdating}
-                          className={`p-1 rounded-full transition-colors ${routine.completed ? 'bg-green-500 text-white' : 'text-gray-300 hover:bg-white/20'}`}
+                          className={`p-1 rounded-full transition-colors cursor-pointer disabled:opacity-60 ${
+                            routine.completed
+                              ? 'bg-green-500 text-white'
+                              : 'text-gray-300 hover:bg-white/20'
+                          }`}
                         >
                           {isUpdating ? (
                             <FiLoader className="animate-spin" size={14} />

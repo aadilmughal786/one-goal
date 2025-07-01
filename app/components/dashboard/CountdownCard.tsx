@@ -2,7 +2,7 @@
 'use client';
 
 import { Goal } from '@/types'; // Import Goal type
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays, format, eachDayOfInterval, isWeekend } from 'date-fns';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiChevronsRight, FiClock, FiFlag, FiPlayCircle } from 'react-icons/fi';
 
@@ -33,34 +33,40 @@ const CountdownCard: React.FC<CountdownCardProps> = ({ goal }) => {
    * Memoized calculations for countdown and progress metrics.
    * Re-calculates only when `goal` or `now` changes.
    */
-  const { timeLeft, progressPercent, totalDays, remainingDays, daysPassed } = useMemo(() => {
-    const goalEndDate = goal.endDate.toDate(); // Convert Firebase Timestamp to Date
-    const goalStartDate = goal.startDate.toDate(); // Convert Firebase Timestamp to Date (correctly using startDate)
-    const currentTime = now.getTime(); // Current time in milliseconds
+  const { timeLeft, progressPercent, totalDays, remainingDays, daysPassed, weekendDays } =
+    useMemo(() => {
+      const goalEndDate = goal.endDate.toDate(); // Convert Firebase Timestamp to Date
+      const goalStartDate = goal.startDate.toDate(); // Convert Firebase Timestamp to Date (correctly using startDate)
+      const currentTime = now.getTime(); // Current time in milliseconds
 
-    // Calculate time left in milliseconds (capped at 0)
-    const timeLeftMs = Math.max(0, goalEndDate.getTime() - currentTime);
-    // Calculate total duration of the goal in milliseconds (at least 1 to avoid division by zero)
-    const totalDurationMs = Math.max(1, goalEndDate.getTime() - goalStartDate.getTime());
-    // Calculate percentage of time elapsed, capped at 100%
-    const progressPercent = Math.min(
-      100,
-      ((currentTime - goalStartDate.getTime()) / totalDurationMs) * 100
-    );
+      // Calculate time left in milliseconds (capped at 0)
+      const timeLeftMs = Math.max(0, goalEndDate.getTime() - currentTime);
+      // Calculate total duration of the goal in milliseconds (at least 1 to avoid division by zero)
+      const totalDurationMs = Math.max(1, goalEndDate.getTime() - goalStartDate.getTime());
+      // Calculate percentage of time elapsed, capped at 100%
+      const progressPercent = Math.min(
+        100,
+        ((currentTime - goalStartDate.getTime()) / totalDurationMs) * 100
+      );
 
-    // Calculate total days duration, days passed, and remaining days.
-    const totalDays = differenceInDays(goalEndDate, goalStartDate) + 1; // Inclusive of start and end days
-    const currentDaysPassed = differenceInDays(now, goalStartDate); // Days passed from start to now
-    const remainingDays = differenceInDays(goalEndDate, now) + 1; // Days remaining from now to end (inclusive)
+      // Calculate total days duration, days passed, and remaining days.
+      const totalDays = differenceInDays(goalEndDate, goalStartDate) + 1; // Inclusive of start and end days
+      const currentDaysPassed = differenceInDays(now, goalStartDate); // Days passed from start to now
+      const remainingDays = differenceInDays(goalEndDate, now) + 1; // Days remaining from now to end (inclusive)
 
-    return {
-      timeLeft: timeLeftMs,
-      progressPercent,
-      totalDays,
-      remainingDays: Math.max(0, remainingDays), // Ensure remainingDays is not negative
-      daysPassed: Math.max(0, currentDaysPassed), // Ensure daysPassed is not negative
-    };
-  }, [goal, now]); // Dependencies: re-run if goal object or 'now' changes
+      // Calculate weekend days
+      const allDaysInGoal = eachDayOfInterval({ start: goalStartDate, end: goalEndDate });
+      const weekendDays = allDaysInGoal.filter(day => isWeekend(day)).length;
+
+      return {
+        timeLeft: timeLeftMs,
+        progressPercent,
+        totalDays,
+        remainingDays: Math.max(0, remainingDays), // Ensure remainingDays is not negative
+        daysPassed: Math.max(0, currentDaysPassed), // Ensure daysPassed is not negative
+        weekendDays,
+      };
+    }, [goal, now]); // Dependencies: re-run if goal object or 'now' changes
 
   // Convert timeLeft milliseconds into days, hours, minutes, and seconds for display.
   // padStart(2, '0') ensures two-digit display (e.g., "05" instead of "5").
@@ -149,6 +155,10 @@ const CountdownCard: React.FC<CountdownCardProps> = ({ goal }) => {
             <div className="flex gap-2 items-center">
               <FiClock className="text-purple-400" />
               <span>{remainingDays} days left</span>
+            </div>
+            <div className="flex gap-2 items-center">
+              <FiClock className="text-blue-400" />
+              <span>{weekendDays} weekend days</span>
             </div>
           </div>
 

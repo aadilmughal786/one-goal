@@ -115,20 +115,41 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                 key={item.id}
                 className={`flex flex-col p-4 rounded-lg border transition-all duration-200 ${currentTheme.bg} ${currentTheme.border}`}
               >
-                <div className="flex-grow">
+                <div className="flex justify-between items-start mb-2">
                   <span
-                    className="pr-4 text-lg font-medium break-words transition-colors cursor-pointer text-white/90 hover:text-blue-400"
+                    className="flex-grow pr-4 text-lg font-medium break-words transition-colors cursor-pointer text-white/90 hover:text-blue-400"
                     onClick={() => !isUpdatingThis && onEditDistraction(item)}
                   >
                     {item.title}
                   </span>
+                  <div className="flex flex-shrink-0 gap-1 items-center">
+                    <button
+                      onClick={() => onEditDistraction(item)}
+                      className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                      aria-label="Edit item"
+                      disabled={isUpdatingThis}
+                    >
+                      <FiEdit />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteConfirmation(item.id, item.title)}
+                      className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                      aria-label="Delete item"
+                      disabled={isUpdatingThis}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-grow">
                   {item.description && (
-                    <p className="mt-1 text-sm text-white/60">{item.description}</p>
+                    <p className="mb-2 text-sm text-white/60">{item.description}</p>
                   )}
                   {item.triggerPatterns &&
                     item.triggerPatterns.length > 0 &&
                     item.triggerPatterns.some(p => p.trim() !== '') && (
-                      <div className="pt-3 mt-3 border-t border-white/10">
+                      <div className="px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
                         <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-white/50">
                           Trigger Patterns
                         </h4>
@@ -146,7 +167,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                     )}
                 </div>
 
-                <div className="flex justify-between items-center pt-3 mt-3 border-t border-white/10">
+                <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
                   <div className="flex gap-1 items-center text-xs text-white/50">
                     <FiClock size={12} />
                     <span>Created: {formatDate(item.createdAt)}</span>
@@ -178,22 +199,6 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                         <FiPlus size={16} />
                       </button>
                     </div>
-                    <button
-                      onClick={() => onEditDistraction(item)}
-                      className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
-                      aria-label="Edit item"
-                      disabled={isUpdatingThis}
-                    >
-                      <FiEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteConfirmation(item.id, item.title)}
-                      className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                      aria-label="Delete item"
-                      disabled={isUpdatingThis}
-                    >
-                      <FiTrash2 />
-                    </button>
                   </div>
                 </div>
               </li>

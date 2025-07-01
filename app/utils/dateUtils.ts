@@ -45,3 +45,43 @@ export const formatRelativeTime = (deadline: Timestamp | null): string => {
 
   return `Due in ${formatDistanceToNowStrict(date)}`;
 };
+
+/**
+ * Formats milliseconds into a stopwatch display object.
+ * @param ms The time in milliseconds.
+ * @returns An object with minutes, seconds, and centiseconds.
+ */
+export const formatStopwatchTime = (ms: number) => {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  const centiseconds = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+  return { minutes, seconds, centiseconds };
+};
+
+/**
+ * Formats a duration in milliseconds into a human-readable string (e.g., "1h 30m 15s").
+ * @param ms The duration in milliseconds.
+ * @returns A formatted string representing the total time.
+ */
+export const formatTotalTime = (ms: number): string => {
+  if (ms < 0) ms = 0;
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts: string[] = [];
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes}m`);
+  }
+  // Always show seconds if there are no hours or minutes, or if seconds > 0
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(`${seconds}s`);
+  }
+
+  return parts.join(' ');
+};

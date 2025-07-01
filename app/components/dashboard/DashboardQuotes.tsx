@@ -187,13 +187,15 @@ const DashboardQuotes: React.FC = () => {
               .map(quote => (
                 <div
                   key={quote.id}
-                  className={`p-4 mb-6 rounded-lg bg-white/5 break-inside-avoid transition-opacity duration-300 ${updatingId === quote.id ? 'opacity-50' : 'opacity-100'}`}
+                  className={`mb-6 rounded-lg bg-white/5 break-inside-avoid transition-opacity duration-300 ${updatingId === quote.id ? 'opacity-50' : 'opacity-100'}`}
                 >
-                  <p className="italic text-white/90">&quot;{quote.text}&quot;</p>
-                  <p className="mt-2 text-sm font-medium text-right text-white/60">
-                    - {quote.author}
-                  </p>
-                  <div className="flex gap-2 justify-end pt-3 mt-3 border-t border-white/10">
+                  <div className="p-4">
+                    <p className="italic text-white/90">&quot;{quote.text}&quot;</p>
+                    <p className="mt-2 text-sm font-medium text-right text-white/60">
+                      - {quote.author}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 justify-end p-2 border-t border-white/10">
                     <button
                       onClick={() => handleCopy(quote)}
                       className="p-2 rounded-full transition-colors cursor-pointer text-white/70 hover:bg-white/10"

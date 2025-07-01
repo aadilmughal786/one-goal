@@ -1,4 +1,4 @@
-// app/components/time-block/TimeBlockModal.tsx
+// app/components/dashboard/TimeBlockModal.tsx
 'use client';
 
 import { DateTimePicker } from '@/components/common/DateTimePicker';
@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parse } from 'date-fns';
 import React, { useEffect, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { FiCheck, FiX } from 'react-icons/fi';
+import { FiCheck, FiLoader, FiX } from 'react-icons/fi';
 import { z } from 'zod';
 
 type TimeBlockFormData = z.infer<typeof timeBlockFormSchema>;
@@ -112,7 +112,7 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
               </h2>
               <button
                 type="button"
-                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10"
+                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -135,7 +135,7 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsStartPickerOpen(true)}
-                    className="p-3 w-full text-left text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
                   >
                     {watchedStartTime ? format(watchedStartTime, 'h:mm a') : 'Select'}
                   </button>
@@ -145,7 +145,7 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsEndPickerOpen(true)}
-                    className="p-3 w-full text-left text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
                   >
                     {watchedEndTime ? format(watchedEndTime, 'h:mm a') : 'Select'}
                   </button>
@@ -162,7 +162,9 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
                         setValue('color', color, { shouldDirty: true, shouldValidate: true })
                       }
                       style={{ backgroundColor: color }}
-                      className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${watchedColor === color ? 'border-white' : 'border-transparent'}`}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
+                        watchedColor === color ? 'border-white' : 'border-transparent'
+                      }`}
                     />
                   ))}
                 </div>
@@ -172,9 +174,10 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
               >
-                <FiCheck /> {blockToEdit ? 'Save Changes' : 'Add Block'}
+                {isSubmitting ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiCheck />}{' '}
+                {isSubmitting ? 'Saving...' : blockToEdit ? 'Save Changes' : 'Add Block'}
               </button>
             </div>
           </form>

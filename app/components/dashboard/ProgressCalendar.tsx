@@ -145,6 +145,18 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
     if (canGoToNextMonth) setCurrentMonth(prev => addMonths(prev, 1));
   }, [canGoToNextMonth]);
 
+  const handleTodayClick = useCallback(() => {
+    const today = new Date();
+    if (isWithinInterval(today, { start: goalStartDate, end: goalEndDate })) {
+      setCurrentMonth(startOfMonth(today));
+    }
+  }, [goalStartDate, goalEndDate]);
+
+  const isTodayButtonClickable = useMemo(() => {
+    const today = new Date();
+    return isWithinInterval(today, { start: goalStartDate, end: goalEndDate });
+  }, [goalStartDate, goalEndDate]);
+
   const isFutureDate = useCallback(
     (date: Date) => endOfDay(date).getTime() > endOfDay(new Date()).getTime(),
     []
@@ -162,21 +174,31 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
           <h3 className="text-xl font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h3>
           <div className="flex gap-2">
             <button
-              onClick={handlePrevMonth}
-              disabled={!canGoToPrevMonth}
-              className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-              aria-label="Previous month"
+              onClick={handleTodayClick}
+              disabled={!isTodayButtonClickable}
+              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+              aria-label="Go to today"
             >
-              <FiChevronLeft className="w-5 h-5" />
+              Today
             </button>
-            <button
-              onClick={handleNextMonth}
-              disabled={!canGoToNextMonth}
-              className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-              aria-label="Next month"
-            >
-              <FiChevronRight className="w-5 h-5" />
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={handlePrevMonth}
+                disabled={!canGoToPrevMonth}
+                className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+                aria-label="Previous month"
+              >
+                <FiChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleNextMonth}
+                disabled={!canGoToNextMonth}
+                className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+                aria-label="Next month"
+              >
+                <FiChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -196,7 +218,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                 if (isClickable) {
                   dayClasses += ' cursor-pointer hover:ring-2 ring-white';
                 } else {
-                  dayClasses += ' opacity-50 cursor-not-allowed';
+                  dayClasses += ' opacity-50';
                 }
                 if (isToday(day)) {
                   dayClasses += ' border-2 border-blue-400';

@@ -63,7 +63,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
     setValue,
     reset,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty, isValid },
   } = useForm<DailyProgressFormData>({
     resolver: zodResolver(dailyProgressFormSchema),
     defaultValues: {
@@ -78,6 +78,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
   const [routines, setRoutines] = useState<Record<RoutineType, RoutineLogStatus>>(
     {} as Record<RoutineType, RoutineLogStatus>
   );
+  const [routinesChanged, setRoutinesChanged] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +90,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
         weight: initialProgress?.weight,
       });
 
-      const initialRoutines: Record<RoutineType, RoutineLogStatus> = Object.values(
+      const initialRoutinesData: Record<RoutineType, RoutineLogStatus> = Object.values(
         RoutineType
       ).reduce(
         (acc, type) => {
@@ -98,7 +99,8 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
         },
         {} as Record<RoutineType, RoutineLogStatus>
       );
-      setRoutines(initialRoutines);
+      setRoutines(initialRoutinesData);
+      setRoutinesChanged(false); // Reset routine change tracking
       setIsDropdownOpen(false);
     }
   }, [isOpen, initialProgress, reset]);
@@ -133,6 +135,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
       else newStatus = RoutineLogStatus.DONE;
       return { ...prev, [type]: newStatus };
     });
+    setRoutinesChanged(true); // Mark routines as changed
   };
 
   const onSubmit: SubmitHandler<DailyProgressFormData> = async data => {
@@ -144,6 +147,8 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
       routines: routines,
     };
     try {
+      await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network delay                               │
+
       await onSave(progressData);
       onClose();
     } catch (error) {
@@ -176,21 +181,21 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
       aria-labelledby="daily-progress-modal-title"
     >
       <div
-        className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-md shadow-2xl w-full max-w-md cursor-auto"
+        className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md cursor-auto"
         onClick={e => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
             <h2 id="daily-progress-modal-title" className="text-xl font-semibold text-white">
-              Log Progress for {format(date, 'MMMM d,yyyy')}
+              Log Progress for {format(date, 'MMMM d, yyyy')}
             </h2>
             <button
               type="button"
-              className="p-1.5 text-white/60 rounded-full hover:bg-white/10 cursor-pointer"
+              className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 focus:outline-none cursor-pointer"
               onClick={onClose}
               aria-label="Close modal"
             >
-              <FiX />
+              <FiX className="w-5 h-5" />
             </button>
           </div>
           <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -203,7 +208,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex justify-between items-center px-4 py-3 w-full text-lg text-left text-white rounded-md border cursor-pointer border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-white"
+                  className="flex justify-between items-center px-4 py-3 w-full text-lg text-left text-white rounded-md border cursor-pointer bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                   aria-haspopup="listbox"
                   aria-expanded={isDropdownOpen}
                 >
@@ -259,7 +264,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 step="0.1"
                 placeholder="e.g., 75.5"
                 {...register('weight')}
-                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white"
+                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
 
@@ -272,14 +277,14 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 rows={3}
                 placeholder="Any thoughts, challenges, or wins from today?"
                 {...register('notes')}
-                className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white"
+                className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
             <div>
               <label className="block mb-3 text-sm font-medium text-white/70">
                 Log Daily Routines
               </label>
-              <div className="flex gap-2 p-2 rounded-lg border bg-black/20 border-white/10">
+              <div className="grid grid-cols-3 gap-2 p-2 rounded-lg border sm:grid-cols-6 bg-black/20 border-white/10">
                 {routineData.map(({ type, label, icon: Icon }) => {
                   const status = routines[type];
                   const statusInfo = getStatusInfo(status);
@@ -288,11 +293,11 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                       key={type}
                       type="button"
                       onClick={() => handleToggleRoutine(type)}
-                      className={`flex-1 flex justify-center items-center p-3 text-sm font-semibold rounded-md transition-colors duration-200 cursor-pointer ${statusInfo.color}`}
+                      className={`flex-1 flex flex-col items-center gap-1 p-3 text-xs font-semibold rounded-md transition-colors duration-200 cursor-pointer ${statusInfo.color}`}
                       title={`${label}: ${statusInfo.label}`}
                       aria-label={`${label}: ${statusInfo.label}. Click to toggle.`}
                     >
-                      <Icon size={24} />
+                      <Icon size={20} />
                     </button>
                   );
                 })}
@@ -302,8 +307,8 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
           <div className="px-6 py-4 border-t border-white/10">
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-md transition-all duration-200 hover:bg-white/90 disabled:opacity-60 cursor-pointer"
+              disabled={!isValid || (!isDirty && !routinesChanged) || isSubmitting}
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
             >
               {isSubmitting ? (
                 <>
