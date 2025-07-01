@@ -157,10 +157,13 @@ const RandomPicker: React.FC = () => {
           </button>
         </div>
 
-        <p className="mx-auto max-w-2xl text-white/60">
-          Add items to the list and let fate decide. Perfect for study topics, choosing tasks, or
-          making decisions.
-        </p>
+        <div className="text-center">
+          <h2 className="mb-2 text-2xl font-bold text-white">Reduces Decision Fatigue</h2>
+          <p className="mx-auto max-w-2xl text-white/60">
+            Add items to the list and let fate decide. Perfect for study topics, choosing tasks, or
+            making decisions.
+          </p>
+        </div>
 
         <div className="p-6 bg-white/[0.03] border border-white/10 rounded-2xl">
           <div className="flex flex-col gap-4 sm:flex-row">

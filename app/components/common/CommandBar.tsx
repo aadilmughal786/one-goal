@@ -1,0 +1,99 @@
+// app/components/common/CommandBar.tsx
+'use client';
+
+import {
+  Action,
+  KBarAnimator,
+  KBarPortal,
+  KBarPositioner,
+  KBarResults,
+  KBarSearch,
+  useMatches,
+} from 'kbar';
+import React from 'react';
+
+/**
+ * Renders a single result item in the command bar list.
+ * @param item The action or string to render.
+ * @param active Whether the item is currently highlighted.
+ */
+const ResultItem = React.forwardRef(
+  (
+    {
+      item,
+      active,
+    }: {
+      item: Action | string;
+      active: boolean;
+    },
+    ref: React.Ref<HTMLDivElement>
+  ) => {
+    if (typeof item === 'string') {
+      return <div className="px-4 pt-4 pb-2 text-xs font-medium text-white/50">{item}</div>;
+    }
+
+    return (
+      <div
+        ref={ref}
+        className={`flex items-center justify-between px-4 py-3 rounded-md transition-colors cursor-pointer ${
+          active ? 'bg-white/10' : 'bg-transparent'
+        }`}
+      >
+        <div className="flex gap-3 items-center">
+          {item.icon && <div className="text-white/70">{item.icon}</div>}
+          <div className="flex flex-col">
+            <span className="text-base text-white">{item.name}</span>
+            {item.subtitle && <span className="text-xs text-white/60">{item.subtitle}</span>}
+          </div>
+        </div>
+        {item.shortcut?.length ? (
+          <div className="flex gap-2 items-center">
+            {item.shortcut.map(sc => (
+              <kbd
+                key={sc}
+                className="px-2 py-1 text-xs font-medium rounded-md text-white/70 bg-white/5"
+              >
+                {sc}
+              </kbd>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+);
+
+ResultItem.displayName = 'ResultItem';
+
+/**
+ * Renders the list of matching results.
+ */
+function RenderResults() {
+  const { results } = useMatches();
+
+  return (
+    <KBarResults
+      items={results}
+      onRender={({ item, active }) => <ResultItem item={item} active={active} />}
+    />
+  );
+}
+
+/**
+ * CommandBar component that provides the main UI for kbar.
+ */
+export default function CommandBar() {
+  return (
+    <KBarPortal>
+      <KBarPositioner className="z-50 p-4 backdrop-blur-sm bg-black/60">
+        <KBarAnimator className="w-full max-w-xl bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-xl shadow-2xl">
+          <KBarSearch
+            defaultPlaceholder="Type a command or search..."
+            className="px-4 py-3 w-full text-lg text-white bg-transparent border-b border-white/10 focus:outline-none"
+          />
+          <RenderResults />
+        </KBarAnimator>
+      </KBarPositioner>
+    </KBarPortal>
+  );
+}
