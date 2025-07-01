@@ -30,9 +30,9 @@ interface TabItem {
 
 const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
+  { id: 'timeblocks', label: 'Time Blocks', icon: FiClock, component: TimeBlockUI }, // Add the new tab
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
-  { id: 'timeblocks', label: 'Time Blocks', icon: FiClock, component: TimeBlockUI }, // Add the new tab
 ];
 
 const PageSkeletonLoader = () => (
