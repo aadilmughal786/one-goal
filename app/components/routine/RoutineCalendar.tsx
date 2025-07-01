@@ -105,8 +105,6 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   title,
   icon: IconComponent,
 }) => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const saveDailyProgress = useGoalStore(state => state.saveDailyProgress);
   const showToast = useNotificationStore(state => state.showToast);
@@ -151,15 +149,31 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
     () => goalEndDate && !isSameMonth(currentMonth, endOfMonth(goalEndDate)),
     [currentMonth, goalEndDate]
   );
+
+  const isTodayButtonClickable = useMemo(() => {
+    if (!goalStartDate || !goalEndDate) return false;
+    const today = new Date();
+    return isWithinInterval(today, { start: goalStartDate, end: goalEndDate });
+  }, [goalStartDate, goalEndDate]);
+
   const handlePrevMonth = useCallback(() => {
     if (canGoToPrevMonth) setCurrentMonth(prev => subMonths(prev, 1));
   }, [canGoToPrevMonth]);
+
   const handleNextMonth = useCallback(() => {
     if (canGoToNextMonth) setCurrentMonth(prev => addMonths(prev, 1));
   }, [canGoToNextMonth]);
+
+  const handleGoToToday = useCallback(() => {
+    if (isTodayButtonClickable) {
+      setCurrentMonth(startOfMonth(new Date()));
+    }
+  }, [isTodayButtonClickable]);
+
   const handleDayClick = useCallback((dateKey: string) => {
     setActiveTooltipDay(prev => (prev === dateKey ? null : dateKey));
   }, []);
+
   const isFutureDate = useCallback(
     (date: Date) => endOfDay(date).getTime() > endOfDay(new Date()).getTime(),
     []
@@ -198,7 +212,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
         sessions: existingDailyProgress?.sessions || [],
         totalSessionDuration: existingDailyProgress?.totalSessionDuration || 0,
         routines: routinesForToday,
-        weight: existingDailyProgress?.weight,
+        weight: existingDailyProgress?.weight ?? null,
       };
 
       try {
@@ -215,6 +229,12 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
     },
     [activeGoal, isFutureDate, routineType, showToast, title, saveDailyProgress]
   );
+
+  const legendItems = [
+    { status: RoutineLogStatus.DONE, label: 'Done', color: 'bg-green-500/50' },
+    { status: RoutineLogStatus.SKIPPED, label: 'Skipped', color: 'bg-red-500/50' },
+    { status: RoutineLogStatus.NOT_LOGGED, label: 'Not Logged', color: 'bg-white/5' },
+  ];
 
   if (!activeGoal) {
     return (
@@ -238,23 +258,33 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
         <div className="text-lg font-semibold text-center text-white">
           {format(currentMonth, 'MMMM yyyy')}
         </div>
-        <div className="flex gap-1 sm:gap-2">
+        <div className="flex gap-2 items-center">
           <button
-            onClick={handlePrevMonth}
-            disabled={!canGoToPrevMonth}
-            className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-            aria-label="Previous month"
+            onClick={handleGoToToday}
+            disabled={!isTodayButtonClickable}
+            className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+            aria-label="Go to today"
           >
-            <FiChevronLeft className="w-5 h-5" />
+            Today
           </button>
-          <button
-            onClick={handleNextMonth}
-            disabled={!canGoToNextMonth}
-            className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-            aria-label="Next month"
-          >
-            <FiChevronRight className="w-5 h-5" />
-          </button>
+          <div className="flex gap-1">
+            <button
+              onClick={handlePrevMonth}
+              disabled={!canGoToPrevMonth}
+              className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              aria-label="Previous month"
+            >
+              <FiChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleNextMonth}
+              disabled={!canGoToNextMonth}
+              className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              aria-label="Next month"
+            >
+              <FiChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
       <div className="p-4 sm:p-6">
@@ -267,7 +297,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
               const isFuture = isFutureDate(day);
 
               let dayClasses =
-                'relative group flex flex-col items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-lg transition-all duration-200 ';
+                'relative group flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all duration-200 ';
 
               if (logStatus === RoutineLogStatus.DONE) dayClasses += 'bg-green-500/50';
               else if (logStatus === RoutineLogStatus.SKIPPED) dayClasses += 'bg-red-500/50';
@@ -281,17 +311,15 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
                 <div
                   key={dateKey}
                   className={dayClasses}
-                  onMouseEnter={() => setActiveTooltipDay(null)} // Hide other tooltips on hover
+                  onMouseEnter={() => setActiveTooltipDay(null)}
                   onClick={e => {
-                    e.stopPropagation(); // Prevent click from bubbling to document and closing tooltip
-                    if (!isFuture) handleDayClick(dateKey); // Only allow clicking if not a future date
+                    e.stopPropagation();
+                    if (!isFuture) handleDayClick(dateKey);
                   }}
                   aria-label={`${format(day, 'MMMM d')}, Status: ${logStatus === RoutineLogStatus.DONE ? 'Done' : logStatus === RoutineLogStatus.SKIPPED ? 'Skipped' : 'Not Logged'}`}
                 >
                   <span className="text-xs text-white/50">{format(day, 'E')}</span>
-                  <span className="z-10 text-xl font-bold text-white sm:text-2xl">
-                    {format(day, 'd')}
-                  </span>
+                  <span className="z-10 text-xl font-bold text-white">{format(day, 'd')}</span>
                   {!isFuture && (
                     <CustomTooltip
                       date={day}
@@ -311,6 +339,18 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
               No goal days in this month.
             </div>
           )}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-white/10 text-white/70">
+        {legendItems.map(item => (
+          <div key={item.label} className="flex gap-2 items-center">
+            <span className={`w-4 h-4 rounded-md ${item.color}`}></span>
+            <span>{item.label}</span>
+          </div>
+        ))}
+        <div className="flex gap-2 items-center">
+          <span className="w-4 h-4 rounded-md border-2 border-blue-400"></span>
+          <span>Today</span>
         </div>
       </div>
     </div>
