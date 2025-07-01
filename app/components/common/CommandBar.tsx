@@ -35,7 +35,7 @@ const ResultItem = React.forwardRef(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between px-4 py-3 rounded-md transition-colors cursor-pointer ${
+        className={`flex items-center justify-between px-4 py-3  transition-colors cursor-pointer ${
           active ? 'bg-white/10' : 'bg-transparent'
         }`}
       >
@@ -86,7 +86,7 @@ export default function CommandBar() {
   return (
     <KBarPortal>
       <KBarPositioner className="z-50 p-4 backdrop-blur-sm bg-black/60">
-        <KBarAnimator className="w-full max-w-xl bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-xl shadow-2xl">
+        <KBarAnimator className="w-full max-w-xl bg-white/[0.05] overflow-hidden backdrop-blur-md border border-white/10 rounded-xl shadow-2xl">
           <KBarSearch
             defaultPlaceholder="Type a command or search..."
             className="px-4 py-3 w-full text-lg text-white bg-transparent border-b border-white/10 focus:outline-none"
