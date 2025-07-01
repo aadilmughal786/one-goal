@@ -10,6 +10,7 @@ import {
   SatisfactionLevel,
   StickyNote,
   StickyNoteColor,
+  TimeBlock,
   TodoItem,
   UserRoutineSettings,
 } from '@/types';
@@ -24,6 +25,7 @@ import * as quoteService from '@/services/quoteService';
 import * as routineService from '@/services/routineService';
 import * as stickyNoteService from '@/services/stickyNoteService';
 import * as stopwatchService from '@/services/stopwatchService';
+import * as timeBlockService from '@/services/timeBlockService';
 import * as todoService from '@/services/todoService';
 
 // Import the notification store to show error toasts on failure
@@ -64,6 +66,10 @@ interface GoalStore {
   updateStopwatchSession: (dateKey: string, sessionId: string, newLabel: string) => Promise<void>;
   deleteStopwatchSession: (dateKey: string, sessionId: string) => Promise<void>;
   importGoals: (goalsToImport: Goal[]) => Promise<void>;
+  // Add new actions for time blocks
+  addTimeBlock: (label: string, startTime: string, endTime: string, color: string) => Promise<void>;
+  updateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => Promise<void>;
+  deleteTimeBlock: (blockId: string) => Promise<void>;
 }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
@@ -771,6 +777,109 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     } catch (error) {
       console.error('Store: Failed to delete stopwatch session', error);
       useNotificationStore.getState().showToast('Failed to delete session. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  // --- TIME BLOCK ACTIONS ---
+  addTimeBlock: async (label, startTime, endTime, color) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    try {
+      const newTimeBlock = await timeBlockService.addTimeBlock(
+        currentUser.uid,
+        activeGoalId,
+        label,
+        startTime,
+        endTime,
+        color
+      );
+
+      set(state => {
+        const goal = state.appState!.goals[activeGoalId];
+        const updatedTimeBlocks = [...(goal.timeBlocks || []), newTimeBlock];
+        const updatedGoal = { ...goal, timeBlocks: updatedTimeBlocks };
+        return {
+          appState: {
+            ...state.appState!,
+            goals: {
+              ...state.appState!.goals,
+              [activeGoalId]: updatedGoal,
+            },
+          },
+        };
+      });
+    } catch (error) {
+      console.error('Store: Failed to add time block', error);
+      useNotificationStore.getState().showToast('Could not add time block.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  updateTimeBlock: async (blockId, updates) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedTimeBlocks = (goal.timeBlocks || []).map(block =>
+        block.id === blockId ? { ...block, ...updates, updatedAt: Timestamp.now() } : block
+      );
+      const updatedGoal = { ...goal, timeBlocks: updatedTimeBlocks };
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: updatedGoal,
+          },
+        },
+      };
+    });
+
+    try {
+      await timeBlockService.updateTimeBlock(currentUser.uid, activeGoalId, blockId, updates);
+    } catch (error) {
+      console.error('Store: Failed to update time block', error);
+      useNotificationStore.getState().showToast('Failed to update time block. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  deleteTimeBlock: async blockId => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedTimeBlocks = (goal.timeBlocks || []).filter(block => block.id !== blockId);
+      const updatedGoal = { ...goal, timeBlocks: updatedTimeBlocks };
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: updatedGoal,
+          },
+        },
+      };
+    });
+
+    try {
+      await timeBlockService.deleteTimeBlock(currentUser.uid, activeGoalId, blockId);
+    } catch (error) {
+      console.error('Store: Failed to delete time block', error);
+      useNotificationStore.getState().showToast('Failed to delete time block. Reverting.', 'error');
       set({ appState: originalState });
     }
   },

@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiBarChart2, FiFeather, FiGrid } from 'react-icons/fi';
+import { FiBarChart2, FiClock, FiFeather, FiGrid } from 'react-icons/fi'; // Import FiClock
 
 import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
@@ -18,6 +18,7 @@ import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import DashboardMain from '@/components/dashboard/DashboardMain';
 import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
+import TimeBlockUI from '@/components/dashboard/TimeBlockUI'; // Import the new component
 
 interface TabItem {
   id: string;
@@ -31,6 +32,7 @@ const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
+  { id: 'timeblocks', label: 'Time Blocks', icon: FiClock, component: TimeBlockUI }, // Add the new tab
 ];
 
 const PageSkeletonLoader = () => (

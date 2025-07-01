@@ -1,4 +1,5 @@
 // app/types/index.ts
+
 import { Timestamp } from 'firebase/firestore';
 
 // =================================================================//
@@ -111,6 +112,14 @@ export interface StickyNote extends BaseEntity {
   color: StickyNoteColor;
 }
 
+/** A block of time scheduled for a specific activity. */
+export interface TimeBlock extends BaseEntity, Completable {
+  label: string;
+  startTime: string; // HH:mm format
+  endTime: string; // HH:mm format
+  color: string; // To visually distinguish different blocks
+}
+
 // =================================================================//
 //                   ROUTINES & PROGRESS TRACKING
 // =================================================================//
@@ -162,7 +171,7 @@ export interface WaterRoutineSettings {
   current: number;
 }
 
-/** A centralized object for configuring all user-defined routines. */
+/** A centralized object for all user-defined routines. */
 export interface UserRoutineSettings {
   sleep: SleepRoutineSettings | null;
   water: WaterRoutineSettings | null;
@@ -219,6 +228,7 @@ export interface Goal extends BaseEntity {
   wellnessSettings: WellnessSettings; // <-- ADDED
   /** An array of IDs for the user's favorite quotes for this goal. */
   starredQuotes: number[];
+  timeBlocks: TimeBlock[];
 }
 
 /**

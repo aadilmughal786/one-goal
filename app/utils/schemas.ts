@@ -56,6 +56,13 @@ export const stickyNoteSchema = baseEntitySchema.extend({
   color: z.nativeEnum(StickyNoteColor),
 });
 
+export const timeBlockSchema = baseEntitySchema.merge(completableSchema).extend({
+  label: z.string().min(1, 'Time block label cannot be empty'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid start time format, expected HH:mm'),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid end time format, expected HH:mm'),
+  color: z.string().min(1, 'Color cannot be empty'),
+});
+
 // --- ROUTINE & PROGRESS SCHEMAS ---
 export const stopwatchSessionSchema = baseEntitySchema.extend({
   startTime: timestampSchema,
@@ -146,8 +153,9 @@ export const goalSchema = baseEntitySchema
     notToDoList: z.array(distractionItemSchema),
     stickyNotes: z.array(stickyNoteSchema),
     routineSettings: userRoutineSettingsSchema,
-    wellnessSettings: wellnessSettingsSchema, // <-- ADDED
+    wellnessSettings: wellnessSettingsSchema,
     starredQuotes: z.array(z.number().int()),
+    timeBlocks: z.array(timeBlockSchema).default([]),
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {
     message: 'End date must be after or the same as start date',
@@ -228,3 +236,16 @@ export const distractionEditFormSchema = z.object({
   description: z.string().max(500, 'Description is too long.').nullable(),
   triggerPatterns: z.string().max(500, 'Trigger patterns text is too long.').nullable(),
 });
+
+// Zod Schema for TimeBlockModal form fields
+export const timeBlockFormSchema = z
+  .object({
+    label: z.string().min(1, 'Label cannot be empty.'),
+    startTime: z.date({ required_error: 'Start time is required.' }),
+    endTime: z.date({ required_error: 'End time is required.' }),
+    color: z.string(),
+  })
+  .refine(data => data.endTime > data.startTime, {
+    message: 'End time must be after start time.',
+    path: ['endTime'],
+  });

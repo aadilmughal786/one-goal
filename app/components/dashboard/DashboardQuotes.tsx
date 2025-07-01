@@ -51,7 +51,7 @@ const DashboardQuotes: React.FC = () => {
       showToast('Quote copied to clipboard!', 'success');
       setCopiedId(quote.id);
       setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
-    } catch (err) {
+    } catch {
       showToast('Failed to copy quote.', 'error');
     }
     document.body.removeChild(textArea);

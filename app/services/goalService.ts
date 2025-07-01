@@ -1,5 +1,5 @@
 // app/services/goalService.ts
-import { AppState, Goal, GoalStatus, ReminderType, ScheduledRoutineBase } from '@/types';
+import { AppState, Goal, GoalStatus, ReminderType, ScheduledRoutineBase, TimeBlock } from '@/types';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { appStateSchema, goalSchema } from '@/utils/schemas';
 import { isSameDay } from 'date-fns';
@@ -24,7 +24,7 @@ const _initializeDefaultAppState = (): AppState => ({
 });
 
 /**
- * A helper function that handles the daily reset of routines for all active goals.
+ * A helper function that handles the daily reset of routines and time blocks for all active goals.
  */
 const _handleDailyRoutineResets = (
   appState: AppState
@@ -50,6 +50,16 @@ const _handleDailyRoutineResets = (
             return s;
           });
 
+        // NEW: Function to reset time blocks
+        const resetTimeBlocks = (blocks: TimeBlock[] | undefined) =>
+          (blocks || []).map(b => {
+            if (b.completed) {
+              goalWasModified = true;
+              return { ...b, completed: false, completedAt: null, updatedAt: Timestamp.now() };
+            }
+            return b;
+          });
+
         const settings = goal.routineSettings;
         settings.bath = resetSchedules(settings.bath);
         settings.exercise = resetSchedules(settings.exercise);
@@ -63,6 +73,9 @@ const _handleDailyRoutineResets = (
           settings.water.current = 0;
           goalWasModified = true;
         }
+
+        // NEW: Apply the reset to time blocks
+        goal.timeBlocks = resetTimeBlocks(goal.timeBlocks);
 
         if (goalWasModified) {
           settings.lastRoutineResetDate = Timestamp.fromDate(now);
@@ -148,8 +161,9 @@ export const createGoal = async (
     | 'notToDoList'
     | 'stickyNotes'
     | 'routineSettings'
-    | 'wellnessSettings' // <-- Exclude new settings from input type
+    | 'wellnessSettings'
     | 'starredQuotes'
+    | 'timeBlocks'
   >
 ): Promise<Goal> => {
   const userDocRef = doc(db, 'users', userId);
@@ -165,6 +179,7 @@ export const createGoal = async (
     toDoList: [],
     notToDoList: [],
     stickyNotes: [],
+    timeBlocks: [],
     routineSettings: {
       sleep: { wakeTime: '06:00', sleepTime: '22:00', naps: [] },
       water: { goal: 8, current: 0 },
@@ -211,7 +226,10 @@ export const createGoal = async (
   }
 };
 
-type GoalUpdatePayload = { [key: string]: unknown };
+// FIX: Changed type from 'unknown' to 'any' to satisfy TypeScript's strictness
+// for Firestore's dynamic update objects.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GoalUpdatePayload = { [key: string]: any };
 
 /**
  * Updates properties of an existing goal within the user's main document.
