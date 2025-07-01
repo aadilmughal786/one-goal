@@ -71,8 +71,8 @@ const FloatingStopwatch: React.FC = () => {
   return (
     <Link
       href="/stop-watch"
-      className={`flex overflow-hidden fixed right-5 bottom-5 z-50 items-center px-4 h-12 rounded-full shadow-lg transition-all duration-300 cursor-pointer animate-fade-in ${bgColor} ${hoverBgColor} hover:scale-105`}
-      title="Go to Focus Timer"
+      className={`flex overflow-hidden fixed right-5 bottom-5 z-50 items-center px-4 h-12 rounded shadow-lg transition-all duration-300 cursor-pointer animate-fade-in ${bgColor} ${hoverBgColor} hover:scale-105`}
+      title={sessionLabel}
     >
       {/* Background Progress Bar */}
       <div
@@ -84,7 +84,7 @@ const FloatingStopwatch: React.FC = () => {
       <div className="flex relative z-10 gap-3 items-center w-full">
         <Icon size={20} className="flex-shrink-0" />
         <div className="flex gap-2 items-baseline leading-none">
-          <span className="text-sm font-semibold truncate">{sessionLabel}</span>
+          <span className="text-sm font-semibold truncate"> {isBreak ? 'Break' : 'Focus'}</span>
           <span
             className="font-mono text-base font-semibold"
             style={{ fontVariantNumeric: 'tabular-nums' }}

@@ -161,6 +161,9 @@ const Stopwatch: React.FC = () => {
 
   const renderTimerState = () => (
     <div className="relative w-full h-full">
+      <h3 className={`text-center text-xl ${isBreak ? 'text-green-300' : 'text-blue-300'}`}>
+        {sessionLabel}
+      </h3>
       <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 120 120">
         <circle
           cx="60"
@@ -184,20 +187,20 @@ const Stopwatch: React.FC = () => {
         />
       </svg>
       <div className="flex relative z-10 flex-col justify-center items-center w-full h-full text-center">
+        <p
+          className={`mb-4 font-semibold text-sm px-3 py-1 rounded-full inline-block ${
+            isBreak ? 'text-green-300 bg-green-500/20' : 'text-blue-300 bg-blue-500/20'
+          }`}
+        >
+          {isBreak ? 'Break' : 'Focus'}
+        </p>
         <div
-          className="font-mono text-6xl font-bold tracking-wider text-white"
+          className="font-mono text-5xl font-bold tracking-wider text-white"
           style={{ fontVariantNumeric: 'tabular-nums' }}
         >
           {`${minutes}:${seconds}`}
         </div>
         <p className="font-mono text-lg text-white/50">{centiseconds}</p>
-        <p
-          className={`mt-2 font-semibold text-sm px-3 py-1 rounded-full inline-block ${
-            isBreak ? 'text-green-300 bg-green-500/20' : 'text-blue-300 bg-blue-500/20'
-          }`}
-        >
-          {sessionLabel}
-        </p>
       </div>
     </div>
   );
@@ -218,7 +221,7 @@ const Stopwatch: React.FC = () => {
             : renderInitialState()}
       </div>
 
-      <div className="flex justify-center gap-6 items-center min-h-[80px]">
+      <div className="relative z-10 flex justify-center gap-6 items-center min-h-[80px]">
         {isPreparing && (
           <button
             onClick={resetTimer}
@@ -232,7 +235,7 @@ const Stopwatch: React.FC = () => {
           <>
             <button
               onClick={resetTimer}
-              className="p-4 text-white rounded-full transition-colors cursor-pointer bg-white/10 hover:bg-white/20"
+              className="p-4 text-white bg-red-500 rounded-full transition-colors cursor-pointer hover:bg-red-600"
               aria-label="Cancel Session"
             >
               <FiX size={24} />
