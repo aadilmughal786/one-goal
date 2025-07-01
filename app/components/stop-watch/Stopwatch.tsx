@@ -2,6 +2,7 @@
 'use client';
 
 import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { useTimerStore } from '@/store/useTimerStore';
 import { formatStopwatchTime, formatTotalTime } from '@/utils/dateUtils';
 import { format } from 'date-fns';
@@ -53,7 +54,11 @@ const Stopwatch: React.FC = () => {
     setSessionLabel,
   } = useTimerStore();
 
+  // Get the confirmation modal function from the notification store
+  const { showConfirmation } = useNotificationStore();
+
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false); // State for the fake loader
   const fullScreenRef = useRef<HTMLDivElement>(null);
 
   // --- Fetch today's stats from the goal store ---
@@ -74,6 +79,34 @@ const Stopwatch: React.FC = () => {
 
   const handlePresetClick = (minutes: number, label: string, isBreakSession: boolean) => {
     setTimer(minutes, label, isBreakSession);
+  };
+
+  // --- Confirmation Handlers ---
+  const handleSaveConfirm = () => {
+    showConfirmation({
+      title: 'Finish & Save Session?',
+      message: 'Are you sure you want to end this focus session early and save the elapsed time?',
+      action: () => saveSession(false),
+    });
+  };
+
+  const handleResetConfirm = () => {
+    showConfirmation({
+      title: 'Cancel Session?',
+      message:
+        'Are you sure you want to cancel this session? The timer will be reset, and no progress will be saved.',
+      action: resetTimer,
+    });
+  };
+
+  // --- Start Timer with Fake Loader ---
+  const handleStartTimerWithLoader = () => {
+    setIsStarting(true);
+    // Simulate a short delay before starting the timer
+    setTimeout(() => {
+      startTimer();
+      setIsStarting(false);
+    }, 500); // 500ms fake delay
   };
 
   const toggleFullScreen = () => {
@@ -151,10 +184,11 @@ const Stopwatch: React.FC = () => {
         className="p-3 mb-4 w-full text-lg text-center text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <button
-        onClick={startTimer}
-        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors cursor-pointer hover:bg-white/90"
+        onClick={handleStartTimerWithLoader}
+        disabled={isStarting}
+        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors cursor-pointer hover:bg-white/90 disabled:opacity-50"
       >
-        Start Timer
+        {isStarting ? <FiLoader className="inline-block w-5 h-5 animate-spin" /> : 'Start Timer'}
       </button>
     </div>
   );
@@ -234,7 +268,7 @@ const Stopwatch: React.FC = () => {
         {!isPreparing && duration > 0 && (
           <>
             <button
-              onClick={resetTimer}
+              onClick={handleResetConfirm}
               className="p-4 text-white bg-red-500 rounded-full transition-colors cursor-pointer hover:bg-red-600"
               aria-label="Cancel Session"
             >
@@ -249,7 +283,7 @@ const Stopwatch: React.FC = () => {
             </button>
             {!isBreak ? (
               <button
-                onClick={() => saveSession(false)}
+                onClick={handleSaveConfirm}
                 disabled={isSaving || remainingTime === duration}
                 className="p-4 text-green-400 rounded-full transition-colors cursor-pointer bg-green-600/20 hover:bg-green-500/30 disabled:opacity-50"
                 aria-label="Finish & Save Early"

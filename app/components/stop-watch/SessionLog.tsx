@@ -36,7 +36,6 @@ export default function SessionLog() {
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const currentUser = useGoalStore(state => state.currentUser);
   const activeGoal = useGoalStore(state =>
     state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
@@ -95,6 +94,12 @@ export default function SessionLog() {
     return !isSameMonth(currentMonth, endOfMonth(goalEndDate));
   }, [currentMonth, goalEndDate]);
 
+  const isTodayButtonClickable = useMemo(() => {
+    if (!goalStartDate || !goalEndDate) return false;
+    const today = new Date();
+    return isWithinInterval(today, { start: goalStartDate, end: goalEndDate });
+  }, [goalStartDate, goalEndDate]);
+
   const handleMonthChange = useCallback(
     (direction: 'prev' | 'next') => {
       const newMonth =
@@ -106,19 +111,11 @@ export default function SessionLog() {
 
   const handleGoToToday = useCallback(() => {
     const today = new Date();
-    if (!goalStartDate || !goalEndDate) {
+    if (isTodayButtonClickable) {
       setCurrentMonth(startOfMonth(today));
       setSelectedDay(today);
-      return;
     }
-
-    if (isWithinInterval(today, { start: goalStartDate, end: goalEndDate })) {
-      setCurrentMonth(startOfMonth(today));
-      setSelectedDay(today);
-    } else {
-      setCurrentMonth(startOfMonth(today));
-    }
-  }, [goalStartDate, goalEndDate]);
+  }, [isTodayButtonClickable]);
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return '0s';
@@ -214,42 +211,40 @@ export default function SessionLog() {
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-sm">
-        <div className="p-6 border-b border-white/10">
-          <div className="flex justify-between items-center">
-            <h4 className="text-xl font-bold">{format(currentMonth, 'MMMM')}</h4>
-            <div className="flex gap-4 items-center">
+        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-white/10">
+          <h3 className="text-xl font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={handleGoToToday}
+              disabled={!isTodayButtonClickable}
+              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              aria-label="Go to today"
+            >
+              Today
+            </button>
+            <div className="flex gap-1">
               <button
-                onClick={handleGoToToday}
-                className="px-3 py-1 text-sm text-white rounded-md border transition-colors bg-white/10 border-white/20 hover:bg-white/20 cursor-pointer"
-                aria-label="Go to today"
+                onClick={() => handleMonthChange('prev')}
+                disabled={!canGoPrevMonth}
+                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                aria-label="Previous month"
               >
-                Today
+                <FiChevronLeft className="w-5 h-5" />
               </button>
-              <div className="w-px h-5 bg-white/20"></div>
-              <div className="flex gap-1 items-center">
-                <button
-                  onClick={() => handleMonthChange('prev')}
-                  disabled={!canGoPrevMonth}
-                  className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-                  aria-label="Previous month"
-                >
-                  <FiChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleMonthChange('next')}
-                  disabled={!canGoNextMonth}
-                  className="p-2 rounded-full transition-colors bg-white/5 hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-                  aria-label="Next month"
-                >
-                  <FiChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+              <button
+                onClick={() => handleMonthChange('next')}
+                disabled={!canGoNextMonth}
+                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                aria-label="Next month"
+              >
+                <FiChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
 
         <div className="p-6 border-b border-white/10">
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             {daysInView.length > 0 ? (
               daysInView.map(day => {
                 const dateKey = format(day, 'yyyy-MM-dd');
@@ -261,17 +256,18 @@ export default function SessionLog() {
                   <button
                     key={dateKey}
                     onClick={() => setSelectedDay(day)}
-                    className={`relative flex flex-col items-center justify-center w-16 h-16 rounded-lg font-semibold transition-all hover:ring-2 hover:ring-white/50
-                      ${isSelected ? 'text-white bg-blue-500' : 'bg-white/5'}
-                      ${isCurrentDay && !isSelected ? 'border-2 border-blue-400/50' : 'border border-white/20'}
-                     cursor-pointer`}
+                    className={`relative flex flex-col items-center justify-start pt-2 w-16 h-16 rounded-lg transition-all duration-200 group
+                      ${isSelected ? 'text-white bg-blue-500 shadow-lg' : 'text-white bg-white/5 hover:bg-white/10'}
+                      ${isCurrentDay && !isSelected ? 'ring-2 ring-blue-400/60' : 'border border-white/10'}
+                      cursor-pointer`}
                     aria-label={`Select day ${format(day, 'd MMMM')}`}
                   >
-                    <span className="text-xs text-white/50">{format(day, 'E')}</span>
-                    <span className="text-xl">{format(day, 'd')}</span>
-                    {hasLog && !isSelected && (
-                      <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full"></div>
-                    )}
+                    <span className="text-xs font-semibold text-white/60">{format(day, 'E')}</span>
+                    <span
+                      className={`mt-1 text-2xl font-bold transition-colors duration-200 ${hasLog && !isSelected ? 'text-cyan-400' : ''}`}
+                    >
+                      {format(day, 'd')}
+                    </span>
                   </button>
                 );
               })
@@ -309,13 +305,13 @@ export default function SessionLog() {
                             onKeyPress={e => e.key === 'Enter' && handleSaveUpdate(session)}
                             autoFocus
                             disabled={isCurrentlySaving}
-                            className="flex-1 py-1 text-base text-white bg-transparent border-b-2 outline-none border-white/20 focus:border-blue-400 disabled:opacity-50 cursor-pointer"
+                            className="flex-1 py-1 text-base text-white bg-transparent border-b-2 cursor-pointer outline-none border-white/20 focus:border-blue-400 disabled:opacity-50"
                             aria-label="Edit session label"
                           />
                           <button
                             onClick={() => handleSaveUpdate(session)}
                             disabled={isCurrentlySaving || !editText.trim()}
-                            className="p-2 text-green-400 rounded-full transition-colors hover:bg-green-500/10 disabled:opacity-50 cursor-pointer"
+                            className="p-2 text-green-400 rounded-full transition-colors cursor-pointer hover:bg-green-500/10 disabled:opacity-50"
                             aria-label="Save changes"
                           >
                             {isCurrentlySaving ? (
@@ -341,7 +337,7 @@ export default function SessionLog() {
                         {!isEditing && (
                           <button
                             onClick={() => handleStartEditing(session)}
-                            className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+                            className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
                             aria-label="Edit session"
                           >
                             <FiEdit />
@@ -350,7 +346,7 @@ export default function SessionLog() {
                         <button
                           onClick={() => handleDeleteSession(session.id)}
                           disabled={isCurrentlySaving}
-                          className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                          className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
                           aria-label="Delete session"
                         >
                           <FiTrash2 />
@@ -373,13 +369,13 @@ export default function SessionLog() {
             {goalStartDate && (
               <div className="flex gap-2 items-center" title="Goal Start Date">
                 <FiPlayCircle className="text-green-400" />
-                <span>Start: {format(goalStartDate, 'd MMM,yyyy')}</span>
+                <span>Start: {format(goalStartDate, 'd MMM, yyyy')}</span>
               </div>
             )}
             {goalEndDate && (
               <div className="flex gap-2 items-center" title="Goal End Date">
                 <FiFlag className="text-red-400" />
-                <span>End: {format(goalEndDate, 'd MMM,yyyy')}</span>
+                <span>End: {format(goalEndDate, 'd MMM, yyyy')}</span>
               </div>
             )}
           </div>
