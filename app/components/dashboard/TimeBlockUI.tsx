@@ -4,10 +4,10 @@
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { TimeBlock } from '@/types';
-import { format, getHours, getMinutes, parse } from 'date-fns';
+import { format, getHours, getMinutes, isAfter, parse } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
-import { FiCheck, FiClock, FiEdit, FiLoader, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiCheck, FiClock, FiEdit, FiLoader, FiMoon, FiPlus, FiTrash2 } from 'react-icons/fi';
 import TimeBlockModal from './TimeBlockModal'; // Import the modal
 
 // Helper function to determine if a color is dark or light
@@ -44,6 +44,37 @@ const TimeBlockUI = () => {
       return timeA.getTime() - timeB.getTime();
     });
   }, [activeGoal?.timeBlocks]);
+
+  const sleepScheduleBlock = useMemo(() => {
+    if (!activeGoal?.routineSettings?.sleep) return null;
+    const { sleepTime, wakeTime } = activeGoal.routineSettings.sleep;
+    const sleepDate = parse(sleepTime, 'HH:mm', new Date());
+    const wakeDate = parse(wakeTime, 'HH:mm', new Date());
+
+    // Handle overnight sleep
+    if (isAfter(sleepDate, wakeDate)) {
+      return {
+        // From last night
+        part1: {
+          startTime: '00:00',
+          endTime: wakeTime,
+        },
+        // For tonight
+        part2: {
+          startTime: sleepTime,
+          endTime: '23:59',
+        },
+      };
+    }
+    // Same-day sleep (e.g., afternoon nap as main sleep)
+    return {
+      part1: {
+        startTime: sleepTime,
+        endTime: wakeTime,
+      },
+      part2: null,
+    };
+  }, [activeGoal?.routineSettings?.sleep]);
 
   const handleOpenModal = (block: TimeBlock | null) => {
     setBlockToEdit(block);
@@ -98,11 +129,13 @@ const TimeBlockUI = () => {
     }
   };
 
-  const calculateBlockPosition = (block: TimeBlock) => {
-    const start = parse(block.startTime, 'HH:mm', new Date());
-    const end = parse(block.endTime, 'HH:mm', new Date());
+  const calculatePosition = (startTime: string, endTime: string) => {
+    const start = parse(startTime, 'HH:mm', new Date());
+    const end = parse(endTime, 'HH:mm', new Date());
     const startMinutes = getHours(start) * 60 + getMinutes(start);
-    const endMinutes = getHours(end) * 60 + getMinutes(end);
+    let endMinutes = getHours(end) * 60 + getMinutes(end);
+    if (endMinutes === 0) endMinutes = 24 * 60; // Handle midnight case
+
     const duration = endMinutes - startMinutes;
 
     const top = (startMinutes / (24 * 60)) * 100;
@@ -160,6 +193,37 @@ const TimeBlockUI = () => {
             >
               <div className="absolute -left-2 -top-1.5 w-3 h-3 bg-red-500 rounded-full"></div>
             </div>
+            {/* Sleep Schedule Block */}
+            {sleepScheduleBlock?.part1 && (
+              <div
+                className="absolute left-0 p-2 w-full rounded-lg border-2 bg-indigo-900/50 border-indigo-500/50"
+                style={{
+                  ...calculatePosition(
+                    sleepScheduleBlock.part1.startTime,
+                    sleepScheduleBlock.part1.endTime
+                  ),
+                }}
+              >
+                <div className="flex justify-center items-center h-full text-indigo-300">
+                  <FiMoon size={16} />
+                </div>
+              </div>
+            )}
+            {sleepScheduleBlock?.part2 && (
+              <div
+                className="absolute left-0 p-2 w-full rounded-lg border-2 bg-indigo-900/50 border-indigo-500/50"
+                style={{
+                  ...calculatePosition(
+                    sleepScheduleBlock.part2.startTime,
+                    sleepScheduleBlock.part2.endTime
+                  ),
+                }}
+              >
+                <div className="flex justify-center items-center h-full text-indigo-300">
+                  <FiMoon size={16} />
+                </div>
+              </div>
+            )}
             {/* Scheduled Blocks */}
             {timeBlocks.map(block => {
               const isCompleted = block.completed;
@@ -177,7 +241,7 @@ const TimeBlockUI = () => {
                   key={block.id}
                   className={`absolute left-0 p-2 w-full rounded-lg border-2 transition-all duration-300 group ${blockBorderStyle}`}
                   style={{
-                    ...calculateBlockPosition(block),
+                    ...calculatePosition(block.startTime, block.endTime),
                     backgroundColor: blockBgColor,
                   }}
                 >
