@@ -9,9 +9,11 @@ import React, { useState } from 'react';
 import {
   FiAlertTriangle,
   FiEdit,
+  FiFile,
   FiFileText,
   FiImage,
   FiLink,
+  FiMusic,
   FiTrash2,
   FiVideo,
 } from 'react-icons/fi';
@@ -51,9 +53,13 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
         ? FiVideo
         : resource.type === ResourceType.ARTICLE
           ? FiFileText
-          : resource.type === ResourceType.OTHER
-            ? FiLink
-            : FiAlertTriangle;
+          : resource.type === ResourceType.AUDIO
+            ? FiMusic
+            : resource.type === ResourceType.DOC
+              ? FiFile
+              : resource.type === ResourceType.OTHER
+                ? FiLink
+                : FiAlertTriangle;
 
   return (
     <>

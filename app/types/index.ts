@@ -60,6 +60,8 @@ export enum ResourceType {
   IMAGE = 'image',
   VIDEO = 'video',
   ARTICLE = 'article',
+  AUDIO = 'audio',
+  DOC = 'doc',
   OTHER = 'other',
 }
 
@@ -133,7 +135,7 @@ export interface StopwatchSession extends BaseEntity {
 }
 
 export interface DailyProgress {
-  date: string; // YYYY-MM-DD format
+  date: string; // yyyy-MM-DD format
   satisfaction: SatisfactionLevel;
   notes: string;
   sessions: StopwatchSession[];

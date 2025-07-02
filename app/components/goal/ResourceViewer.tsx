@@ -8,9 +8,11 @@ import {
   FiAlertTriangle,
   FiArrowRight,
   FiExternalLink,
+  FiFile,
   FiFileText,
   FiImage,
   FiLink,
+  FiMusic,
   FiVideo,
   FiX,
 } from 'react-icons/fi';
@@ -48,6 +50,8 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
     [ResourceType.IMAGE]: { icon: FiImage, label: 'Image' },
     [ResourceType.VIDEO]: { icon: FiVideo, label: 'Video' },
     [ResourceType.ARTICLE]: { icon: FiFileText, label: 'Article' },
+    [ResourceType.AUDIO]: { icon: FiMusic, label: 'Audio' },
+    [ResourceType.DOC]: { icon: FiFile, label: 'Document' },
     [ResourceType.OTHER]: { icon: FiLink, label: 'Link' },
   };
 
@@ -119,6 +123,8 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
           </div>
         );
       case ResourceType.ARTICLE:
+      case ResourceType.AUDIO:
+      case ResourceType.DOC:
       case ResourceType.OTHER:
         return (
           <div className="flex flex-col justify-between p-8 h-full">

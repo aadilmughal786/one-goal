@@ -2,7 +2,17 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { FiFileText, FiGrid, FiImage, FiLink, FiPlus, FiSearch, FiVideo } from 'react-icons/fi';
+import {
+  FiFile,
+  FiFileText,
+  FiGrid,
+  FiImage,
+  FiLink,
+  FiMusic,
+  FiPlus,
+  FiSearch,
+  FiVideo,
+} from 'react-icons/fi';
 
 import FilterDropdown, { FilterOption } from '@/components/common/FilterDropdown';
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
@@ -17,6 +27,8 @@ const resourceFilterOptions: FilterOption[] = [
   { value: ResourceType.IMAGE, label: 'Images', icon: FiImage },
   { value: ResourceType.VIDEO, label: 'Videos', icon: FiVideo },
   { value: ResourceType.ARTICLE, label: 'Articles', icon: FiFileText },
+  { value: ResourceType.AUDIO, label: 'Audio', icon: FiMusic },
+  { value: ResourceType.DOC, label: 'Documents', icon: FiFile },
   { value: ResourceType.OTHER, label: 'Other', icon: FiLink },
 ];
 

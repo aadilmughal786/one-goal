@@ -11,10 +11,12 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import {
   FiCheck,
   FiChevronDown,
+  FiFile,
   FiFileText,
   FiImage,
   FiLink,
   FiLoader,
+  FiMusic,
   FiVideo,
   FiX,
 } from 'react-icons/fi';
@@ -32,6 +34,8 @@ const typeOptions = [
   { value: ResourceType.ARTICLE, label: 'Article', icon: FiFileText },
   { value: ResourceType.IMAGE, label: 'Image', icon: FiImage },
   { value: ResourceType.VIDEO, label: 'Video', icon: FiVideo },
+  { value: ResourceType.AUDIO, label: 'Audio', icon: FiMusic },
+  { value: ResourceType.DOC, label: 'Document', icon: FiFile },
   { value: ResourceType.OTHER, label: 'Other', icon: FiLink },
 ];
 
