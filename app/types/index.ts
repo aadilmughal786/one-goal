@@ -119,7 +119,6 @@ export interface TimeBlock extends BaseEntity, Completable {
 export interface Resource extends BaseEntity {
   url: string;
   title: string;
-  description: string | null;
   type: ResourceType;
 }
 

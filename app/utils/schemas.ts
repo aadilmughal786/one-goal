@@ -63,7 +63,6 @@ export const timeBlockSchema = baseEntitySchema.merge(completableSchema).extend(
 export const resourceSchema = baseEntitySchema.extend({
   url: z.string().url('Must be a valid URL'),
   title: z.string().min(1, 'Title cannot be empty'),
-  description: z.string().nullable(),
   type: z.nativeEnum(ResourceType),
 });
 
@@ -184,7 +183,6 @@ export const serializableGoalsArraySchema = z.array(serializableGoalSchema);
 export const resourceFormSchema = z.object({
   url: z.string().url({ message: 'Please enter a valid URL.' }),
   title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title is too long.'),
-  description: z.string().max(280, 'Description is too long.').nullable(),
   type: z.nativeEnum(ResourceType, { required_error: 'Please select a resource type.' }),
 });
 

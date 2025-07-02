@@ -39,10 +39,7 @@ const ResourcesTab: React.FC = () => {
       .filter(resource => {
         if (!searchQuery) return true;
         const lowerCaseQuery = searchQuery.toLowerCase();
-        return (
-          resource.title.toLowerCase().includes(lowerCaseQuery) ||
-          resource.description?.toLowerCase().includes(lowerCaseQuery)
-        );
+        return resource.title.toLowerCase().includes(lowerCaseQuery);
       });
   }, [resources, searchQuery, filterType]);
 

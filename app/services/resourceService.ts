@@ -26,7 +26,6 @@ export const addResource = async (
   goalId: string,
   url: string,
   title: string,
-  description: string | null,
   type: ResourceType
 ): Promise<Resource> => {
   const userDocRef = doc(db, 'users', userId);
@@ -45,7 +44,6 @@ export const addResource = async (
       id: generateUUID(),
       url,
       title,
-      description,
       type,
       createdAt: now,
       updatedAt: now,

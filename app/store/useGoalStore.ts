@@ -75,12 +75,7 @@ interface GoalStore {
   updateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => Promise<void>;
   deleteTimeBlock: (blockId: string) => Promise<void>;
   // NEW: Actions for resources
-  addResource: (
-    url: string,
-    title: string,
-    description: string | null,
-    type: ResourceType
-  ) => Promise<void>;
+  addResource: (url: string, title: string, type: ResourceType) => Promise<void>;
   updateResource: (resourceId: string, updates: Partial<Resource>) => Promise<void>;
   deleteResource: (resourceId: string) => Promise<void>;
 }
@@ -938,7 +933,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   },
 
   // NEW: Resource Actions
-  addResource: async (url, title, description, type) => {
+  addResource: async (url, title, type) => {
     const { currentUser, appState } = get();
     const activeGoalId = appState?.activeGoalId;
     if (!currentUser || !activeGoalId) return;
@@ -949,7 +944,6 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         activeGoalId,
         url,
         title,
-        description,
         type
       );
       set(state => {

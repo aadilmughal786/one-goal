@@ -62,9 +62,6 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
               </span>
             </div>
             <p className="font-semibold text-white">{resource.title}</p>
-            {resource.description && (
-              <p className="mt-1 text-sm text-white/70">{resource.description}</p>
-            )}
             <p className="mt-3 text-xs text-white/50">{getDomain(resource.url)}</p>
           </a>
         )}
