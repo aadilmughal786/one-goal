@@ -4,6 +4,7 @@
 import CommandBar from '@/components/common/CommandBar';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import ReminderModal from '@/components/common/ReminderModal';
+import SleepOverlay from '@/components/common/SleepOverlay'; // Import the new component
 import ToastMessage from '@/components/common/ToastMessage';
 import NavBar from '@/components/layout/NavBar';
 import FloatingStopwatch from '@/components/stop-watch/FloatingStopwatch';
@@ -22,11 +23,6 @@ import {
 import { GoStopwatch } from 'react-icons/go';
 import { MdOutlineRepeat } from 'react-icons/md';
 
-/**
- * RootLayout for the main application pages (dashboard, todo, etc.).
- * It establishes the main visual structure and now renders the global,
- * store-driven components for notifications and confirmations.
- */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,7 +31,6 @@ export default function RootLayout({
   const router = useRouter();
 
   const actions: Action[] = [
-    // Navigation
     {
       id: 'home',
       name: 'Home',
@@ -99,8 +94,6 @@ export default function RootLayout({
       perform: () => router.push('/tools'),
       icon: <FiCpu />,
     },
-
-    // External Links
     {
       id: 'github',
       name: 'GitHub',
@@ -125,13 +118,12 @@ export default function RootLayout({
       <div className="flex flex-row text-white bg-black">
         <NavBar />
         <main className="flex-grow pl-16">{children}</main>
-
-        {/* These components are now rendered globally and manage their own state
-          by subscribing to their respective Zustand stores. */}
+        {/* Global components that manage their own state */}
         <FloatingStopwatch />
         <ToastMessage />
         <ConfirmationModal />
         <ReminderModal />
+        <SleepOverlay /> {/* Add the new sleep overlay here */}
       </div>
     </KBarProvider>
   );
