@@ -47,16 +47,19 @@ const TodoPageContent = () => {
   const updateDistraction = useGoalStore(state => state.updateDistraction);
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
-  const [activeTab, setActiveTabInternal] = useState(() => {
-    const tabFromUrl = searchParams.get('tab');
-    return tabItems.find(item => item.id === tabFromUrl)?.id || 'todo';
-  });
+  const [activeTab, setActiveTabInternal] = useState<string>(tabItems[0].id);
   const [isTodoEditModalOpen, setIsTodoEditModalOpen] = useState(false);
   const [selectedTodoForEdit, setSelectedTodoForEdit] = useState<TodoItem | null>(null);
 
   const [isDistractionEditModalOpen, setIsDistractionEditModalOpen] = useState(false);
   const [selectedDistractionForEdit, setSelectedDistractionForEdit] =
     useState<DistractionItem | null>(null);
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+    setActiveTabInternal(targetTab);
+  }, [searchParams]);
 
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
 

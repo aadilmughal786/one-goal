@@ -5,20 +5,19 @@ import { format } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FiBarChart2, FiClock, FiFeather, FiGrid } from 'react-icons/fi'; // Import FiClock
+import { FiBarChart2, FiClock, FiFeather, FiGrid } from 'react-icons/fi';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { DailyProgress } from '@/types';
 
-// REFACTOR: Import components
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import DailyProgressModal from '@/components/dashboard/DailyProgressModal';
 import DashboardAnalytics from '@/components/dashboard/DashboardAnalytics';
 import DashboardMain from '@/components/dashboard/DashboardMain';
 import DashboardQuotes from '@/components/dashboard/DashboardQuotes';
-import TimeBlockUI from '@/components/dashboard/TimeBlockUI'; // Import the new component
+import TimeBlockUI from '@/components/dashboard/TimeBlockUI';
 
 interface TabItem {
   id: string;
@@ -30,7 +29,7 @@ interface TabItem {
 
 const tabItems: TabItem[] = [
   { id: 'main', label: 'Dashboard', icon: FiGrid, component: DashboardMain },
-  { id: 'timeblocks', label: 'Time Blocks', icon: FiClock, component: TimeBlockUI }, // Add the new tab
+  { id: 'timeblocks', label: 'Time Blocks', icon: FiClock, component: TimeBlockUI },
   { id: 'analytics', label: 'Analytics', icon: FiBarChart2, component: DashboardAnalytics },
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
 ];
@@ -44,24 +43,22 @@ const PageSkeletonLoader = () => (
 const ConsolidatedDashboardPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const { isLoading } = useAuth();
 
-  // FIX: Select each piece of state individually to prevent infinite loops,
-  // matching the pattern used in other components like TeethCare.tsx.
   const appState = useGoalStore(state => state.appState);
   const saveDailyProgressAction = useGoalStore(state => state.saveDailyProgress);
-
   const showToast = useNotificationStore(state => state.showToast);
 
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
+  const [activeTab, setActiveTabInternal] = useState<string>(tabItems[0].id);
 
-  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+  useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    return tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
-  });
+    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+    setActiveTabInternal(targetTab);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -124,7 +121,6 @@ const ConsolidatedDashboardPageContent = () => {
     const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component;
 
     if (ActiveComponent) {
-      // FIX: Pass only the necessary props to DashboardMain, other components are self-sufficient.
       if (activeTab === 'main') {
         return <DashboardMain handleDayClick={handleDayClick} />;
       }

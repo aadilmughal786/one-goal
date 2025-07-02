@@ -27,16 +27,17 @@ const tabItems: TabItem[] = [
 const StopwatchPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const { isLoading } = useAuth();
-  // FIX: Read appState directly here to determine if an active goal exists.
   const appState = useGoalStore(state => state.appState);
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
-  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+  const [activeTab, setActiveTabInternal] = useState<string>(tabItems[0].id);
+
+  useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    return tabItems.find(item => item.id === tabFromUrl)?.id || 'stopwatch';
-  });
+    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+    setActiveTabInternal(targetTab);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -73,7 +74,6 @@ const StopwatchPageContent = () => {
       case 'stopwatch':
         return <Stopwatch />;
       case 'log':
-        // FIX: SessionLog is now self-sufficient and doesn't need props.
         return <SessionLog />;
       default:
         return null;

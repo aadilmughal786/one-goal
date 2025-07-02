@@ -2,7 +2,7 @@
 'use client';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
-import PageContentSkeleton from '@/components/common/PageContentSkeleton'; // NEW: Import the common skeleton
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import BathSchedule from '@/components/routine/BathSchedule';
 import ExerciseTracker from '@/components/routine/ExerciseTracker';
 import MealSchedule from '@/components/routine/MealSchedule';
@@ -38,9 +38,6 @@ const routineTabItems: {
   { id: 'bath', label: 'Bath', icon: MdOutlineShower, component: BathSchedule },
 ];
 
-// REFACTOR: This local component is no longer needed.
-// const PageMainContentSkeletonLoader = () => ( ... );
-
 const PageSkeletonLoader = () => (
   <div className="flex justify-center items-center h-screen text-white/70">
     <div className="animate-pulse">Loading Routines...</div>
@@ -50,15 +47,18 @@ const PageSkeletonLoader = () => (
 const RoutinePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const { isLoading } = useAuth();
   const appState = useGoalStore(state => state.appState);
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
-  const [activeTab, setActiveTabInternal] = useState<string>(() => {
+  const [activeTab, setActiveTabInternal] = useState<string>(routineTabItems[0].id);
+
+  useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    return routineTabItems.find(item => item.id === tabFromUrl)?.id || routineTabItems[0].id;
-  });
+    const targetTab =
+      routineTabItems.find(item => item.id === tabFromUrl)?.id || routineTabItems[0].id;
+    setActiveTabInternal(targetTab);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -66,7 +66,6 @@ const RoutinePageContent = () => {
       const timer = setTimeout(() => {
         setIsTabContentLoading(false);
       }, 300);
-
       return () => clearTimeout(timer);
     }
   }, [activeTab, isLoading]);
@@ -88,7 +87,6 @@ const RoutinePageContent = () => {
 
   const renderActiveTabContent = () => {
     if (isLoading || isTabContentLoading) {
-      // REFACTOR: Use the common skeleton component.
       return <PageContentSkeleton />;
     }
 
@@ -110,7 +108,6 @@ const RoutinePageContent = () => {
         <div className="flex space-x-1 sm:space-x-2">
           {isLoading
             ? [...Array(routineTabItems.length)].map((_, i) => (
-                // FIX: Changed padding from py-4 to py-3 to match the real tabs
                 <div key={i} className="px-3 py-3 animate-pulse">
                   <div className="w-20 h-6 rounded-md bg-white/10"></div>
                 </div>

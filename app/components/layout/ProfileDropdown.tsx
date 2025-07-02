@@ -20,12 +20,6 @@ interface ProfileDropdownProps {
   onClose: () => void;
 }
 
-/**
- * ProfileDropdown Component
- *
- * This component displays a dropdown menu for the authenticated user's profile.
- * It shows user information and navigation links.
- */
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   const router = useRouter();
   const showToast = useNotificationStore(state => state.showToast);
@@ -33,7 +27,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
-    // This check ensures that the navigator object is only accessed on the client-side.
     if (typeof window !== 'undefined') {
       setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
     }
@@ -56,8 +49,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   };
 
   const menuItems = [
-    { href: '/profile', label: 'Settings', icon: <FiSettings /> },
-    { href: '/tools', label: 'Tools', icon: <FiCpu /> },
+    { href: '/profile?tab=profile', label: 'Settings', icon: <FiSettings /> },
+    { href: '/tools?tab=calculator', label: 'Tools', icon: <FiCpu /> },
     { href: '/', label: 'About App', icon: <LuBadgeInfo /> },
   ];
 

@@ -1,6 +1,7 @@
 // app/components/layout/NavBar.tsx
 'use client';
 
+import { onAuthChange } from '@/services/authService';
 import { User } from 'firebase/auth';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,25 +12,14 @@ import { GoStopwatch } from 'react-icons/go';
 import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md';
 import ProfileDropdown from './ProfileDropdown';
 
-// REFLECTING THE REFACTOR:
-// We now import the specific onAuthChange function from our new, focused authService.
-import { onAuthChange } from '@/services/authService';
-
 const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
-  { href: '/todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
-  { href: '/stop-watch', label: 'Stopwatch', icon: <GoStopwatch /> },
-  { href: '/routine', label: 'Routine', icon: <MdOutlineRepeat /> },
-  { href: '/goal', label: 'Goals', icon: <FiTarget /> },
+  { href: '/dashboard?tab=main', label: 'Dashboard', icon: <FiHome /> },
+  { href: '/todo?tab=todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
+  { href: '/stop-watch?tab=stopwatch', label: 'Stopwatch', icon: <GoStopwatch /> },
+  { href: '/routine?tab=sleep', label: 'Routine', icon: <MdOutlineRepeat /> },
+  { href: '/goal', label: 'Goals', icon: <FiTarget /> }, // No tabs on this page
 ];
 
-/**
- * NavBar Component
- *
- * Renders the main fixed-position navigation sidebar. It now uses the dedicated
- * `authService` to listen for authentication state changes to display the
- * appropriate user information or loading state.
- */
 export default function NavBar() {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -50,7 +40,6 @@ export default function NavBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Effect now uses the specific onAuthChange function from authService.
   useEffect(() => {
     const unsubscribe = onAuthChange(user => {
       setCurrentUser(user);
@@ -64,8 +53,13 @@ export default function NavBar() {
       'flex items-center justify-center w-full h-12 rounded-lg transition-colors duration-200 cursor-pointer';
     const activeClasses = 'bg-white text-black';
     const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
-    const currentMainPath = pathname.split('?')[0];
-    return currentMainPath === navPath
+
+    // Get the base path of the link (e.g., '/dashboard' from '/dashboard?tab=main')
+    const [basePath] = navPath.split('?');
+
+    // Check if the current page's pathname matches the link's base path.
+    // This ensures the icon stays active regardless of the current tab.
+    return pathname === basePath
       ? `${baseClasses} ${activeClasses}`
       : `${baseClasses} ${inactiveClasses}`;
   };

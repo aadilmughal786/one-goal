@@ -31,14 +31,21 @@ const ProfilePageContent = () => {
   const importGoals = useGoalStore(state => state.importGoals);
   const showToast = useNotificationStore(state => state.showToast);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    return searchParams.get('tab') || 'profile';
-  });
-
+  const [activeTab, setActiveTab] = useState('profile');
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
+
+  useEffect(() => {
+    const validTabs = ['profile', 'data', 'wellness'];
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && validTabs.includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    } else {
+      setActiveTab('profile');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -76,10 +83,6 @@ const ProfilePageContent = () => {
       showToast('Failed to update avatar. Please try again.', 'error');
     }
   };
-
-  if (!isLoading && !currentUser) {
-    return null;
-  }
 
   const renderActiveTabContent = () => {
     if (isLoading || isTabContentLoading) {

@@ -28,16 +28,17 @@ const tabItems: {
 const ToolsPageContent: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoading } = useAuth(); // Get the global loading state
+  const { isLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const tabFromUrl = searchParams.get('tab');
-    return tabItems.find(item => item.id === tabFromUrl)?.id || 'calculator';
-  });
-
+  const [activeTab, setActiveTab] = useState<string>(tabItems[0].id);
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
 
-  // Effect to show skeleton on tab switch
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+    setActiveTab(targetTab);
+  }, [searchParams]);
+
   useEffect(() => {
     if (!isLoading) {
       setIsTabContentLoading(true);
@@ -64,7 +65,6 @@ const ToolsPageContent: React.FC = () => {
   );
 
   const renderActiveTabContent = () => {
-    // Show skeleton if either the main auth is loading or if we are switching tabs
     if (isLoading || isTabContentLoading) {
       return <PageContentSkeleton />;
     }
@@ -76,14 +76,12 @@ const ToolsPageContent: React.FC = () => {
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex flex-wrap justify-center space-x-1 sm:space-x-2">
           {isLoading
-            ? // Skeleton loader for the tabs
-              [...Array(tabItems.length)].map((_, i) => (
+            ? [...Array(tabItems.length)].map((_, i) => (
                 <div key={i} className="px-3 py-3 animate-pulse sm:px-4">
                   <div className="w-24 h-6 rounded-md bg-white/10"></div>
                 </div>
               ))
-            : // Actual tab buttons
-              tabItems.map(item => {
+            : tabItems.map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
