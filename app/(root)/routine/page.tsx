@@ -38,12 +38,6 @@ const routineTabItems: {
   { id: 'bath', label: 'Bath', icon: MdOutlineShower, component: BathSchedule },
 ];
 
-const PageSkeletonLoader = () => (
-  <div className="flex justify-center items-center h-screen text-white/70">
-    <div className="animate-pulse">Loading Routines...</div>
-  </div>
-);
-
 const RoutinePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -139,7 +133,7 @@ const RoutinePageContent = () => {
 
 export default function RoutinePage() {
   return (
-    <Suspense fallback={<PageSkeletonLoader />}>
+    <Suspense fallback={<PageContentSkeleton />}>
       <RoutinePageContent />
     </Suspense>
   );

@@ -180,13 +180,7 @@ const TodoPageContent = () => {
 
 export default function TodoPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center items-center h-screen text-white/70">
-          <div className="animate-pulse">Loading Tasks...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PageContentSkeleton />}>
       <TodoPageContent />
     </Suspense>
   );

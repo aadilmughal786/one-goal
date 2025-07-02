@@ -11,24 +11,11 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal, GoalStatus } from '@/types';
 
 import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import CreateGoalCard from '@/components/goal/CreateGoalCard';
 import GoalList from '@/components/goal/GoalList';
 import GoalModal from '@/components/goal/GoalModal';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
-
-const GoalPageSkeletonLoader = () => (
-  <div className="space-y-8 animate-pulse">
-    <div className="p-8 bg-white/[0.02] border border-white/10 rounded-2xl shadow-lg">
-      <div className="mb-2 w-1/3 h-8 rounded-lg bg-white/10"></div>
-      <div className="mb-6 w-full h-4 rounded-lg bg-white/10"></div>
-      <div className="space-y-3">
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-        <div className="w-full h-12 rounded-lg bg-white/5"></div>
-      </div>
-    </div>
-  </div>
-);
 
 const GoalPageContent = () => {
   const { isLoading } = useAuth();
@@ -116,8 +103,8 @@ const GoalPageContent = () => {
 
   if (isLoading) {
     return (
-      <main className="px-6 py-8 mx-auto max-w-4xl sm:px-8 lg:px-12">
-        <GoalPageSkeletonLoader />
+      <main className="px-6 py-8 mx-auto max-w-4xl h-screen sm:px-8 lg:px-12">
+        <PageContentSkeleton />
       </main>
     );
   }
@@ -203,7 +190,7 @@ const GoalPageContent = () => {
 
 export default function GoalPage() {
   return (
-    <Suspense fallback={<GoalPageSkeletonLoader />}>
+    <Suspense fallback={<PageContentSkeleton />}>
       <GoalPageContent />
     </Suspense>
   );

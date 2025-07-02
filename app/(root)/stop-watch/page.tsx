@@ -118,13 +118,7 @@ const StopwatchPageContent = () => {
 
 export default function StopwatchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center items-center h-screen text-white/70">
-          <div className="animate-pulse">Loading Focus Timers...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PageContentSkeleton />}>
       <StopwatchPageContent />
     </Suspense>
   );

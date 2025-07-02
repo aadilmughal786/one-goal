@@ -16,12 +16,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { FiDatabase, FiHeart, FiUser } from 'react-icons/fi';
 
-const PageSkeletonLoader = () => (
-  <div className="flex justify-center items-center h-screen text-white/70">
-    <div className="animate-pulse">Loading Profile...</div>
-  </div>
-);
-
 const ProfilePageContent = () => {
   const { isLoading } = useAuth();
   const router = useRouter();
@@ -178,7 +172,7 @@ const ProfilePageContent = () => {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<PageSkeletonLoader />}>
+    <Suspense fallback={<PageContentSkeleton />}>
       <ProfilePageContent />
     </Suspense>
   );

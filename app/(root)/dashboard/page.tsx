@@ -34,12 +34,6 @@ const tabItems: TabItem[] = [
   { id: 'quotes', label: 'Quotes', icon: FiFeather, component: DashboardQuotes },
 ];
 
-const PageSkeletonLoader = () => (
-  <div className="flex justify-center items-center h-screen text-white/70">
-    <div className="animate-pulse">Loading Dashboard...</div>
-  </div>
-);
-
 const ConsolidatedDashboardPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -175,7 +169,7 @@ const ConsolidatedDashboardPageContent = () => {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<PageSkeletonLoader />}>
+    <Suspense fallback={<PageContentSkeleton />}>
       <ConsolidatedDashboardPageContent />
     </Suspense>
   );
