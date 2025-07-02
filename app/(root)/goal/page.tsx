@@ -1,196 +1,102 @@
 // app/(root)/goal/page.tsx
 'use client';
 
-import { Timestamp } from 'firebase/firestore';
-import { Suspense, useCallback, useMemo, useState } from 'react';
-import { FiSearch } from 'react-icons/fi';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { FiGrid, FiPaperclip } from 'react-icons/fi';
 
-import { useAuth } from '@/hooks/useAuth';
-import { useGoalStore } from '@/store/useGoalStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
-import { Goal, GoalStatus } from '@/types';
-
-import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
-import CreateGoalCard from '@/components/goal/CreateGoalCard';
-import GoalList from '@/components/goal/GoalList';
-import GoalModal from '@/components/goal/GoalModal';
-import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
+import GoalHub from '@/components/goal/GoalHub';
+import ResourcesTab from '@/components/goal/ResourcesTab';
+import { useAuth } from '@/hooks/useAuth';
+
+const tabItems = [
+  { id: 'hub', label: 'Goal Hub', icon: FiGrid, component: GoalHub },
+  { id: 'resources', label: 'Resources', icon: FiPaperclip, component: ResourcesTab },
+];
+
+const PageSkeletonLoader = () => (
+  <div className="flex justify-center items-center h-screen text-white/70">
+    <div className="animate-pulse">Loading Goal Hub...</div>
+  </div>
+);
 
 const GoalPageContent = () => {
   const { isLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // FIX: Select each action individually to prevent re-renders from creating a new object.
-  const createGoal = useGoalStore(state => state.createGoal);
-  const updateGoal = useGoalStore(state => state.updateGoal);
-  const importGoals = useGoalStore(state => state.importGoals);
-  const showToast = useNotificationStore(state => state.showToast);
+  const [activeTab, setActiveTab] = useState(tabItems[0].id);
+  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
 
-  // Local UI State
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [selectedGoalForModal, setSelectedGoalForModal] = useState<Goal | null>(null);
-  const [isGoalModalEditMode, setIsGoalModalEditMode] = useState(false);
-  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
-  const [selectedGoalForSummary, setSelectedGoalForSummary] = useState<Goal | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
+    setActiveTab(targetTab);
+  }, [searchParams]);
 
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
+  useEffect(() => {
+    if (!isLoading) {
+      setIsTabContentLoading(true);
+      const timer = setTimeout(() => setIsTabContentLoading(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, isLoading]);
 
-  const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
-    setSelectedGoalForModal(goal);
-    setIsGoalModalEditMode(isEditMode);
-    setIsGoalModalOpen(true);
-  }, []);
-
-  const handleSetGoal = useCallback(
-    async (name: string, endDate: Date, description: string) => {
-      try {
-        if (isGoalModalEditMode && selectedGoalForModal) {
-          const updates = { name, description, endDate: Timestamp.fromDate(endDate) };
-          await updateGoal(selectedGoalForModal.id, updates);
-          showToast('Goal updated successfully!', 'success');
-        } else {
-          await createGoal(name, endDate, description);
-          showToast('Goal created successfully!', 'success');
-        }
-        setIsGoalModalOpen(false);
-      } catch {
-        showToast('Failed to save goal.', 'error');
-      }
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTab(tabId);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('tab', tabId);
+      router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
-    [isGoalModalEditMode, selectedGoalForModal, createGoal, updateGoal, showToast]
+    [router, searchParams]
   );
 
-  const handleOpenSummaryModal = useCallback((goal: Goal) => {
-    setSelectedGoalForSummary(goal);
-    setIsSummaryModalOpen(true);
-  }, []);
-
-  const handleGoalsImported = useCallback((goals: Goal[]) => {
-    setStagedGoalsForImport(goals);
-    setIsImportModalOpen(true);
-  }, []);
-
-  const transformedGoalForModal = useMemo(() => {
-    return selectedGoalForModal
-      ? {
-          name: selectedGoalForModal.name,
-          description: selectedGoalForModal.description ?? '',
-          startDate: selectedGoalForModal.startDate.toDate().toISOString(),
-          endDate: selectedGoalForModal.endDate.toDate().toISOString(),
-        }
-      : null;
-  }, [selectedGoalForModal]);
-
-  const getStatusText = useCallback((status: GoalStatus | 'all') => {
-    switch (status) {
-      case 'all':
-        return 'All';
-      case GoalStatus.ACTIVE:
-        return 'Active';
-      case GoalStatus.COMPLETED:
-        return 'Completed';
-      case GoalStatus.PAUSED:
-        return 'Paused';
-      case GoalStatus.CANCELLED:
-        return 'Cancelled';
-      default:
-        return 'Unknown';
-    }
-  }, []);
-
-  if (isLoading) {
-    return (
-      <main className="px-6 py-8 mx-auto max-w-4xl h-screen sm:px-8 lg:px-12">
-        <PageContentSkeleton />
-      </main>
-    );
-  }
+  const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component || GoalHub;
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <nav className="flex flex-col px-4 pt-3 border-b backdrop-blur-md bg-black/50 border-white/10">
-        <div className="mb-4 text-center">
-          <h2 className="mb-1 text-2xl font-bold text-white">Your Goal Hub</h2>
-          <p className="text-sm text-white/70">
-            Manage all your past, present, and future goals in one place.
-          </p>
-        </div>
-        <div className="relative mx-auto mb-3 w-full max-w-xl">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={20} />
-          <input
-            type="text"
-            placeholder="Search goals by name or description..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="p-3 pl-10 w-full h-12 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2 justify-center w-full">
-          {(
-            [
-              'all',
-              GoalStatus.ACTIVE,
-              GoalStatus.COMPLETED,
-              GoalStatus.PAUSED,
-              GoalStatus.CANCELLED,
-            ] as const
-          ).map(status => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
-                filterStatus === status
-                  ? 'text-white border-white bg-transparent'
-                  : 'border-transparent text-white/60 hover:bg-white/10 hover:border-white/5'
-              }`}
-            >
-              {getStatusText(status)}
-            </button>
-          ))}
+      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+        <div className="flex space-x-2">
+          {isLoading
+            ? [...Array(tabItems.length)].map((_, i) => (
+                <div key={i} className="px-4 py-3 animate-pulse">
+                  <div className="w-24 h-6 rounded-md bg-white/10"></div>
+                </div>
+              ))
+            : tabItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+                      isActive
+                        ? 'text-white border-white'
+                        : 'border-transparent text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
         </div>
       </nav>
-      <div className="container p-4 mx-auto max-w-5xl md:p-8">
-        <section className="py-8 space-y-8">
-          <GoalList
-            onOpenGoalModal={handleOpenGoalModal}
-            onOpenSummaryModal={handleOpenSummaryModal}
-            searchQuery={searchQuery}
-            filterStatus={filterStatus}
-          />
-          <CreateGoalCard
-            onOpenGoalModal={handleOpenGoalModal}
-            onGoalsImported={handleGoalsImported}
-          />
+      <div className="container flex-grow p-4 mx-auto max-w-6xl md:p-8">
+        <section className="w-full">
+          {isLoading || isTabContentLoading ? <PageContentSkeleton /> : <ActiveComponent />}
         </section>
       </div>
-      <GoalModal
-        isOpen={isGoalModalOpen}
-        onClose={() => setIsGoalModalOpen(false)}
-        onSetGoal={handleSetGoal}
-        initialGoalData={transformedGoalForModal}
-        isEditMode={isGoalModalEditMode}
-      />
-      <GoalSummaryModal
-        isOpen={isSummaryModalOpen}
-        onClose={() => setIsSummaryModalOpen(false)}
-        goal={selectedGoalForSummary}
-      />
-      <ImportSelectionModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        goalsToImport={stagedGoalsForImport}
-        onConfirmImport={importGoals}
-      />
     </main>
   );
 };
 
 export default function GoalPage() {
   return (
-    <Suspense fallback={<PageContentSkeleton />}>
+    <Suspense fallback={<PageSkeletonLoader />}>
       <GoalPageContent />
     </Suspense>
   );

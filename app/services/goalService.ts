@@ -165,6 +165,7 @@ export const createGoal = async (
     | 'starredQuotes'
     | 'timeBlocks'
     | 'randomPickerItems'
+    | 'resources'
   >
 ): Promise<Goal> => {
   const userDocRef = doc(db, 'users', userId);
@@ -182,6 +183,7 @@ export const createGoal = async (
     stickyNotes: [],
     timeBlocks: [],
     randomPickerItems: [],
+    resources: [],
     routineSettings: {
       sleep: { wakeTime: '06:00', sleepTime: '22:00', naps: [] },
       water: { goal: 8, current: 0 },

@@ -5,6 +5,8 @@ import {
   DistractionItem,
   Goal,
   GoalStatus,
+  Resource,
+  ResourceType,
   RoutineLogStatus,
   RoutineType,
   SatisfactionLevel,
@@ -22,6 +24,7 @@ import { create } from 'zustand';
 import * as distractionService from '@/services/distractionService';
 import * as goalService from '@/services/goalService';
 import * as quoteService from '@/services/quoteService';
+import * as resourceService from '@/services/resourceService'; // NEW
 import * as routineService from '@/services/routineService';
 import * as stickyNoteService from '@/services/stickyNoteService';
 import * as stopwatchService from '@/services/stopwatchService';
@@ -71,6 +74,15 @@ interface GoalStore {
   addTimeBlock: (label: string, startTime: string, endTime: string, color: string) => Promise<void>;
   updateTimeBlock: (blockId: string, updates: Partial<TimeBlock>) => Promise<void>;
   deleteTimeBlock: (blockId: string) => Promise<void>;
+  // NEW: Actions for resources
+  addResource: (
+    url: string,
+    title: string,
+    description: string | null,
+    type: ResourceType
+  ) => Promise<void>;
+  updateResource: (resourceId: string, updates: Partial<Resource>) => Promise<void>;
+  deleteResource: (resourceId: string) => Promise<void>;
 }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
@@ -921,6 +933,104 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     } catch (error) {
       console.error('Store: Failed to delete time block', error);
       useNotificationStore.getState().showToast('Failed to delete time block. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  // NEW: Resource Actions
+  addResource: async (url, title, description, type) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    try {
+      const newResource = await resourceService.addResource(
+        currentUser.uid,
+        activeGoalId,
+        url,
+        title,
+        description,
+        type
+      );
+      set(state => {
+        const goal = state.appState!.goals[activeGoalId];
+        const updatedResources = [...(goal.resources || []), newResource];
+        return {
+          appState: {
+            ...state.appState!,
+            goals: {
+              ...state.appState!.goals,
+              [activeGoalId]: { ...goal, resources: updatedResources },
+            },
+          },
+        };
+      });
+      useNotificationStore.getState().showToast('Resource added!', 'success');
+    } catch (error) {
+      console.error('Store: Failed to add resource', error);
+      useNotificationStore.getState().showToast('Could not add resource.', 'error');
+    }
+  },
+
+  updateResource: async (resourceId, updates) => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+    const originalState = { ...appState };
+
+    set(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedResources = (goal.resources || []).map(r =>
+        r.id === resourceId ? { ...r, ...updates } : r
+      );
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: { ...goal, resources: updatedResources },
+          },
+        },
+      };
+    });
+
+    try {
+      await resourceService.updateResource(currentUser.uid, activeGoalId, resourceId, updates);
+      useNotificationStore.getState().showToast('Resource updated.', 'success');
+    } catch (error) {
+      console.error('Store: Failed to update resource', error);
+      useNotificationStore.getState().showToast('Failed to update resource. Reverting.', 'error');
+      set({ appState: originalState });
+    }
+  },
+
+  deleteResource: async resourceId => {
+    const { currentUser, appState } = get();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+    const originalState = { ...appState };
+
+    set(state => {
+      if (!state.appState) return {};
+      const goal = state.appState.goals[activeGoalId];
+      const updatedResources = (goal.resources || []).filter(r => r.id !== resourceId);
+      return {
+        appState: {
+          ...state.appState,
+          goals: {
+            ...state.appState.goals,
+            [activeGoalId]: { ...goal, resources: updatedResources },
+          },
+        },
+      };
+    });
+
+    try {
+      await resourceService.deleteResource(currentUser.uid, activeGoalId, resourceId);
+      useNotificationStore.getState().showToast('Resource deleted.', 'info');
+    } catch (error) {
+      console.error('Store: Failed to delete resource', error);
+      useNotificationStore.getState().showToast('Failed to delete resource. Reverting.', 'error');
       set({ appState: originalState });
     }
   },

@@ -2,6 +2,7 @@
 import {
   GoalStatus,
   ReminderType,
+  ResourceType, // NEW
   RoutineLogStatus,
   RoutineType,
   SatisfactionLevel,
@@ -10,20 +11,12 @@ import {
 import { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
-/**
- * @file app/utils/schemas.ts
- * @description Zod Schemas for Runtime Data Validation.
- *
- * This file is the single source of truth for the shape of our application's data.
- * By defining our data structures with Zod, we can validate data at runtime,
- * protecting the application from crashes caused by unexpected or malformed data
- * from external sources like Firestore or user-uploaded files.
- */
-
-// Custom schema to validate that a value is an instance of Firebase's Timestamp.
 const timestampSchema = z.instanceof(Timestamp, { message: 'Invalid Firestore Timestamp' });
 
-// --- BASE SCHEMAS ---
+// =================================================================//
+//                      BASE SCHEMAS
+// =================================================================//
+
 const baseEntitySchema = z.object({
   id: z.string().min(1, 'ID cannot be empty'),
   createdAt: timestampSchema,
@@ -35,7 +28,10 @@ const completableSchema = z.object({
   completedAt: timestampSchema.nullable(),
 });
 
-// --- CORE GOAL ENTITY SCHEMAS ---
+// =================================================================//
+//                      CORE DOMAIN ENTITIES
+// =================================================================//
+
 export const todoItemSchema = baseEntitySchema.merge(completableSchema).extend({
   text: z.string().min(1, 'To-do text cannot be empty'),
   description: z.string().nullable(),
@@ -58,48 +54,56 @@ export const stickyNoteSchema = baseEntitySchema.extend({
 
 export const timeBlockSchema = baseEntitySchema.merge(completableSchema).extend({
   label: z.string().min(1, 'Time block label cannot be empty'),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid start time format, expected HH:mm'),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid end time format, expected HH:mm'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
   color: z.string().min(1, 'Color cannot be empty'),
 });
 
-// --- ROUTINE & PROGRESS SCHEMAS ---
+// NEW: Schema for a single resource
+export const resourceSchema = baseEntitySchema.extend({
+  url: z.string().url('Must be a valid URL'),
+  title: z.string().min(1, 'Title cannot be empty'),
+  description: z.string().nullable(),
+  type: z.nativeEnum(ResourceType),
+});
+
+// =================================================================//
+//                   ROUTINES & PROGRESS TRACKING
+// =================================================================//
+
 export const stopwatchSessionSchema = baseEntitySchema.extend({
   startTime: timestampSchema,
   label: z.string().min(1, 'Session label cannot be empty'),
-  duration: z.number().min(0, 'Duration cannot be negative'),
+  duration: z.number().min(0),
 });
 
 const routinesSchema = z
   .record(z.nativeEnum(RoutineType), z.nativeEnum(RoutineLogStatus))
   .optional()
   .default({})
-  .transform(routines => {
-    const completeRoutines: Record<RoutineType, RoutineLogStatus> = {
-      [RoutineType.SLEEP]: routines?.[RoutineType.SLEEP] ?? RoutineLogStatus.NOT_LOGGED,
-      [RoutineType.WATER]: routines?.[RoutineType.WATER] ?? RoutineLogStatus.NOT_LOGGED,
-      [RoutineType.EXERCISE]: routines?.[RoutineType.EXERCISE] ?? RoutineLogStatus.NOT_LOGGED,
-      [RoutineType.MEAL]: routines?.[RoutineType.MEAL] ?? RoutineLogStatus.NOT_LOGGED,
-      [RoutineType.TEETH]: routines?.[RoutineType.TEETH] ?? RoutineLogStatus.NOT_LOGGED,
-      [RoutineType.BATH]: routines?.[RoutineType.BATH] ?? RoutineLogStatus.NOT_LOGGED,
-    };
-    return completeRoutines;
-  });
+  .transform(routines => ({
+    [RoutineType.SLEEP]: routines?.[RoutineType.SLEEP] ?? RoutineLogStatus.NOT_LOGGED,
+    [RoutineType.WATER]: routines?.[RoutineType.WATER] ?? RoutineLogStatus.NOT_LOGGED,
+    [RoutineType.EXERCISE]: routines?.[RoutineType.EXERCISE] ?? RoutineLogStatus.NOT_LOGGED,
+    [RoutineType.MEAL]: routines?.[RoutineType.MEAL] ?? RoutineLogStatus.NOT_LOGGED,
+    [RoutineType.TEETH]: routines?.[RoutineType.TEETH] ?? RoutineLogStatus.NOT_LOGGED,
+    [RoutineType.BATH]: routines?.[RoutineType.BATH] ?? RoutineLogStatus.NOT_LOGGED,
+  }));
 
 export const dailyProgressSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected APAC-YYYY-MM-DD'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   satisfaction: z.nativeEnum(SatisfactionLevel),
   notes: z.string(),
   sessions: z.array(stopwatchSessionSchema),
   routines: routinesSchema,
   totalSessionDuration: z.number().min(0),
-  weight: z.number().positive('Weight must be a positive number.').nullable(),
+  weight: z.number().positive().nullable(),
 });
 
 export const scheduledRoutineBaseSchema = baseEntitySchema.merge(completableSchema).extend({
-  time: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format, expected HH:mm'),
-  duration: z.number().min(1, 'Duration must be at least 1 minute'),
-  label: z.string().min(1, 'Label cannot be empty'),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  duration: z.number().min(1),
+  label: z.string().min(1),
   icon: z.string(),
 });
 
@@ -124,10 +128,9 @@ export const userRoutineSettingsSchema = z.object({
   lastRoutineResetDate: timestampSchema.nullable(),
 });
 
-// --- WELLNESS REMINDER SCHEMAS (NEW) ---
 export const reminderSettingSchema = z.object({
   enabled: z.boolean(),
-  frequency: z.number().int().min(1, 'Frequency must be at least 1 minute.'),
+  frequency: z.number().int().min(1),
 });
 
 export const wellnessSettingsSchema = z.object({
@@ -138,14 +141,14 @@ export const wellnessSettingsSchema = z.object({
   [ReminderType.POSTURE]: reminderSettingSchema,
 });
 
-// --- TOP-LEVEL SCHEMAS ---
+// =================================================================//
+//                        TOP-LEVEL STATE
+// =================================================================//
+
 export const goalSchema = baseEntitySchema
   .extend({
-    name: z.string().min(1, 'Goal name cannot be empty'),
-    description: z
-      .string()
-      .min(1, 'Goal description cannot be empty.')
-      .max(500, 'Description is too long.'),
+    name: z.string().min(1),
+    description: z.string().min(1).max(500),
     startDate: timestampSchema,
     endDate: timestampSchema,
     status: z.nativeEnum(GoalStatus),
@@ -158,6 +161,7 @@ export const goalSchema = baseEntitySchema
     starredQuotes: z.array(z.number().int()),
     timeBlocks: z.array(timeBlockSchema).default([]),
     randomPickerItems: z.array(z.string()).default([]),
+    resources: z.array(resourceSchema).default([]), // NEW: Add resources schema to Goal
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {
     message: 'End date must be after or the same as start date',
@@ -169,82 +173,57 @@ export const appStateSchema = z.object({
   goals: z.record(z.string(), goalSchema),
 });
 
-// --- SCHEMAS FOR JSON IMPORT/EXPORT (using ISO strings for dates) ---
+// =================================================================//
+//                 FORM & SERIALIZATION SCHEMAS
+// =================================================================//
+
 export const serializableGoalSchema = z.any();
 export const serializableGoalsArraySchema = z.array(serializableGoalSchema);
 
-// Zod Schema for TodoEditModal form fields
-export const todoEditFormSchema = z.object({
-  text: z.string().min(1, 'Task text cannot be empty.').max(200, 'Task text is too long.'),
-  description: z.string().max(500, 'Description is too long.').nullable(),
-  deadline: z
-    .date()
-    .nullable()
-    .refine(
-      date => {
-        return date === null || !isNaN(date.getTime());
-      },
-      { message: 'Invalid deadline date.' }
-    )
-    .optional(),
-});
-
-// Zod Schema for ScheduleEditModal form fields
-export const scheduleEditFormSchema = z.object({
-  label: z.string().min(1, 'Label cannot be empty.'),
-  time: z.date().refine(date => !isNaN(date.getTime()), { message: 'Invalid time selected.' }),
-  duration: z.coerce
-    .number()
-    .min(1, 'Duration must be at least 1 minute.')
-    .max(1440, 'Duration cannot exceed 24 hours (1440 minutes).')
-    .int('Duration must be a whole number.'),
-  icon: z.string().min(1, 'Icon must be selected.'),
-});
-
-// Zod Schema for GoalModal form fields
-export const goalFormSchema = z.object({
-  name: z.string().min(1, 'Goal name cannot be empty.').max(100, 'Goal name is too long.'),
-  description: z
-    .string()
-    .min(1, 'Goal description cannot be empty.')
-    .max(500, 'Description is too long.'),
-  endDate: z
-    .date()
-    .nullable()
-    .refine(date => date !== null && !isNaN(date.getTime()), {
-      message: 'Please select a target date and time.',
-    })
-    .refine(date => date === null || date.getTime() > new Date().getTime(), {
-      message: 'Target date and time must be in the future.',
-    }),
-});
-
-// Zod Schema for DailyProgressModal form fields
-export const dailyProgressFormSchema = z.object({
-  satisfaction: z.nativeEnum(SatisfactionLevel, {
-    errorMap: () => ({ message: 'Please select a satisfaction level.' }),
-  }),
-  notes: z.string().max(500, 'Notes are too long.').optional().nullable(),
-  weight: z.coerce
-    .number({ invalid_type_error: 'Weight must be a number.' })
-    .positive('Weight must be a positive number.')
-    .optional()
-    .nullable(),
-});
-
-// Zod Schema for DistractionEditModal form fields
-export const distractionEditFormSchema = z.object({
+// NEW: Schema for the AddResourceModal form
+export const resourceFormSchema = z.object({
+  url: z.string().url({ message: 'Please enter a valid URL.' }),
   title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title is too long.'),
-  description: z.string().max(500, 'Description is too long.').nullable(),
-  triggerPatterns: z.string().max(500, 'Trigger patterns text is too long.').nullable(),
+  description: z.string().max(280, 'Description is too long.').nullable(),
+  type: z.nativeEnum(ResourceType, { required_error: 'Please select a resource type.' }),
 });
 
-// Zod Schema for TimeBlockModal form fields
+export const todoEditFormSchema = z.object({
+  text: z.string().min(1).max(200),
+  description: z.string().max(500).nullable(),
+  deadline: z.date().nullable().optional(),
+});
+
+export const scheduleEditFormSchema = z.object({
+  label: z.string().min(1),
+  time: z.date(),
+  duration: z.coerce.number().min(1).max(1440).int(),
+  icon: z.string().min(1),
+});
+
+export const goalFormSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().min(1).max(500),
+  endDate: z.date().min(new Date()),
+});
+
+export const dailyProgressFormSchema = z.object({
+  satisfaction: z.nativeEnum(SatisfactionLevel),
+  notes: z.string().max(500).optional().nullable(),
+  weight: z.coerce.number().positive().optional().nullable(),
+});
+
+export const distractionEditFormSchema = z.object({
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).nullable(),
+  triggerPatterns: z.string().max(500).nullable(),
+});
+
 export const timeBlockFormSchema = z
   .object({
-    label: z.string().min(1, 'Label cannot be empty.'),
-    startTime: z.date({ required_error: 'Start time is required.' }),
-    endTime: z.date({ required_error: 'End time is required.' }),
+    label: z.string().min(1),
+    startTime: z.date(),
+    endTime: z.date(),
     color: z.string(),
   })
   .refine(data => data.endTime > data.startTime, {
