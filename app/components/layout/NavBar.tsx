@@ -17,7 +17,7 @@ const navLinks = [
   { href: '/todo?tab=todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch?tab=stopwatch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine?tab=sleep', label: 'Routine', icon: <MdOutlineRepeat /> },
-  { href: '/goal', label: 'Goals', icon: <FiTarget /> }, // No tabs on this page
+  { href: '/goal?tab=hub', label: 'Goals', icon: <FiTarget /> }, // No tabs on this page
 ];
 
 export default function NavBar() {
