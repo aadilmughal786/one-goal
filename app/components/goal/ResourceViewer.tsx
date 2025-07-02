@@ -38,6 +38,11 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
     return match ? `https://player.vimeo.com/video/${match[3]}` : null;
   };
 
+  // Helper to check for direct audio file links
+  const isDirectAudioLink = (url: string) => {
+    return /\.(mp3|wav|ogg|m4a)$/i.test(url);
+  };
+
   const getDomain = (url: string) => {
     try {
       return new URL(url).hostname.replace('www.', '');
@@ -122,8 +127,19 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
             </a>
           </div>
         );
-      case ResourceType.ARTICLE:
       case ResourceType.AUDIO:
+        if (isDirectAudioLink(resource.url)) {
+          return (
+            <div className="p-8">
+              <h3 className="mb-4 text-2xl font-bold text-center text-white">{resource.title}</h3>
+              <audio controls src={resource.url} className="w-full rounded-full">
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          );
+        }
+      // Fallthrough for non-direct audio links (e.g., Spotify)
+      case ResourceType.ARTICLE:
       case ResourceType.DOC:
       case ResourceType.OTHER:
         return (
