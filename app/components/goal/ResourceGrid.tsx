@@ -1,16 +1,25 @@
-// app/components/resources/ResourceGrid.tsx
+// app/components/goal/ResourceGrid.tsx
 'use client';
 
 import { Resource } from '@/types';
 import React from 'react';
 import { FiInbox } from 'react-icons/fi';
+import Masonry from 'react-masonry-css';
 import ResourceCard from './ResourceCard';
 
 interface ResourceGridProps {
   resources: Resource[];
+  onResourceClick: (resource: Resource) => void;
 }
 
-const ResourceGrid: React.FC<ResourceGridProps> = ({ resources }) => {
+const breakpointColumnsObj = {
+  default: 4,
+  1100: 3,
+  700: 2,
+  500: 1,
+};
+
+const ResourceGrid: React.FC<ResourceGridProps> = ({ resources, onResourceClick }) => {
   if (resources.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center py-20 text-center text-white/50">
@@ -22,19 +31,17 @@ const ResourceGrid: React.FC<ResourceGridProps> = ({ resources }) => {
   }
 
   return (
-    <div
-      className="gap-6 [column-fill:_balance] sm:columns-2 lg:columns-3 xl:columns-4"
-      style={{
-        // Fallback for browsers that might not support the Tailwind utility perfectly
-        columnGap: '1.5rem',
-      }}
+    <Masonry
+      breakpointCols={breakpointColumnsObj}
+      className="flex -ml-6 w-auto"
+      columnClassName="pl-6 bg-clip-padding"
     >
       {resources.map(resource => (
-        <div key={resource.id} className="mb-6 break-inside-avoid">
+        <div key={resource.id} className="mb-6" onClick={() => onResourceClick(resource)}>
           <ResourceCard resource={resource} />
         </div>
       ))}
-    </div>
+    </Masonry>
   );
 };
 

@@ -12,10 +12,10 @@ import {
   FiCheck,
   FiChevronDown,
   FiFileText,
-  FiFilm,
   FiImage,
   FiLink,
   FiLoader,
+  FiVideo,
   FiX,
 } from 'react-icons/fi';
 import { z } from 'zod';
@@ -31,7 +31,7 @@ interface AddResourceModalProps {
 const typeOptions = [
   { value: ResourceType.ARTICLE, label: 'Article', icon: FiFileText },
   { value: ResourceType.IMAGE, label: 'Image', icon: FiImage },
-  { value: ResourceType.VIDEO, label: 'Video', icon: FiFilm },
+  { value: ResourceType.VIDEO, label: 'Video', icon: FiVideo },
   { value: ResourceType.OTHER, label: 'Other', icon: FiLink },
 ];
 

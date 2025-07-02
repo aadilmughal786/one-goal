@@ -1,20 +1,21 @@
-// app/components/resources/ResourcesTab.tsx
+// app/components/goal/ResourcesTab.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { FiFileText, FiFilm, FiGrid, FiImage, FiLink, FiPlus, FiSearch } from 'react-icons/fi';
+import { FiFileText, FiGrid, FiImage, FiLink, FiPlus, FiSearch, FiVideo } from 'react-icons/fi';
 
 import FilterDropdown, { FilterOption } from '@/components/common/FilterDropdown';
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { useGoalStore } from '@/store/useGoalStore';
-import { ResourceType } from '@/types';
+import { Resource, ResourceType } from '@/types';
 import AddResourceModal from './AddResourceModal';
 import ResourceGrid from './ResourceGrid';
+import ResourceViewer from './ResourceViewer'; // Import the new viewer
 
 const resourceFilterOptions: FilterOption[] = [
   { value: 'all', label: 'All Types', icon: FiGrid },
   { value: ResourceType.IMAGE, label: 'Images', icon: FiImage },
-  { value: ResourceType.VIDEO, label: 'Videos', icon: FiFilm },
+  { value: ResourceType.VIDEO, label: 'Videos', icon: FiVideo },
   { value: ResourceType.ARTICLE, label: 'Articles', icon: FiFileText },
   { value: ResourceType.OTHER, label: 'Other', icon: FiLink },
 ];
@@ -27,6 +28,7 @@ const ResourcesTab: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null); // State for viewer
 
   const resources = useMemo(() => activeGoal?.resources || [], [activeGoal]);
 
@@ -50,7 +52,7 @@ const ResourcesTab: React.FC = () => {
   return (
     <div className="relative">
       <div className="pb-28">
-        <ResourceGrid resources={filteredResources} />
+        <ResourceGrid resources={filteredResources} onResourceClick={setSelectedResource} />
       </div>
 
       <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-black/50 border-white/10">
@@ -85,6 +87,7 @@ const ResourcesTab: React.FC = () => {
       </div>
 
       <AddResourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ResourceViewer resource={selectedResource} onClose={() => setSelectedResource(null)} />
     </div>
   );
 };
