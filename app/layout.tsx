@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: '/one-goal/og-image.png',
-        width: 1200,
-        height: 630,
+        width: 771,
+        height: 390,
         alt: 'One Goal Application Interface',
       },
     ],
