@@ -1,10 +1,11 @@
 // app/(root)/profile/page.tsx
 'use client';
 
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal';
-import DataManagementTab from '@/components/profile/DataManagement'; // New component
+import DataManagementTab from '@/components/profile/DataManagement';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
-import UserProfileTab from '@/components/profile/UserProfile'; // New component
+import UserProfileTab from '@/components/profile/UserProfile';
 import WellnessSettings from '@/components/profile/WellnessSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { updateUserProfile } from '@/services/authService';
@@ -12,7 +13,7 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal } from '@/types';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { FiDatabase, FiHeart, FiUser } from 'react-icons/fi';
 
 const PageSkeletonLoader = () => (
@@ -34,9 +35,20 @@ const ProfilePageContent = () => {
     return searchParams.get('tab') || 'profile';
   });
 
+  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsTabContentLoading(true);
+      const timer = setTimeout(() => {
+        setIsTabContentLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, isLoading]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -65,56 +77,80 @@ const ProfilePageContent = () => {
     }
   };
 
-  if (isLoading) {
-    return <PageSkeletonLoader />;
+  if (!isLoading && !currentUser) {
+    return null;
   }
-  if (!currentUser) return null;
+
+  const renderActiveTabContent = () => {
+    if (isLoading || isTabContentLoading) {
+      return <PageContentSkeleton />;
+    }
+
+    if (!currentUser) {
+      return null;
+    }
+
+    switch (activeTab) {
+      case 'profile':
+        return <UserProfileTab onAvatarModalOpen={() => setIsAvatarModalOpen(true)} />;
+      case 'data':
+        return <DataManagementTab onGoalsImported={handleGoalsImported} />;
+      case 'wellness':
+        return <WellnessSettings />;
+      default:
+        return <UserProfileTab onAvatarModalOpen={() => setIsAvatarModalOpen(true)} />;
+    }
+  };
 
   return (
     <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
         <div className="flex space-x-2">
-          <button
-            onClick={() => handleTabChange('profile')}
-            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
-              activeTab === 'profile'
-                ? 'text-white border-white'
-                : 'border-transparent text-white/60 hover:text-white'
-            }`}
-          >
-            <FiUser /> Profile
-          </button>
-          <button
-            onClick={() => handleTabChange('data')}
-            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
-              activeTab === 'data'
-                ? 'text-white border-white'
-                : 'border-transparent text-white/60 hover:text-white'
-            }`}
-          >
-            <FiDatabase /> Data Management
-          </button>
-          <button
-            onClick={() => handleTabChange('wellness')}
-            className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
-              activeTab === 'wellness'
-                ? 'text-white border-white'
-                : 'border-transparent text-white/60 hover:text-white'
-            }`}
-          >
-            <FiHeart /> Wellness
-          </button>
+          {isLoading ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="px-4 py-3 animate-pulse">
+                <div className="w-24 h-6 rounded-md bg-white/10"></div>
+              </div>
+            ))
+          ) : (
+            <>
+              <button
+                onClick={() => handleTabChange('profile')}
+                className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+                  activeTab === 'profile'
+                    ? 'text-white border-white'
+                    : 'border-transparent text-white/60 hover:text-white'
+                }`}
+              >
+                <FiUser /> Profile
+              </button>
+              <button
+                onClick={() => handleTabChange('data')}
+                className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+                  activeTab === 'data'
+                    ? 'text-white border-white'
+                    : 'border-transparent text-white/60 hover:text-white'
+                }`}
+              >
+                <FiDatabase /> Data Management
+              </button>
+              <button
+                onClick={() => handleTabChange('wellness')}
+                className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
+                  activeTab === 'wellness'
+                    ? 'text-white border-white'
+                    : 'border-transparent text-white/60 hover:text-white'
+                }`}
+              >
+                <FiHeart /> Wellness
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
       <div className="container flex-grow p-4 mx-auto max-w-4xl md:p-8">
-        <section className="w-full">
-          {activeTab === 'profile' && (
-            <UserProfileTab onAvatarModalOpen={() => setIsAvatarModalOpen(true)} />
-          )}
-          {activeTab === 'data' && <DataManagementTab onGoalsImported={handleGoalsImported} />}
-          {activeTab === 'wellness' && <WellnessSettings />}
-        </section>
+        <section className="w-full">{renderActiveTabContent()}</section>
       </div>
 
       <ImportSelectionModal
@@ -124,7 +160,7 @@ const ProfilePageContent = () => {
         onConfirmImport={importGoals}
       />
 
-      {isAvatarModalOpen && (
+      {isAvatarModalOpen && currentUser && (
         <AvatarSelectionModal
           isOpen={isAvatarModalOpen}
           onClose={() => setIsAvatarModalOpen(false)}
