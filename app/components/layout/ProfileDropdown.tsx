@@ -54,7 +54,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   // "About App" has been moved here to open in a new tab.
   const externalLinks = [
     {
-      href: '/',
+      href: '/one-goal',
       label: 'About App',
       icon: <LuBadgeInfo />,
     },
