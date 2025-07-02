@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { FaGithub, FaLinkedin } from 'react-icons/fa6';
-import { FiCommand, FiCpu, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiCommand, FiCpu, FiLogOut } from 'react-icons/fi';
 import { GoBug } from 'react-icons/go';
 import { LuBadgeInfo } from 'react-icons/lu';
 import { MdArrowOutward } from 'react-icons/md';
@@ -48,13 +48,16 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
     onClose();
   };
 
-  const menuItems = [
-    { href: '/profile?tab=profile', label: 'Settings', icon: <FiSettings /> },
-    { href: '/tools?tab=calculator', label: 'Tools', icon: <FiCpu /> },
-    { href: '/', label: 'About App', icon: <LuBadgeInfo /> },
-  ];
+  // "Settings" has been removed, as the main profile picture serves this purpose.
+  const menuItems = [{ href: '/tools?tab=calculator', label: 'Tools', icon: <FiCpu /> }];
 
+  // "About App" has been moved here to open in a new tab.
   const externalLinks = [
+    {
+      href: '/',
+      label: 'About App',
+      icon: <LuBadgeInfo />,
+    },
     {
       href: 'https://github.com/aadilmughal786/one-goal',
       label: 'GitHub',
@@ -77,7 +80,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
       <div className="relative w-72 animate-fade-in-right">
         <div className="absolute -left-1.5 bottom-3 w-3 h-3 transform rotate-45 bg-neutral-900 border-b border-l border-white/10"></div>
         <div className="overflow-hidden rounded-xl border shadow-2xl bg-neutral-900 border-white/10">
-          <div className="flex gap-3 items-center px-4 py-3 border-b border-white/10">
+          <div
+            onClick={() => {
+              router.push('/profile?tab=profile');
+              onClose();
+            }}
+            className="flex gap-3 items-center px-4 py-3 border-b transition-colors cursor-pointer border-white/10 hover:bg-white/5"
+          >
             <Image
               src={user.photoURL || 'https://placehold.co/40x40/1a1a1a/ffffff?text=U'}
               alt="User Avatar"
