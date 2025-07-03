@@ -160,7 +160,7 @@ const ChatCalculator: React.FC = () => {
             />
             <button
               onClick={handleSend}
-              className="absolute right-3 top-1/2 p-2 text-white bg-blue-500 rounded-lg transition-colors -translate-y-1/2 cursor-pointer hover:bg-blue-600 disabled:opacity-50"
+              className="absolute right-3 top-1/2 p-2 rounded-lg transition-colors -translate-y-1/2 cursor-pointer text-bg-primary bg-text-primary disabled:opacity-50"
               disabled={!input.trim()}
               aria-label="Send"
             >

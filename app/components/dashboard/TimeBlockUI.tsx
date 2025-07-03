@@ -57,9 +57,8 @@ import {
   MdOutlineWash,
   MdOutlineWbSunny,
 } from 'react-icons/md';
-import TimeBlockModal from './TimeBlockModal'; // Import the modal
+import TimeBlockModal from './TimeBlockModal';
 
-// Helper function to determine if a color is dark or light
 const isColorDark = (hexColor: string) => {
   if (!hexColor) return false;
   const color = hexColor.startsWith('#') ? hexColor.substring(1) : hexColor;
@@ -70,20 +69,16 @@ const isColorDark = (hexColor: string) => {
   return hsp < 127.5;
 };
 
-// Comprehensive map of all possible routine icons used across the app
 const routineIconMap: { [key: string]: React.ElementType } = {
-  // Exercise
   MdOutlineDirectionsRun,
   MdOutlineFitnessCenter,
   MdOutlineSportsHandball,
   MdOutlineSportsSoccer,
   MdOutlineDirectionsBike,
-  // Bath
   MdOutlineShower,
   MdOutlineHotTub,
   MdOutlinePool,
   MdOutlineWash,
-  // Meal
   MdOutlineLocalCafe,
   MdOutlineFastfood,
   MdOutlineLocalPizza,
@@ -97,13 +92,11 @@ const routineIconMap: { [key: string]: React.ElementType } = {
   MdOutlineLocalDining,
   MdOutlineSetMeal,
   MdOutlineLocalBar,
-  // Teeth
   MdOutlineSentimentSatisfied,
   MdOutlineCleaningServices,
   MdOutlineHealthAndSafety,
   FaTeeth,
   FaTooth,
-  // Naps
   MdOutlineAccessTime,
   MdOutlineWbSunny,
   MdOutlineNightlight,
@@ -125,7 +118,7 @@ const TimeBlockUI = () => {
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -321,7 +314,7 @@ const TimeBlockUI = () => {
 
   return (
     <div className="space-y-8">
-      <div className="card">
+      <div className="rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary">
         <div className="flex justify-between items-center p-6 border-b border-border-primary">
           <h2 className="flex gap-3 items-center text-xl font-bold text-text-primary">
             <FiClock size={24} />

@@ -4,8 +4,9 @@
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import React, { useEffect, useState } from 'react';
-import { FiLoader, FiPlus, FiShuffle, FiTrash2, FiX } from 'react-icons/fi';
+import { FiLoader, FiPlus, FiShuffle, FiTrash2 } from 'react-icons/fi';
 
+// --- Sub-component for the Picker Modal ---
 const PickerModal = ({
   isOpen,
   items,
@@ -69,10 +70,11 @@ const PickerModal = ({
   );
 };
 
+// --- Main Component ---
 const RandomPicker: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUpdatingList, setIsUpdatingList] = useState(false);
+  const [isUpdatingList, setIsUpdatingList] = useState(false); // For loaders
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
   const showToast = useNotificationStore(state => state.showToast);
 
@@ -163,66 +165,70 @@ const RandomPicker: React.FC = () => {
           </p>
         </div>
 
-        <div className="card">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyPress={e => e.key === 'Enter' && handleAddItem()}
-              placeholder="Add a new item or topic..."
-              disabled={isUpdatingList}
-              className="flex-grow p-3 rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-50"
-            />
-            <button
-              onClick={handleAddItem}
-              disabled={isUpdatingList || !inputValue.trim()}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer text-text-primary bg-bg-tertiary hover:bg-border-primary disabled:opacity-50"
-            >
-              {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiPlus />}
-              Add Item
-            </button>
+        <div className="rounded-2xl border bg-bg-secondary border-border-primary">
+          <div className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && handleAddItem()}
+                placeholder="Add a new item or topic..."
+                disabled={isUpdatingList}
+                className="flex-grow p-3 rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-50"
+              />
+              <button
+                onClick={handleAddItem}
+                disabled={isUpdatingList || !inputValue.trim()}
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer text-text-primary bg-bg-tertiary hover:bg-border-primary disabled:opacity-50"
+              >
+                {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiPlus />}
+                Add Item
+              </button>
+            </div>
           </div>
 
-          <div className="my-6 border-t border-border-primary"></div>
+          <div className="border-t border-border-primary"></div>
 
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-text-primary">Your List ({items.length})</h3>
-            <button
-              onClick={handleClearAll}
-              disabled={items.length === 0 || isUpdatingList}
-              className="flex gap-2 items-center px-3 py-1 text-sm text-red-400 rounded-md transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
-            >
-              {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiTrash2 />}
-              Clear All
-            </button>
-          </div>
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-text-primary">Your List ({items.length})</h3>
+              <button
+                onClick={handleClearAll}
+                disabled={items.length === 0 || isUpdatingList}
+                className="flex gap-2 items-center px-3 py-1 text-sm text-red-400 rounded-md transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
+              >
+                {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiTrash2 />}
+                Clear All
+              </button>
+            </div>
 
-          {items.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-              {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex gap-2 items-center p-3 rounded-lg animate-fade-in-down bg-bg-tertiary"
-                >
-                  <span className="flex-grow break-all text-text-primary">{item}</span>
-                  <button
-                    onClick={() => handleDeleteItem(index, item)}
-                    disabled={isUpdatingList}
-                    className="p-2 text-red-400 rounded-full transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
-                    aria-label={`Delete ${item}`}
+            {items.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                {items.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-2 items-center p-3 rounded-lg animate-fade-in-down bg-bg-tertiary"
                   >
-                    <FiX />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-text-muted">
-              <FiShuffle size={32} className="mx-auto mb-4" />
-              <p>Your list is empty. Add an item to get started.</p>
-            </div>
-          )}
+                    <span className="flex-grow break-all text-text-primary">{item}</span>
+                    <button
+                      onClick={() => handleDeleteItem(index, item)}
+                      disabled={isUpdatingList}
+                      className="p-2 text-red-400 rounded-full transition-colors cursor-pointer hover:bg-red-500/20 disabled:opacity-50"
+                      aria-label={`Delete ${item}`}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-text-muted">
+                <FiShuffle size={32} className="mx-auto mb-4" />
+                <p>Your list is empty. Add an item to get started.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <PickerModal isOpen={isModalOpen} items={items} onClose={() => setIsModalOpen(false)} />

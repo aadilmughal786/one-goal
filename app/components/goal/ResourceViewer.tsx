@@ -1,21 +1,26 @@
 // app/components/goal/ResourceViewer.tsx
 'use client';
 
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { Resource, ResourceType } from '@/types';
 import Image from 'next/image';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FiAlertTriangle,
   FiArrowRight,
+  FiEdit,
   FiExternalLink,
   FiFile,
   FiFileText,
   FiImage,
   FiLink,
   FiMusic,
+  FiTrash2,
   FiVideo,
   FiX,
 } from 'react-icons/fi';
+import AddResourceModal from './AddResourceModal';
 
 interface ResourceViewerProps {
   resource: Resource | null;
@@ -23,7 +28,28 @@ interface ResourceViewerProps {
 }
 
 const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) => {
+  const { deleteResource } = useGoalStore();
+  const { showConfirmation } = useNotificationStore();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   if (!resource) return null;
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    showConfirmation({
+      title: 'Delete Resource?',
+      message: `Are you sure you want to delete "${resource.title}"? This action cannot be undone.`,
+      action: () => {
+        deleteResource(resource.id);
+        onClose(); // Close the viewer after deletion
+      },
+    });
+  };
 
   const getYoutubeEmbedUrl = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -77,9 +103,6 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
               className="rounded-lg"
               unoptimized
             />
-            <div className="absolute right-0 bottom-0 left-0 p-4 bg-gradient-to-t to-transparent from-black/80">
-              <h3 className="text-lg font-bold text-white drop-shadow-md">{resource.title}</h3>
-            </div>
           </div>
         );
       case ResourceType.VIDEO:
@@ -177,30 +200,53 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
   };
 
   return (
-    <div
-      className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60 animate-fade-in"
-      onClick={onClose}
-    >
+    <>
       <div
-        className="flex relative flex-col w-full max-w-2xl rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
-        onClick={e => e.stopPropagation()}
+        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60 animate-fade-in"
+        onClick={onClose}
       >
-        <div className="flex justify-between items-center p-4 border-b border-border-primary">
-          <div className="flex gap-3 items-center font-semibold text-text-primary">
-            <TypeIcon size={20} />
-            <span>{typeLabel}</span>
+        <div
+          className="flex relative flex-col w-full max-w-2xl rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center p-4 border-b border-border-primary">
+            <div className="flex gap-3 items-center font-semibold text-text-primary">
+              <TypeIcon size={20} />
+              <span>{typeLabel}</span>
+            </div>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={handleEdit}
+                className="p-2 rounded-full transition-colors cursor-pointer text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                title="Edit Resource"
+              >
+                <FiEdit size={18} />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
+                title="Delete Resource"
+              >
+                <FiTrash2 size={18} />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
+                aria-label="Close viewer"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
-            aria-label="Close viewer"
-          >
-            <FiX size={20} />
-          </button>
+          <div className="p-4">{renderContent()}</div>
         </div>
-        <div className="p-4">{renderContent()}</div>
       </div>
-    </div>
+      <AddResourceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        resourceToEdit={resource}
+      />
+    </>
   );
 };
 

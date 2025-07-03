@@ -37,7 +37,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, selectedValue,
     <div className="relative flex-shrink-0" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(prev => !prev)}
-        className="flex justify-between items-center py-3 pr-3 pl-4 w-full rounded-full border cursor-pointer text-text-primary sm:w-40 border-border-primary bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-border-accent"
+        className="flex justify-between items-center py-3 pr-3 pl-4 w-full rounded-full border cursor-pointer text-text-primary sm:w-40 border-border-primary bg-bg-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
       >
         <span className="flex gap-2 items-center">
           {SelectedIcon && <SelectedIcon className="text-text-secondary" />}
@@ -49,7 +49,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, selectedValue,
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full z-10 p-2 mb-2 w-48 rounded-lg border shadow-lg bg-bg-tertiary border-border-primary animate-fade-in-up">
+        <div className="absolute right-0 bottom-full z-10 p-2 mb-2 w-48 rounded-lg border shadow-lg bg-bg-primary border-border-primary animate-fade-in-up">
           {options.map(option => {
             const Icon = option.icon;
             return (

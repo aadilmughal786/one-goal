@@ -37,8 +37,8 @@ const ResourceGrid: React.FC<ResourceGridProps> = ({ resources, onResourceClick 
       columnClassName="pl-6 bg-clip-padding"
     >
       {resources.map(resource => (
-        <div key={resource.id} className="mb-6" onClick={() => onResourceClick(resource)}>
-          <ResourceCard resource={resource} />
+        <div key={resource.id} className="mb-6">
+          <ResourceCard resource={resource} onClick={() => onResourceClick(resource)} />
         </div>
       ))}
     </Masonry>

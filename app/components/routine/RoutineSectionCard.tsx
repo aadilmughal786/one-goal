@@ -102,8 +102,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
 
   return (
     <>
-      <div className="card">
-        <div className="flex justify-between items-center p-6 border-b border-border-primary">
+      <div className="rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary">
+        <div className="flex justify-between items-center p-6">
           <h2 className="flex gap-3 items-center text-xl font-bold text-text-primary">
             <MainIconComponent size={24} />
             {sectionTitle}
@@ -117,6 +117,8 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
             <FiPlus size={20} />
           </button>
         </div>
+
+        <div className="border-t border-border-primary"></div>
 
         <div className="p-6">
           <div className="mb-6 text-center">
@@ -144,7 +146,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                   return (
                     <div
                       key={schedule.id}
-                      className={`bg-bg-tertiary rounded-xl p-4 shadow-lg border-2 transition-all border-border-primary
+                      className={`bg-bg-primary rounded-xl p-4 shadow-lg border-1 transition-all border-border-primary
                           ${schedule.completed ? 'bg-green-500/10 border-green-500/30' : ''}`}
                     >
                       <div className="flex justify-between items-center">

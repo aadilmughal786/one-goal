@@ -153,9 +153,9 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
   }, []);
 
   return (
-    <div className="card">
-      <div className="rounded-3xl">
-        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-border-primary">
+    <div className="rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary">
+      <div className="px-4 sm:px-6">
+        <div className="flex justify-between items-center py-4 sm:py-6">
           <h3 className="text-xl font-bold text-text-primary">
             {format(currentMonth, 'MMMM yyyy')}
           </h3>
@@ -188,7 +188,9 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="border-t border-border-primary">
         <div className="p-4 sm:p-6">
           <div className="flex flex-wrap gap-2 justify-center">
             {daysInView.length > 0 ? (
@@ -291,8 +293,9 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
             )}
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-border-primary text-text-secondary">
+      </div>
+      <div className="border-t border-border-primary">
+        <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm text-text-secondary">
           {legendItems.map(item => {
             const { bgColor: color, label } = getSatisfactionInfo(item.level);
             return (

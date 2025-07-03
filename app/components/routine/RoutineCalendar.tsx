@@ -71,7 +71,7 @@ const CustomTooltip = ({
 
   return (
     <div
-      className={`absolute bottom-full left-1/2 invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl transition-opacity duration-300 -translate-x-1/2 bg-bg-secondary border-border-primary group-hover:visible group-hover:opacity-100 cursor-default ${isActive ? '!visible opacity-100' : 'opacity-0'}`}
+      className={`absolute bottom-full left-1/2 invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl transition-opacity duration-300 -translate-x-1/2 bg-bg-primary border-border-primary group-hover:visible group-hover:opacity-100 cursor-default ${isActive ? '!visible opacity-100' : 'opacity-0'}`}
     >
       <p className="p-3 pb-1 font-bold text-text-primary">{format(date, 'MMMM d,yyyy')}</p>
       <hr className="my-1 border-border-primary" />
@@ -240,44 +240,52 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   }
 
   return (
-    <div ref={calendarRef} className="card">
-      <div className="flex justify-between items-center p-4 border-b sm:p-6 border-border-primary">
-        <h3 className="flex gap-2 items-center text-lg font-bold text-text-primary sm:text-xl">
-          <IconComponent />
-          {title}
-        </h3>
-        <div className="text-lg font-semibold text-center text-text-primary">
-          {format(currentMonth, 'MMMM yyyy')}
-        </div>
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={handleGoToToday}
-            disabled={!isTodayButtonClickable}
-            className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
-            aria-label="Go to today"
-          >
-            Today
-          </button>
-          <div className="flex gap-1">
+    <div
+      ref={calendarRef}
+      className="rounded-3xl border shadow-2xl  bg-bg-secondary border-border-primary"
+    >
+      <div className="px-4 sm:px-6">
+        <div className="flex justify-between items-center py-4 sm:py-6">
+          <h3 className="flex gap-2 items-center text-lg font-bold text-text-primary sm:text-xl">
+            <IconComponent />
+            {title}
+          </h3>
+          <div className="text-lg font-semibold text-center text-text-primary">
+            {format(currentMonth, 'MMMM yyyy')}
+          </div>
+          <div className="flex gap-2 items-center">
             <button
-              onClick={handlePrevMonth}
-              disabled={!canGoToPrevMonth}
-              className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
-              aria-label="Previous month"
+              onClick={handleGoToToday}
+              disabled={!isTodayButtonClickable}
+              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
+              aria-label="Go to today"
             >
-              <FiChevronLeft className="w-5 h-5" />
+              Today
             </button>
-            <button
-              onClick={handleNextMonth}
-              disabled={!canGoToNextMonth}
-              className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
-              aria-label="Next month"
-            >
-              <FiChevronRight className="w-5 h-5" />
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={handlePrevMonth}
+                disabled={!canGoToPrevMonth}
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
+                aria-label="Previous month"
+              >
+                <FiChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleNextMonth}
+                disabled={!canGoToNextMonth}
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
+                aria-label="Next month"
+              >
+                <FiChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      <div className="border-t border-border-primary"></div>
+
       <div className="p-4 sm:p-6">
         <div className="flex flex-wrap gap-2 justify-center">
           {daysInView.length > 0 ? (
@@ -334,16 +342,23 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           )}
         </div>
       </div>
-      <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-border-primary text-text-secondary">
-        {legendItems.map(item => (
-          <div key={item.label} className="flex gap-2 items-center">
-            <span className={`w-4 h-4 rounded-md ${item.color}`}></span>
-            <span>{item.label}</span>
+
+      <div className="border-t border-border-primary"></div>
+
+      <div className="p-4">
+        <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center text-sm text-text-secondary">
+          {legendItems.map(item => {
+            return (
+              <div key={item.label} className="flex gap-2 items-center">
+                <span className={`w-4 h-4 rounded-md ${item.color || item.color}`}></span>
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
+          <div className="flex gap-2 items-center">
+            <span className="w-4 h-4 rounded-md border-2 border-border-accent"></span>
+            <span>Today</span>
           </div>
-        ))}
-        <div className="flex gap-2 items-center">
-          <span className="w-4 h-4 rounded-md border-2 border-border-accent"></span>
-          <span>Today</span>
         </div>
       </div>
     </div>

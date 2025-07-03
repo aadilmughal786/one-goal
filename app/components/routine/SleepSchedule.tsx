@@ -184,10 +184,13 @@ const SleepSchedule: React.FC = () => {
   return (
     <>
       <div className="mt-8 space-y-16">
-        <div className="card">
-          <h2 className="flex gap-3 items-center p-6 pb-0 text-2xl font-bold text-text-primary">
-            <MdOutlineNightlight size={28} /> Main Sleep Schedule
-          </h2>
+        <div className="overflow-hidden rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary">
+          <div className="p-6">
+            <h2 className="flex gap-3 items-center text-2xl font-bold text-text-primary">
+              <MdOutlineNightlight size={28} /> Main Sleep Schedule
+            </h2>
+          </div>
+          <div className="border-t border-border-primary"></div>
           <div className="p-6">
             <div
               className={`p-4 rounded-lg text-center mb-6 transition-colors duration-500 ${isSleepTime ? 'bg-indigo-500/20' : 'bg-amber-500/10'}`}
@@ -246,7 +249,8 @@ const SleepSchedule: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="p-6 border-t border-border-primary">
+          <div className="border-t border-border-primary"></div>
+          <div className="p-6">
             <div className="flex justify-between items-center mb-2">
               <h3 className="flex gap-2 items-center text-lg font-semibold text-text-primary">
                 <MdOutlineLightbulb size={20} /> Sleep Insight
@@ -254,7 +258,7 @@ const SleepSchedule: React.FC = () => {
               <button
                 onClick={refreshTip}
                 disabled={isRefreshingTip}
-                className="p-2 rounded-full cursor-pointer hover:bg-bg-tertiary disabled:opacity-50"
+                className="p-2 rounded-full cursor-pointer text-text-tertiary hover:bg-bg-tertiary disabled:opacity-50"
                 title="Get a new tip"
               >
                 {isRefreshingTip ? <FiLoader className="animate-spin" /> : <FiRefreshCw />}

@@ -172,7 +172,7 @@ const TimeEstimator: React.FC = () => {
                       className={`w-4 h-4 rounded-sm ${type === 'weekday' ? 'bg-green-500' : 'bg-purple-500'}`}
                     />
                     <div className="absolute bottom-full left-1/2 px-2 py-1 mb-2 text-xs text-white rounded-md opacity-0 transition-opacity -translate-x-1/2 pointer-events-none bg-neutral-800 group-hover:opacity-100">
-                      {format(date, 'MMM d,<x_bin_42>')}
+                      {format(date, 'MMM d,yyyy')}
                     </div>
                   </div>
                 ))}
@@ -226,7 +226,7 @@ const TimeEstimator: React.FC = () => {
 
           <button
             onClick={handleCalculate}
-            className="flex gap-2 justify-center items-center px-6 py-3 w-full font-semibold rounded-lg transition-transform cursor-pointer text-bg-primary bg-text-primary sm:w-auto hover:scale-105"
+            className="flex gap-2 justify-center items-center px-6 py-3 w-full font-semibold rounded-lg transition-transform cursor-pointer text-bg-primary bg-text-primary sm:w-auto"
           >
             <FiTrendingUp />
             Calculate
