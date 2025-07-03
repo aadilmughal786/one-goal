@@ -226,7 +226,7 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
   };
 
   return (
-    <div className="mb-6 transition-all duration-300 card hover:border-border-secondary">
+    <>
       <div className="flex flex-col gap-2 mb-6 sm:flex-row">
         <input
           type="text"
@@ -272,7 +272,7 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
           ))
         )}
       </ul>
-    </div>
+    </>
   );
 };
 
