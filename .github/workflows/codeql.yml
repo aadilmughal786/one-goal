@@ -1,0 +1,47 @@
+# .github/workflows/codeql.yml
+
+# A descriptive name for the workflow.
+name: "CodeQL Security Analysis"
+
+# This workflow runs on pushes and pull requests to the main branch,
+# and also on a weekly schedule to catch any newly discovered vulnerabilities.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '30 5 * * 1' # Runs at 05:30 on Monday UTC
+
+jobs:
+  analyze:
+    name: Analyze Code
+    # CodeQL runs on the latest version of Ubuntu.
+    runs-on: ubuntu-latest
+    
+    # Permissions are required for CodeQL to report security results.
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      # Step 1: Check out the repository's code so the workflow can access it.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Initialize the CodeQL analysis.
+      # This action sets up the CodeQL environment and detects the languages to be analyzed.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          # Your project is written in TypeScript, so we specify this language.
+          languages: javascript-typescript
+          # We can also specify different query suites like 'security-extended' or 'security-and-quality'
+          # For now, the default 'security-extended' is a great choice.
+          queries: security-extended
+
+      # Step 3: Perform the CodeQL analysis.
+      # This action runs the queries against the codebase and uploads the results to GitHub.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
