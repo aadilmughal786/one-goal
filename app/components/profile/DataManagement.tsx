@@ -108,25 +108,25 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
   if (!currentUser) return null;
 
   return (
-    <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
-      <h2 className="mb-6 text-2xl font-bold text-white">Data Management</h2>
+    <div className="card">
+      <h2 className="mb-6 text-2xl font-bold text-text-primary">Data Management</h2>
       <div className="space-y-4">
         <label
           htmlFor="import-file-profile-tab"
-          className={`flex items-center p-4 text-left text-white rounded-lg border transition-all ${
+          className={`flex items-center p-4 text-left rounded-lg border transition-all ${
             isLoading
-              ? 'cursor-not-allowed opacity-50'
-              : 'cursor-pointer border-white/10 hover:bg-white/5 hover:border-white/20'
+              ? 'opacity-50 cursor-not-allowed'
+              : 'cursor-pointer border-border-primary hover:bg-bg-tertiary hover:border-border-secondary'
           }`}
         >
           {isLoading ? (
-            <FiLoader className="animate-spin text-gray-400" size={24} />
+            <FiLoader className="animate-spin text-text-muted" size={24} />
           ) : (
             <FiUpload className="text-green-400" size={24} />
           )}
           <div className="ml-4">
-            <div className="font-medium">Import Goals</div>
-            <div className="text-sm text-white/60">
+            <div className="font-medium text-text-primary">Import Goals</div>
+            <div className="text-sm text-text-secondary">
               Upload a JSON backup file to select and import goals.
             </div>
           </div>
@@ -142,16 +142,16 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
         <button
           onClick={handleExportData}
           disabled={isLoading}
-          className="flex items-center p-4 w-full text-left text-white rounded-lg border transition-all cursor-pointer border-white/10 hover:bg-white/5 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center p-4 w-full text-left rounded-lg border transition-all cursor-pointer border-border-primary hover:bg-bg-tertiary hover:border-border-secondary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
-            <FiLoader className="animate-spin text-gray-400" size={24} />
+            <FiLoader className="animate-spin text-text-muted" size={24} />
           ) : (
             <FiDownload className="text-blue-400" size={24} />
           )}
           <div className="ml-4">
-            <div className="font-medium">Export All Data</div>
-            <div className="text-sm text-white/60">
+            <div className="font-medium text-text-primary">Export All Data</div>
+            <div className="text-sm text-text-secondary">
               Download all your goals as a single JSON file.
             </div>
           </div>
@@ -159,16 +159,16 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
         <button
           onClick={handleResetData}
           disabled={isLoading}
-          className="flex items-center p-4 w-full text-left text-white rounded-lg border transition-all cursor-pointer border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center p-4 w-full text-left rounded-lg border transition-all cursor-pointer border-red-400/30 hover:bg-red-400/10 hover:border-red-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
-            <FiLoader className="animate-spin text-gray-400" size={24} />
+            <FiLoader className="animate-spin text-text-muted" size={24} />
           ) : (
             <FiTrash2 className="text-red-400" size={24} />
           )}
           <div className="ml-4">
             <div className="font-medium text-red-400">Reset All Data</div>
-            <div className="text-sm text-white/60">Permanently clear all your app data.</div>
+            <div className="text-sm text-text-secondary">Permanently clear all your app data.</div>
           </div>
         </button>
       </div>

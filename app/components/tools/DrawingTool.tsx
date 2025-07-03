@@ -7,7 +7,6 @@ import { FaEraser, FaRedo, FaUndo } from 'react-icons/fa';
 import { FiDownload, FiFeather, FiMaximize, FiMinimize, FiTrash2 } from 'react-icons/fi';
 import { ReactSketchCanvas, ReactSketchCanvasRef } from 'react-sketch-canvas';
 
-// Defines the colors available in the palette.
 const colorPalette = [
   '#FFFFFF',
   '#EF4444',
@@ -22,10 +21,6 @@ const colorPalette = [
   '#EC4899',
 ];
 
-/**
- * DrawingTool Component
- * A feature-rich drawing canvas integrated into the tools page.
- */
 const DrawingTool: React.FC = () => {
   const [strokeColor, setStrokeColor] = useState('#FFFFFF');
   const [strokeWidth, setStrokeWidth] = useState(4);
@@ -87,36 +82,33 @@ const DrawingTool: React.FC = () => {
 
   return (
     <div
-      className={`drawing-canvas-container relative flex flex-col bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-md shadow-lg transition-all duration-300 ${
+      className={`drawing-canvas-container relative flex flex-col bg-bg-secondary backdrop-blur-sm border border-border-primary rounded-md shadow-lg transition-all duration-300 ${
         isFullScreen ? 'w-screen h-screen' : 'w-full'
       }`}
     >
-      {/* Canvas Area */}
       <div className="relative flex-grow w-full h-96 md:h-[500px] border-0">
         <ReactSketchCanvas
           ref={canvasRef}
           className="w-full h-full"
           strokeWidth={isErasing ? eraserWidth : strokeWidth}
           strokeColor={strokeColor}
-          canvasColor="rgba(0,0,0,0.1)"
+          canvasColor="var(--color-bg-tertiary)"
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="flex-shrink-0 p-4">
+      <div className="flex-shrink-0 p-4 border-t border-border-primary">
         <div className="flex flex-wrap gap-4 justify-center items-center">
-          {/* Undo/Redo/Clear */}
-          <div className="flex gap-2 p-2 rounded-lg bg-black/20">
+          <div className="flex gap-2 p-2 rounded-lg bg-bg-primary">
             <button
               onClick={() => canvasRef.current?.undo()}
-              className="p-2 rounded-md cursor-pointer hover:bg-white/10"
+              className="p-2 rounded-md cursor-pointer text-text-secondary hover:bg-bg-tertiary"
               title="Undo"
             >
               <FaUndo />
             </button>
             <button
               onClick={() => canvasRef.current?.redo()}
-              className="p-2 rounded-md cursor-pointer hover:bg-white/10"
+              className="p-2 rounded-md cursor-pointer text-text-secondary hover:bg-bg-tertiary"
               title="Redo"
             >
               <FaRedo />
@@ -130,12 +122,11 @@ const DrawingTool: React.FC = () => {
             </button>
           </div>
 
-          {/* Tool Toggle */}
-          <div className="flex gap-2 p-2 rounded-lg bg-black/20">
+          <div className="flex gap-2 p-2 rounded-lg bg-bg-primary">
             <button
               onClick={handleToolToggle}
               className={`p-2 rounded-md transition-colors cursor-pointer ${
-                isErasing ? 'text-white bg-blue-500' : 'hover:bg-white/10'
+                isErasing ? 'text-white bg-blue-500' : 'text-text-secondary hover:bg-bg-tertiary'
               }`}
               title={isErasing ? 'Switch to Pen' : 'Switch to Eraser'}
             >
@@ -143,9 +134,8 @@ const DrawingTool: React.FC = () => {
             </button>
           </div>
 
-          {/* Stroke Width / Eraser Size */}
-          <div className="flex gap-3 items-center p-2 rounded-lg bg-black/20">
-            <label htmlFor="stroke-width" className="text-sm text-white/70">
+          <div className="flex gap-3 items-center p-2 rounded-lg bg-bg-primary">
+            <label htmlFor="stroke-width" className="text-sm text-text-secondary">
               {isErasing ? 'Eraser Size' : 'Stroke'}
             </label>
             <input
@@ -159,20 +149,21 @@ const DrawingTool: React.FC = () => {
                   ? setEraserWidth(Number(e.target.value))
                   : setStrokeWidth(Number(e.target.value))
               }
-              className="w-24 cursor-pointer"
+              className="w-24 cursor-pointer accent-text-accent"
             />
           </div>
 
-          {/* Color Palette */}
           {!isErasing && (
-            <div className="flex flex-wrap gap-2 p-2 rounded-lg bg-black/20">
+            <div className="flex flex-wrap gap-2 p-2 rounded-lg bg-bg-primary">
               {colorPalette.map(color => (
                 <button
                   key={color}
                   onClick={() => setStrokeColor(color)}
                   style={{ backgroundColor: color }}
                   className={`w-6 h-6 rounded-full transition-transform hover:scale-110 cursor-pointer ${
-                    strokeColor === color ? 'ring-2 ring-offset-2 ring-offset-black ring-white' : ''
+                    strokeColor === color
+                      ? 'ring-2 ring-offset-2 ring-offset-bg-primary ring-border-accent'
+                      : ''
                   }`}
                   aria-label={`Select color ${color}`}
                 />
@@ -180,18 +171,17 @@ const DrawingTool: React.FC = () => {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-2 p-2 rounded-lg bg-black/20">
+          <div className="flex gap-2 p-2 rounded-lg bg-bg-primary">
             <button
               onClick={handleExportImage}
-              className="p-2 rounded-md cursor-pointer hover:bg-white/10"
+              className="p-2 rounded-md cursor-pointer text-text-secondary hover:bg-bg-tertiary"
               title="Download as PNG"
             >
               <FiDownload />
             </button>
             <button
               onClick={toggleFullScreen}
-              className="p-2 rounded-md cursor-pointer hover:bg-white/10"
+              className="p-2 rounded-md cursor-pointer text-text-secondary hover:bg-bg-tertiary"
               title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
             >
               {isFullScreen ? <FiMinimize /> : <FiMaximize />}

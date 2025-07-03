@@ -3,6 +3,7 @@
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import React from 'react';
+import ThemeInitializer from './components/common/ThemeInitializer';
 import Footer from './components/layout/Footer';
 import './globals.css';
 
@@ -53,11 +54,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={poppins.className}>
-        <div className="min-h-screen text-white bg-black">
+      <body className={`${poppins.className} bg-bg-primary`}>
+        <ThemeInitializer />
+        <div className="min-h-screen text-text-primary bg-bg-primary">
           <div className="relative z-10">
-            <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
-              <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-white/40"></div>
+            <div className="fixed inset-0 z-0 opacity-10 pointer-events-none dark:opacity-30">
+              <div className="absolute inset-0 bg-gradient-to-b via-transparent to-transparent from-border-secondary"></div>
             </div>
             <main>{children}</main>
             <Footer />

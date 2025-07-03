@@ -35,11 +35,6 @@ const sleepTips = [
   'Get some exercise during the day. Regular physical activity can help you fall asleep faster and enjoy deeper sleep.',
 ];
 
-/**
- * SleepSchedule Component
- * This component has been refactored to remove local state management for routine data,
- * fixing synchronization issues and relying entirely on the global Zustand store.
- */
 const SleepSchedule: React.FC = () => {
   const activeGoal = useGoalStore(state =>
     state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
@@ -51,7 +46,6 @@ const SleepSchedule: React.FC = () => {
   const bedtime = sleepSettings?.sleepTime || '22:00';
   const wakeTime = sleepSettings?.wakeTime || '06:00';
 
-  // FIX: Wrap the initialization of 'napSchedule' in useMemo to stabilize its reference.
   const napSchedule = useMemo(() => sleepSettings?.naps || [], [sleepSettings?.naps]);
 
   const [isBedtimePickerOpen, setIsBedtimePickerOpen] = useState(false);
@@ -190,8 +184,8 @@ const SleepSchedule: React.FC = () => {
   return (
     <>
       <div className="mt-8 space-y-16">
-        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-          <h2 className="flex gap-3 items-center p-6 pb-0 text-2xl font-bold text-white">
+        <div className="card">
+          <h2 className="flex gap-3 items-center p-6 pb-0 text-2xl font-bold text-text-primary">
             <MdOutlineNightlight size={28} /> Main Sleep Schedule
           </h2>
           <div className="p-6">
@@ -215,55 +209,58 @@ const SleepSchedule: React.FC = () => {
               )}
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="flex flex-col items-center p-4 rounded-xl bg-white/5">
-                <label htmlFor="bedtime-picker" className="self-start text-sm text-white/70">
+              <div className="flex flex-col items-center p-4 rounded-xl bg-bg-tertiary">
+                <label htmlFor="bedtime-picker" className="self-start text-sm text-text-secondary">
                   Bedtime
                 </label>
                 <FaMoon className="my-3 text-4xl text-purple-300" />
                 <button
                   id="bedtime-picker"
                   onClick={() => setIsBedtimePickerOpen(true)}
-                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                  className="p-2 mt-1 w-full text-2xl font-bold text-center bg-transparent rounded-lg cursor-pointer text-text-primary hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   {bedtime}
                 </button>
               </div>
-              <div className="flex flex-col items-center p-4 rounded-xl bg-white/5">
-                <label htmlFor="wake-time-picker" className="self-start text-sm text-white/70">
+              <div className="flex flex-col items-center p-4 rounded-xl bg-bg-tertiary">
+                <label
+                  htmlFor="wake-time-picker"
+                  className="self-start text-sm text-text-secondary"
+                >
                   Wake-up Time
                 </label>
                 <FaSun className="my-3 text-4xl text-orange-300" />
                 <button
                   id="wake-time-picker"
                   onClick={() => setIsWakeTimePickerOpen(true)}
-                  className="p-2 mt-1 w-full text-2xl font-bold text-center text-white bg-transparent rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
+                  className="p-2 mt-1 w-full text-2xl font-bold text-center bg-transparent rounded-lg cursor-pointer text-text-primary hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   {wakeTime}
                 </button>
               </div>
             </div>
-            <div className="mt-6 text-center text-white/80">
+            <div className="mt-6 text-center text-text-secondary">
               Total Sleep Duration:{' '}
-              <span className="font-bold text-white">
+              <span className="font-bold text-text-primary">
                 {(totalSleepDurationMinutes / 60).toFixed(1)} hours
               </span>
             </div>
           </div>
-          <div className="p-6 border-t border-white/10">
+          <div className="p-6 border-t border-border-primary">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="flex gap-2 items-center text-lg font-semibold text-white">
+              <h3 className="flex gap-2 items-center text-lg font-semibold text-text-primary">
                 <MdOutlineLightbulb size={20} /> Sleep Insight
               </h3>
               <button
                 onClick={refreshTip}
                 disabled={isRefreshingTip}
-                className="p-2 rounded-full hover:bg-white/10 disabled:opacity-50 cursor-pointer"
+                className="p-2 rounded-full cursor-pointer hover:bg-bg-tertiary disabled:opacity-50"
                 title="Get a new tip"
               >
                 {isRefreshingTip ? <FiLoader className="animate-spin" /> : <FiRefreshCw />}
               </button>
             </div>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-text-secondary">
               {isRefreshingTip ? 'Getting a new tip...' : randomTip}
             </p>
           </div>

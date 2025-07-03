@@ -4,33 +4,23 @@
 import React, { useEffect, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiInfo, FiX } from 'react-icons/fi';
 
-// --- REFLECTING THE REFACTOR ---
-// We now import the Zustand store to get the toast's state.
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-/**
- * ToastMessage component.
- * It is rendered once in the root layout and listens to the `useNotificationStore`
- * to display messages. The `key` property on the toast state ensures the
- * fade-in/out animation re-triggers for consecutive messages.
- */
 const ToastMessage: React.FC = () => {
-  // This component now subscribes directly to the toast state from the store.
   const { key, message, type } = useNotificationStore(state => state.toast);
 
   const [isVisible, setIsVisible] = useState(false);
 
-  // This effect runs whenever a new toast is triggered (by a change in message or key).
   useEffect(() => {
     if (message) {
       setIsVisible(true);
       const timer = setTimeout(() => {
         setIsVisible(false);
-      }, 5000); // Hide after 5 seconds
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [message, key]); // Re-run when the message or its key changes.
+  }, [message, key]);
 
   const handleClose = () => {
     setIsVisible(false);
@@ -70,19 +60,19 @@ const ToastMessage: React.FC = () => {
       key={key}
       role="status"
       aria-live="polite"
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 p-4 rounded-md shadow-xl z-[5000] text-white
-        bg-black/50 backdrop-blur-md border ${config.borderColor}
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 p-4 rounded-md shadow-xl z-[5000] text-text-primary
+        bg-bg-secondary/50 backdrop-blur-md border ${config.borderColor}
         transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
         w-full max-w-sm sm:max-w-md`}
     >
       <div className="flex gap-3 items-center">
         <div className={`flex-shrink-0 p-2 rounded-md ${config.iconBg}`}>{config.icon}</div>
-        <div className="flex-grow leading-relaxed text-white/90">{message}</div>
+        <div className="flex-grow leading-relaxed text-text-primary">{message}</div>
         <button
           onClick={handleClose}
-          className="ml-4 flex-shrink-0 p-1.5 rounded-md transition-colors duration-200 hover:bg-white/10 group cursor-pointer"
+          className="ml-4 flex-shrink-0 p-1.5 rounded-md transition-colors duration-200 hover:bg-bg-tertiary group cursor-pointer"
         >
-          <FiX className="w-5 h-5 text-neutral-400 group-hover:text-white" />
+          <FiX className="w-5 h-5 text-text-muted group-hover:text-text-primary" />
         </button>
       </div>
     </div>

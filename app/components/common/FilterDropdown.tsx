@@ -37,10 +37,10 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, selectedValue,
     <div className="relative flex-shrink-0" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(prev => !prev)}
-        className="flex justify-between items-center py-3 pr-3 pl-4 w-full text-white rounded-full border cursor-pointer sm:w-40 border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex justify-between items-center py-3 pr-3 pl-4 w-full rounded-full border cursor-pointer text-text-primary sm:w-40 border-border-primary bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-border-accent"
       >
         <span className="flex gap-2 items-center">
-          {SelectedIcon && <SelectedIcon className="text-white/70" />}
+          {SelectedIcon && <SelectedIcon className="text-text-secondary" />}
           <span>{selectedOption?.label}</span>
         </span>
         <FiChevronDown
@@ -49,7 +49,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, selectedValue,
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full z-10 p-2 mb-2 w-48 rounded-lg border shadow-lg bg-neutral-900 border-white/10 animate-fade-in-up">
+        <div className="absolute right-0 bottom-full z-10 p-2 mb-2 w-48 rounded-lg border shadow-lg bg-bg-tertiary border-border-primary animate-fade-in-up">
           {options.map(option => {
             const Icon = option.icon;
             return (
@@ -59,7 +59,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, selectedValue,
                   onSelect(option.value);
                   setIsOpen(false);
                 }}
-                className={`flex items-center w-full gap-3 px-3 py-2 text-left rounded-md transition-colors cursor-pointer hover:bg-white/10 ${
+                className={`flex items-center w-full gap-3 px-3 py-2 text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary ${
                   selectedValue === option.value ? 'bg-blue-500/50' : ''
                 }`}
               >

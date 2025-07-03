@@ -74,8 +74,8 @@ const getSatisfactionInfo = (level: SatisfactionLevel) => {
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
-      <div className="p-3 text-sm rounded-lg border shadow-xl bg-neutral-800 border-white/10">
-        <p className="font-bold text-white">{label}</p>
+      <div className="p-3 text-sm rounded-lg border shadow-xl bg-bg-tertiary border-border-primary">
+        <p className="font-bold text-text-primary">{label}</p>
         {payload.map((entry, index) => {
           const value = entry.value;
           let displayValue: string;
@@ -301,7 +301,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
 
   if (!dailyProgress || dailyProgress.length === 0) {
     return (
-      <div className="p-8 text-center text-white/60">
+      <div className="p-8 text-center text-text-secondary">
         <FiBarChart className="mx-auto mb-4 text-4xl" />
         <p>No progress data available yet. Start logging your daily progress to see charts!</p>
       </div>
@@ -311,8 +311,8 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
   return (
     <div className="space-y-8">
       {goalProgressData && (
-        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+        <div className="card">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
             <FiTarget /> Goal Progress Overview
           </h3>
           <ResponsiveContainer width="100%" height={200}>
@@ -338,36 +338,41 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
           <div className="grid grid-cols-2 gap-4 mt-4 text-center md:grid-cols-4">
             <div>
               <p className="text-2xl font-bold text-blue-400">{goalProgressData.daysPassed}</p>
-              <p className="text-sm text-white/60">Days Passed</p>
+              <p className="text-sm text-text-secondary">Days Passed</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-green-400">{goalProgressData.daysLogged}</p>
-              <p className="text-sm text-white/60">Days Logged</p>
+              <p className="text-sm text-text-secondary">Days Logged</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-orange-400">{goalProgressData.daysRemaining}</p>
-              <p className="text-sm text-white/60">Days Remaining</p>
+              <p className="text-sm text-text-secondary">Days Remaining</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-purple-400">
                 {goalProgressData.loggingRate.toFixed(0)}%
               </p>
-              <p className="text-sm text-white/60">Consistency</p>
+              <p className="text-sm text-text-secondary">Consistency</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FiTrendingUp /> Satisfaction Trend & Moving Average
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-            <YAxis domain={[1, 5]} tickCount={5} stroke="#9ca3af" fontSize={12} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+            <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+            <XAxis dataKey="date" stroke="var(--color-text-secondary)" fontSize={12} />
+            <YAxis
+              domain={[1, 5]}
+              tickCount={5}
+              stroke="var(--color-text-secondary)"
+              fontSize={12}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
             <Legend iconType="circle" />
             <Line
               type="monotone"
@@ -392,26 +397,26 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       </div>
 
       {weightData.length > 1 && (
-        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+        <div className="card">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
             <FaWeightHanging /> Weight Trend
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={weightData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-              <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+              <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" stroke="var(--color-text-secondary)" fontSize={12} />
               <YAxis
-                stroke="#9ca3af"
+                stroke="var(--color-text-secondary)"
                 fontSize={12}
                 domain={['dataMin - 2', 'dataMax + 2']}
                 label={{
                   value: 'Weight',
                   angle: -90,
                   position: 'insideLeft',
-                  fill: '#9ca3af',
+                  fill: 'var(--color-text-secondary)',
                 }}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
               <Legend iconType="circle" />
               <Line
                 type="monotone"
@@ -428,25 +433,25 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
       )}
 
       {consistencyData.length > 0 && (
-        <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+        <div className="card">
+          <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
             <FiCalendar /> Weekly Consistency Tracking
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={consistencyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-              <XAxis dataKey="week" stroke="#9ca3af" fontSize={12} />
+              <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+              <XAxis dataKey="week" stroke="var(--color-text-secondary)" fontSize={12} />
               <YAxis
-                stroke="#9ca3af"
+                stroke="var(--color-text-secondary)"
                 fontSize={12}
                 label={{
                   value: 'Consistency %',
                   angle: -90,
                   position: 'insideLeft',
-                  fill: '#9ca3af',
+                  fill: 'var(--color-text-secondary)',
                 }}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
               <Legend iconType="circle" />
               <Bar dataKey="consistency" fill="#8b5cf6" name="Weekly Consistency %" />
             </BarChart>
@@ -454,14 +459,14 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </div>
       )}
 
-      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FiActivity /> Day-of-Week Performance Analysis
         </h3>
         <ResponsiveContainer width="100%" height={350}>
           <ComposedChart data={weeklyPerformance}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
+            <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+            <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} />
             <YAxis
               yAxisId="left"
               orientation="left"
@@ -488,7 +493,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
                 fill: '#38bdf8',
               }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
             <Legend iconType="circle" />
             <Bar yAxisId="left" dataKey="avgTime" fill="#84cc16" name="Avg Time Spent" />
             <Line
@@ -510,14 +515,14 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FiClock /> Cumulative Progress & Satisfaction Trend
         </h3>
         <ResponsiveContainer width="100%" height={350}>
           <ComposedChart data={cumulativeTimeData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+            <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+            <XAxis dataKey="date" stroke="var(--color-text-secondary)" fontSize={12} />
             <YAxis
               yAxisId="left"
               stroke="#84cc16"
@@ -538,7 +543,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
                 fill: '#38bdf8',
               }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
             <Legend iconType="circle" />
             <Area
               yAxisId="left"
@@ -562,14 +567,14 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FiStar /> Time vs Satisfaction Analysis
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={correlationData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+            <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+            <XAxis dataKey="date" stroke="var(--color-text-secondary)" fontSize={12} />
             <YAxis
               yAxisId="left"
               stroke="#84cc16"
@@ -585,7 +590,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
               fontSize={12}
               label={{ value: 'Satisfaction', angle: 90, position: 'insideRight', fill: '#38bdf8' }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
             <Legend iconType="circle" />
             <Bar yAxisId="left" dataKey="timeSpent" fill="#84cc16" name="Time Spent (mins)" />
             <Line
@@ -600,8 +605,8 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="p-4 sm:p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FiCheckCircle /> Satisfaction Level Distribution
         </h3>
         <ResponsiveContainer width="100%" height={320}>
@@ -623,7 +628,7 @@ const Charts: React.FC<ChartsProps> = ({ dailyProgress, goal }) => {
                   <text
                     x={x}
                     y={y}
-                    fill="white"
+                    fill="var(--color-text-primary)"
                     textAnchor={x > cx ? 'start' : 'end'}
                     dominantBaseline="central"
                     fontSize={14}

@@ -18,11 +18,9 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiCheckCircle, FiChevronLeft, FiChevronRight, FiLoader, FiXCircle } from 'react-icons/fi';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// --- REFACTOR: The props interface is simplified. ---
 interface RoutineCalendarProps {
   routineType: RoutineType;
   title: string;
@@ -63,9 +61,9 @@ const CustomTooltip = ({
     statusText = <span className="text-red-400">Skipped</span>;
     buttonText = `Mark as Not Logged`;
     ButtonIcon = FiCheckCircle;
-    buttonClass = 'text-white/60 bg-white/10 hover:bg-white/20';
+    buttonClass = 'text-text-secondary bg-bg-tertiary hover:bg-border-primary';
   } else {
-    statusText = <span className="text-white/60">Not Logged</span>;
+    statusText = <span className="text-text-tertiary">Not Logged</span>;
     buttonText = `Mark as Done`;
     ButtonIcon = FiCheckCircle;
     buttonClass = 'text-green-400 bg-green-500/20 hover:bg-green-500/30';
@@ -73,10 +71,10 @@ const CustomTooltip = ({
 
   return (
     <div
-      className={`absolute bottom-full left-1/2 invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl transition-opacity duration-300 -translate-x-1/2 bg-neutral-900 border-white/10 group-hover:visible group-hover:opacity-100 cursor-default ${isActive ? '!visible opacity-100' : 'opacity-0'}`}
+      className={`absolute bottom-full left-1/2 invisible z-20 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl transition-opacity duration-300 -translate-x-1/2 bg-bg-secondary border-border-primary group-hover:visible group-hover:opacity-100 cursor-default ${isActive ? '!visible opacity-100' : 'opacity-0'}`}
     >
-      <p className="p-3 pb-1 font-bold text-white">{format(date, 'MMMM d,yyyy')}</p>
-      <hr className="my-1 border-white/10" />
+      <p className="p-3 pb-1 font-bold text-text-primary">{format(date, 'MMMM d,yyyy')}</p>
+      <hr className="my-1 border-border-primary" />
       <div className="px-3 py-2">
         <p className="text-sm">
           <span className="font-semibold">{routineName} Status:</span> {statusText}
@@ -91,15 +89,11 @@ const CustomTooltip = ({
           {isFutureDate ? 'Cannot Log' : buttonText}
         </button>
       </div>
-      <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-neutral-900 border-white/10"></div>
+      <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-secondary border-border-primary"></div>
     </div>
   );
 };
 
-/**
- * RoutineCalendar Component
- * This component has been refactored to use the new dedicated services and error types.
- */
 const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   routineType,
   title,
@@ -233,12 +227,12 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   const legendItems = [
     { status: RoutineLogStatus.DONE, label: 'Done', color: 'bg-green-500/50' },
     { status: RoutineLogStatus.SKIPPED, label: 'Skipped', color: 'bg-red-500/50' },
-    { status: RoutineLogStatus.NOT_LOGGED, label: 'Not Logged', color: 'bg-white/5' },
+    { status: RoutineLogStatus.NOT_LOGGED, label: 'Not Logged', color: 'bg-bg-tertiary' },
   ];
 
   if (!activeGoal) {
     return (
-      <div className="p-10 text-center text-white/60">
+      <div className="p-10 text-center text-text-secondary">
         <IconComponent className="mx-auto mb-4 text-4xl" />
         <p>Set an active goal to start tracking your {title.toLowerCase()} in the calendar.</p>
       </div>
@@ -246,23 +240,20 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   }
 
   return (
-    <div
-      ref={calendarRef}
-      className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl"
-    >
-      <div className="flex justify-between items-center p-4 border-b sm:p-6 border-white/10">
-        <h3 className="flex gap-2 items-center text-lg font-bold text-white sm:text-xl">
+    <div ref={calendarRef} className="card">
+      <div className="flex justify-between items-center p-4 border-b sm:p-6 border-border-primary">
+        <h3 className="flex gap-2 items-center text-lg font-bold text-text-primary sm:text-xl">
           <IconComponent />
           {title}
         </h3>
-        <div className="text-lg font-semibold text-center text-white">
+        <div className="text-lg font-semibold text-center text-text-primary">
           {format(currentMonth, 'MMMM yyyy')}
         </div>
         <div className="flex gap-2 items-center">
           <button
             onClick={handleGoToToday}
             disabled={!isTodayButtonClickable}
-            className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+            className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
             aria-label="Go to today"
           >
             Today
@@ -271,7 +262,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
             <button
               onClick={handlePrevMonth}
               disabled={!canGoToPrevMonth}
-              className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
               aria-label="Previous month"
             >
               <FiChevronLeft className="w-5 h-5" />
@@ -279,7 +270,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
             <button
               onClick={handleNextMonth}
               disabled={!canGoToNextMonth}
-              className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
               aria-label="Next month"
             >
               <FiChevronRight className="w-5 h-5" />
@@ -301,11 +292,11 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
 
               if (logStatus === RoutineLogStatus.DONE) dayClasses += 'bg-green-500/50';
               else if (logStatus === RoutineLogStatus.SKIPPED) dayClasses += 'bg-red-500/50';
-              else dayClasses += 'bg-white/5';
+              else dayClasses += 'bg-bg-tertiary';
 
-              if (isCurrentDay) dayClasses += ' border-2 border-blue-400';
+              if (isCurrentDay) dayClasses += ' border-2 border-border-accent';
               if (isFuture) dayClasses += ' bg-gray-800/20 text-gray-500 opacity-50 ';
-              else dayClasses += ' cursor-pointer hover:ring-2 hover:ring-white';
+              else dayClasses += ' cursor-pointer hover:ring-2 hover:ring-border-accent';
 
               return (
                 <div
@@ -318,8 +309,10 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
                   }}
                   aria-label={`${format(day, 'MMMM d')}, Status: ${logStatus === RoutineLogStatus.DONE ? 'Done' : logStatus === RoutineLogStatus.SKIPPED ? 'Skipped' : 'Not Logged'}`}
                 >
-                  <span className="text-xs text-white/50">{format(day, 'E')}</span>
-                  <span className="z-10 text-xl font-bold text-white">{format(day, 'd')}</span>
+                  <span className="text-xs text-text-tertiary">{format(day, 'E')}</span>
+                  <span className="z-10 text-xl font-bold text-text-primary">
+                    {format(day, 'd')}
+                  </span>
                   {!isFuture && (
                     <CustomTooltip
                       date={day}
@@ -335,13 +328,13 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
               );
             })
           ) : (
-            <div className="py-10 w-full text-center text-white/50">
+            <div className="py-10 w-full text-center text-text-muted">
               No goal days in this month.
             </div>
           )}
         </div>
       </div>
-      <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-white/10 text-white/70">
+      <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-border-primary text-text-secondary">
         {legendItems.map(item => (
           <div key={item.label} className="flex gap-2 items-center">
             <span className={`w-4 h-4 rounded-md ${item.color}`}></span>
@@ -349,7 +342,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
           </div>
         ))}
         <div className="flex gap-2 items-center">
-          <span className="w-4 h-4 rounded-md border-2 border-blue-400"></span>
+          <span className="w-4 h-4 rounded-md border-2 border-border-accent"></span>
           <span>Today</span>
         </div>
       </div>

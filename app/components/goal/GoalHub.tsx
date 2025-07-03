@@ -10,7 +10,7 @@ import {
   FiPlayCircle,
   FiPlus,
   FiSearch,
-  FiUpload, // Import FiUpload for the new button
+  FiUpload,
   FiXCircle,
 } from 'react-icons/fi';
 
@@ -149,19 +149,19 @@ const GoalHub: React.FC = () => {
         />
       </div>
 
-      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-black/50 border-white/10">
+      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex flex-col gap-4 items-center mx-auto max-w-6xl sm:flex-row">
           <div className="flex flex-shrink-0 gap-2">
             <button
               onClick={() => handleOpenGoalModal(null, false)}
-              className="flex gap-2 items-center px-4 py-2 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90"
+              className="flex gap-2 items-center px-4 py-2 font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90"
             >
               <FiPlus />
               New Goal
             </button>
             <button
               onClick={handleImportClick}
-              className="flex gap-2 items-center px-4 py-2 font-semibold text-white rounded-full transition-all duration-200 cursor-pointer bg-white/10 hover:bg-white/20"
+              className="flex gap-2 items-center px-4 py-2 font-semibold rounded-full transition-all duration-200 cursor-pointer text-text-primary bg-bg-tertiary hover:bg-border-primary"
             >
               <FiUpload />
               Import
@@ -176,13 +176,13 @@ const GoalHub: React.FC = () => {
           </div>
           <div className="flex flex-col gap-4 w-full sm:flex-row sm:w-auto sm:flex-grow">
             <div className="relative flex-grow">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
               <input
                 type="text"
                 placeholder="Search goals..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="py-3 pr-4 pl-12 w-full text-white rounded-full border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="py-3 pr-4 pl-12 w-full rounded-full border text-text-primary border-border-primary bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-border-accent"
               />
             </div>
             <FilterDropdown

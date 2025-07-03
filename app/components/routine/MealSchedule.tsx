@@ -25,7 +25,7 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
-import WeightTrendChart from './WeightTrendChart'; // Import the new chart component
+import WeightTrendChart from './WeightTrendChart';
 
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineLocalCafe,
@@ -45,12 +45,6 @@ const IconComponents: { [key: string]: React.ElementType } = {
 
 const mealIcons: string[] = Object.keys(IconComponents);
 
-/**
- * MealSchedule Component
- *
- * Manages the display and functionality for user's meal routines.
- * This component has been refactored to fetch its own data from the useGoalStore.
- */
 const MealSchedule: React.FC = () => {
   const appState = useGoalStore(state => state.appState);
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
@@ -60,7 +54,6 @@ const MealSchedule: React.FC = () => {
 
   const [meals, setMeals] = useState<ScheduledRoutineBase[]>([]);
 
-  // Memoize daily progress data to pass to the chart
   const dailyProgress = useMemo(() => {
     return activeGoal ? Object.values(activeGoal.dailyProgress) : [];
   }, [activeGoal]);
@@ -150,7 +143,6 @@ const MealSchedule: React.FC = () => {
         iconComponentsMap={IconComponents}
       />
 
-      {/* Render the new weight trend chart here */}
       <WeightTrendChart dailyProgress={dailyProgress} />
 
       <RoutineCalendar

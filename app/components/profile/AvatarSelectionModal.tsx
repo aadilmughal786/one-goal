@@ -11,13 +11,11 @@ interface AvatarSelectionModalProps {
   onClose: () => void;
   onAvatarSelect: (avatarUrl: string) => Promise<void>;
   currentUser: User;
-  // Change prop name to showToast to match the new convention from useNotificationStore
   showToast: (text: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const basePath = '/one-goal';
 
-// Updated list of avatars based on your provided filenames.
 const customAvatarFiles = [
   'bicycle.jpg',
   'book.jpg',
@@ -41,23 +39,21 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
   onClose,
   onAvatarSelect,
   currentUser,
-  showToast, // Destructure showToast from props
+  showToast,
 }) => {
   const [selectedAvatar, setSelectedAvatar] = useState<string>(currentUser.photoURL || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Get the original Google photo URL to allow reverting to default
   const originalGooglePhoto = useMemo(() => {
     const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
     return googleProvider?.photoURL || null;
   }, [currentUser.providerData]);
 
-  // Combine custom avatars and the original Google avatar into one list
   const avatarOptions = useMemo(() => {
     const options = customAvatarFiles.map(file => ({
       type: 'custom',
       url: `${basePath}/avatars/${file}`,
-      name: file.split('.')[0], // e.g., 'cat'
+      name: file.split('.')[0],
     }));
 
     if (originalGooglePhoto) {
@@ -72,7 +68,6 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
   }, [originalGooglePhoto]);
 
   const handleSave = async () => {
-    // Prevent saving if the selection hasn't changed
     if (selectedAvatar === currentUser.photoURL) {
       onClose();
       return;
@@ -80,7 +75,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
     setIsSaving(true);
     try {
       await onAvatarSelect(selectedAvatar);
-      showToast('Profile image updated successfully. Refreshing...', 'success'); // Use showToast prop
+      showToast('Profile image updated successfully. Refreshing...', 'success');
       setTimeout(() => window.location.reload(), 2000);
     } finally {
       setIsSaving(false);
@@ -90,20 +85,18 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    // The definitive fix: Increased z-index to a very high value (z-[100])
-    // to ensure it is on top of all other stacking contexts, including the sticky navbar.
     <div
-      className="flex fixed inset-0 justify-center items-center p-4 backdrop-blur-sm z-100 bg-black/60"
+      className="flex fixed inset-0 z-[100] justify-center items-center p-4 backdrop-blur-sm bg-black/60"
       onClick={onClose}
     >
       <div
-        className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-xl"
+        className="w-full max-w-xl rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-6 border-b border-white/10">
-          <h2 className="text-xl font-semibold text-white">Choose Your Avatar</h2>
+        <div className="flex justify-between items-center p-6 border-b border-border-primary">
+          <h2 className="text-xl font-semibold text-text-primary">Choose Your Avatar</h2>
           <button
-            className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white cursor-pointer"
+            className="p-1.5 text-text-tertiary rounded-full hover:bg-bg-tertiary hover:text-text-primary cursor-pointer"
             onClick={onClose}
             aria-label="Close modal"
           >
@@ -112,7 +105,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
         </div>
 
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          <p className="mb-6 text-center text-white/70">
+          <p className="mb-6 text-center text-text-secondary">
             Select a new profile picture from the options below.
           </p>
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
@@ -121,7 +114,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
                 <button
                   onClick={() => setSelectedAvatar(avatar.url)}
                   className={`relative p-1 rounded-full transition-all duration-200 aspect-square w-24 h-24 cursor-pointer
-                    ${selectedAvatar === avatar.url ? 'ring-2 ring-blue-500' : 'ring-2 ring-transparent'}`}
+                    ${selectedAvatar === avatar.url ? 'ring-2 ring-border-accent' : 'ring-2 ring-transparent'}`}
                 >
                   <Image
                     src={avatar.url}
@@ -130,7 +123,6 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
                     height={100}
                     className="object-cover w-full h-full rounded-full"
                     onError={e => {
-                      // Fallback for image loading errors: display first letter of name
                       e.currentTarget.src = `https://placehold.co/100x100/1a1a1a/ffffff?text=${avatar.name.charAt(0).toUpperCase()}`;
                     }}
                   />
@@ -140,7 +132,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
                     </div>
                   )}
                 </button>
-                <span className="mt-2 text-xs text-center capitalize text-white/80">
+                <span className="mt-2 text-xs text-center capitalize text-text-tertiary">
                   {avatar.name.replace(/2/g, '')}
                 </span>
               </div>
@@ -148,11 +140,11 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 border-t border-white/10">
+        <div className="p-6 border-t border-border-primary">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-60"
           >
             {isSaving ? (
               <>

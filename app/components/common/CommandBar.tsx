@@ -29,21 +29,21 @@ const ResultItem = React.forwardRef(
     ref: React.Ref<HTMLDivElement>
   ) => {
     if (typeof item === 'string') {
-      return <div className="px-4 pt-4 pb-2 text-xs font-medium text-white/50">{item}</div>;
+      return <div className="px-4 pt-4 pb-2 text-xs font-medium text-text-muted">{item}</div>;
     }
 
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between px-4 py-3  transition-colors cursor-pointer ${
-          active ? 'bg-white/10' : 'bg-transparent'
+        className={`flex items-center justify-between px-4 py-3 transition-colors cursor-pointer ${
+          active ? 'bg-bg-tertiary' : 'bg-transparent'
         }`}
       >
         <div className="flex gap-3 items-center">
-          {item.icon && <div className="text-white/70">{item.icon}</div>}
+          {item.icon && <div className="text-text-secondary">{item.icon}</div>}
           <div className="flex flex-col">
-            <span className="text-base text-white">{item.name}</span>
-            {item.subtitle && <span className="text-xs text-white/60">{item.subtitle}</span>}
+            <span className="text-base text-text-primary">{item.name}</span>
+            {item.subtitle && <span className="text-xs text-text-tertiary">{item.subtitle}</span>}
           </div>
         </div>
         {item.shortcut?.length ? (
@@ -51,7 +51,7 @@ const ResultItem = React.forwardRef(
             {item.shortcut.map(sc => (
               <kbd
                 key={sc}
-                className="px-2 py-1 text-xs font-medium rounded-md text-white/70 bg-white/5"
+                className="px-2 py-1 text-xs font-medium rounded-md text-text-tertiary bg-bg-tertiary"
               >
                 {sc}
               </kbd>
@@ -85,11 +85,11 @@ function RenderResults() {
 export default function CommandBar() {
   return (
     <KBarPortal>
-      <KBarPositioner className="z-50 p-4 backdrop-blur-sm bg-black/60">
-        <KBarAnimator className="w-full max-w-xl bg-white/[0.05] overflow-hidden backdrop-blur-md border border-white/10 rounded-xl shadow-2xl">
+      <KBarPositioner className="z-50 p-4 backdrop-blur-sm bg-bg-primary/60">
+        <KBarAnimator className="overflow-hidden w-full max-w-xl rounded-xl border shadow-2xl bg-bg-secondary border-border-primary">
           <KBarSearch
             defaultPlaceholder="Type a command or search..."
-            className="px-4 py-3 w-full text-lg text-white bg-transparent border-b border-white/10 focus:outline-none"
+            className="px-4 py-3 w-full text-lg bg-transparent border-b text-text-primary border-border-primary focus:outline-none"
           />
           <RenderResults />
         </KBarAnimator>

@@ -40,17 +40,17 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
 
   return (
     <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60">
-      <div className="flex flex-col w-full max-w-2xl max-h-[90vh] bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl">
-        <div className="flex flex-shrink-0 justify-between items-center p-6 border-b border-white/10">
+      <div className="flex flex-col w-full max-w-2xl max-h-[90vh] bg-bg-secondary backdrop-blur-md border border-border-primary rounded-3xl shadow-2xl">
+        <div className="flex flex-shrink-0 justify-between items-center p-6 border-b border-border-primary">
           <div>
-            <h2 className="text-xl font-semibold text-white">Select Goals to Import</h2>
-            <p className="text-sm text-white/60">
+            <h2 className="text-xl font-semibold text-text-primary">Select Goals to Import</h2>
+            <p className="text-sm text-text-secondary">
               Choose which goals you want to add to your workspace.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
             aria-label="Close modal"
           >
             <FiX size={20} />
@@ -63,7 +63,7 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
               return (
                 <label
                   key={goal.id}
-                  className="flex gap-4 items-center p-4 rounded-lg border transition-colors cursor-pointer border-white/10 hover:bg-white/10 group"
+                  className="flex gap-4 items-center p-4 rounded-lg border transition-colors cursor-pointer border-border-primary hover:bg-bg-tertiary group"
                 >
                   <input
                     type="checkbox"
@@ -75,16 +75,16 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
                     className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-all duration-300 ${
                       isSelected
                         ? 'bg-blue-500 border-blue-500'
-                        : 'border-white/30 bg-black/20 group-hover:border-white/50'
+                        : 'border-border-secondary bg-bg-primary group-hover:border-border-accent'
                     }`}
                   >
                     {isSelected && <FiCheck className="w-4 h-4 text-white" />}
                   </span>
 
-                  <FiFileText className="text-white/70" />
+                  <FiFileText className="text-text-secondary" />
                   <div className="flex-grow">
-                    <p className="font-semibold text-white">{goal.name}</p>
-                    <p className="text-xs text-white/60">
+                    <p className="font-semibold text-text-primary">{goal.name}</p>
+                    <p className="text-xs text-text-tertiary">
                       Duration: {format(goal.startDate.toDate(), 'd MMM yy')} -{' '}
                       {format(goal.endDate.toDate(), 'd MMM yy')}
                     </p>
@@ -94,11 +94,11 @@ const ImportSelectionModal: React.FC<ImportSelectionModalProps> = ({
             })}
           </div>
         </div>
-        <div className="flex-shrink-0 p-6 border-t border-white/10">
+        <div className="flex-shrink-0 p-6 border-t border-border-primary">
           <button
             onClick={handleConfirm}
             disabled={selectedGoalIds.length === 0 || isImporting}
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-50 cursor-pointer"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
           >
             {isImporting ? <FiLoader className="animate-spin" /> : <FiCheck />}
             Import ({selectedGoalIds.length}) Selected Goals

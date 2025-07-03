@@ -70,7 +70,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
     bg: 'bg-red-500/10',
     border: 'border-red-400/20',
     hoverBg: 'hover:bg-red-500/20',
-    icon: <RiAlarmWarningLine size={40} className="text-white/40" />,
+    icon: <RiAlarmWarningLine size={40} className="text-text-muted" />,
     emptyText: 'No distractions defined yet.',
   };
 
@@ -83,14 +83,14 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
           onChange={e => setInputValue(e.target.value)}
           onKeyPress={e => e.key === 'Enter' && handleAddItem()}
           placeholder="Add a distraction to avoid..."
-          className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+          className="flex-1 p-3 text-lg rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
           disabled={isAdding}
           aria-label="Add new distraction"
         />
         <button
           onClick={handleAddItem}
           disabled={isAdding || !inputValue.trim()}
-          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-60"
           aria-label="Add item"
         >
           {isAdding ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiPlus />}
@@ -100,7 +100,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
 
       <ul className="space-y-3">
         {list.length === 0 ? (
-          <li className="p-8 text-center rounded-md text-white/40">
+          <li className="p-8 text-center rounded-md text-text-muted">
             <div className="flex flex-col gap-3 justify-center items-center">
               {currentTheme.icon}
               <p className="text-lg">{currentTheme.emptyText}</p>
@@ -117,7 +117,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
               >
                 <div className="flex justify-between items-start mb-2">
                   <span
-                    className="flex-grow pr-4 text-lg font-medium break-words transition-colors cursor-pointer text-white/90 hover:text-blue-400"
+                    className={`flex-grow pr-4 text-lg font-medium break-words transition-colors cursor-pointer text-text-primary hover:text-blue-400`}
                     onClick={() => !isUpdatingThis && onEditDistraction(item)}
                   >
                     {item.title}
@@ -125,7 +125,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                   <div className="flex flex-shrink-0 gap-1 items-center">
                     <button
                       onClick={() => onEditDistraction(item)}
-                      className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                      className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
                       aria-label="Edit item"
                       disabled={isUpdatingThis}
                     >
@@ -144,20 +144,20 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
 
                 <div className="flex-grow">
                   {item.description && (
-                    <p className="mb-2 text-sm text-white/60">{item.description}</p>
+                    <p className="mb-2 text-sm text-text-secondary">{item.description}</p>
                   )}
                   {item.triggerPatterns &&
                     item.triggerPatterns.length > 0 &&
                     item.triggerPatterns.some(p => p.trim() !== '') && (
-                      <div className="px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
-                        <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-white/50">
+                      <div className="px-4 pt-3 -mx-4 mt-3 border-t border-border-secondary">
+                        <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-text-muted">
                           Trigger Patterns
                         </h4>
                         <ul className="space-y-1">
                           {item.triggerPatterns.map((pattern, index) => (
                             <li
                               key={index}
-                              className="flex  items-center gap-2.5 text-sm text-white/80"
+                              className="flex items-center gap-2.5 text-sm text-text-secondary"
                             >
                               <FaAnglesRight className="text-red-500" /> <span>{pattern}</span>
                             </li>
@@ -167,17 +167,17 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                     )}
                 </div>
 
-                <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
-                  <div className="flex gap-1 items-center text-xs text-white/50">
+                <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-border-secondary">
+                  <div className="flex gap-1 items-center text-xs text-text-tertiary">
                     <FiClock size={12} />
                     <span>Created: {formatDate(item.createdAt)}</span>
                   </div>
 
                   <div className="flex gap-2 items-center">
-                    <div className="flex gap-1 items-center p-1 rounded-full bg-black/20">
+                    <div className="flex gap-1 items-center p-1 rounded-full bg-bg-tertiary">
                       <button
                         onClick={() => handleUpdateCount(item.id, item.count, -1)}
-                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50 cursor-pointer"
+                        className="p-1.5 rounded-full text-text-secondary hover:bg-border-primary disabled:opacity-50 cursor-pointer"
                         disabled={isUpdatingThis}
                         aria-label="Decrease count"
                       >
@@ -192,7 +192,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
                       </span>
                       <button
                         onClick={() => handleUpdateCount(item.id, item.count, 1)}
-                        className="p-1.5 rounded-full text-white/70 hover:bg-white/10 disabled:opacity-50 cursor-pointer"
+                        className="p-1.5 rounded-full text-text-secondary hover:bg-border-primary disabled:opacity-50 cursor-pointer"
                         disabled={isUpdatingThis}
                         aria-label="Increase count"
                       >

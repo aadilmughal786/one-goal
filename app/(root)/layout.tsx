@@ -4,7 +4,8 @@
 import CommandBar from '@/components/common/CommandBar';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import ReminderModal from '@/components/common/ReminderModal';
-import SleepOverlay from '@/components/common/SleepOverlay'; // Import the new component
+import SleepOverlay from '@/components/common/SleepOverlay';
+import ThemeInitializer from '@/components/common/ThemeInitializer'; // Import the initializer
 import ToastMessage from '@/components/common/ToastMessage';
 import NavBar from '@/components/layout/NavBar';
 import FloatingStopwatch from '@/components/stop-watch/FloatingStopwatch';
@@ -17,6 +18,8 @@ import {
   FiGithub,
   FiHome,
   FiLinkedin,
+  FiMoon,
+  FiSun,
   FiTarget,
   FiUser,
 } from 'react-icons/fi';
@@ -29,6 +32,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const currentTheme = root.classList.contains('dark') ? 'dark' : 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    root.classList.remove(currentTheme);
+    root.classList.add(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   const actions: Action[] = [
     {
@@ -94,6 +106,21 @@ export default function RootLayout({
       perform: () => router.push('/tools'),
       icon: <FiCpu />,
     },
+    // Add the new theme toggle action
+    {
+      id: 'toggleTheme',
+      name: 'Toggle Theme',
+      shortcut: ['t', 'h'],
+      keywords: 'theme dark light mode',
+      section: 'Actions',
+      perform: toggleTheme,
+      icon: (
+        <>
+          <FiSun className="dark:hidden" />
+          <FiMoon className="hidden dark:inline" />
+        </>
+      ),
+    },
     {
       id: 'github',
       name: 'GitHub',
@@ -113,18 +140,21 @@ export default function RootLayout({
   ];
 
   return (
-    <KBarProvider actions={actions}>
-      <CommandBar />
-      <div className="flex flex-row text-white bg-black">
-        <NavBar />
-        <main className="flex-grow pl-16">{children}</main>
-        {/* Global components that manage their own state */}
-        <FloatingStopwatch />
-        <ToastMessage />
-        <ConfirmationModal />
-        <ReminderModal />
-        <SleepOverlay /> {/* Add the new sleep overlay here */}
-      </div>
-    </KBarProvider>
+    <>
+      <ThemeInitializer />
+      <KBarProvider actions={actions}>
+        <CommandBar />
+        <div className="flex flex-row text-text-primary bg-bg-primary">
+          <NavBar />
+          <main className="flex-grow pl-16">{children}</main>
+          {/* Global components that manage their own state */}
+          <FloatingStopwatch />
+          <ToastMessage />
+          <ConfirmationModal />
+          <ReminderModal />
+          <SleepOverlay />
+        </div>
+      </KBarProvider>
+    </>
   );
 }

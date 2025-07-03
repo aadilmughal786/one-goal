@@ -17,7 +17,7 @@ const navLinks = [
   { href: '/todo?tab=todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch?tab=stopwatch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine?tab=sleep', label: 'Routine', icon: <MdOutlineRepeat /> },
-  { href: '/goal?tab=hub', label: 'Goals', icon: <FiTarget /> }, // No tabs on this page
+  { href: '/goal?tab=hub', label: 'Goals', icon: <FiTarget /> },
 ];
 
 export default function NavBar() {
@@ -51,33 +51,31 @@ export default function NavBar() {
   const getNavLinkClasses = (navPath: string) => {
     const baseClasses =
       'flex items-center justify-center w-full h-12 rounded-lg transition-colors duration-200 cursor-pointer';
-    const activeClasses = 'bg-white text-black';
-    const inactiveClasses = 'text-white/70 hover:bg-white/10 hover:text-white';
+    // Use CSS variables for theme-aware styling
+    const activeClasses = 'bg-text-primary text-bg-primary';
+    const inactiveClasses = 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary';
 
-    // Get the base path of the link (e.g., '/dashboard' from '/dashboard?tab=main')
     const [basePath] = navPath.split('?');
 
-    // Check if the current page's pathname matches the link's base path.
-    // This ensures the icon stays active regardless of the current tab.
     return pathname === basePath
       ? `${baseClasses} ${activeClasses}`
       : `${baseClasses} ${inactiveClasses}`;
   };
 
   return (
-    <nav className="flex fixed top-0 left-0 z-40 flex-col justify-between items-center px-2 py-5 w-16 h-screen border-r shadow-lg backdrop-blur-md bg-black/50 border-white/10">
+    <nav className="flex fixed top-0 left-0 z-40 flex-col justify-between items-center px-2 py-5 w-16 h-screen border-r shadow-lg backdrop-blur-md bg-bg-primary/50 border-border-primary">
       <div className="flex justify-center">
         {authLoading ? (
-          <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
+          <div className="w-10 h-10 rounded-full animate-pulse bg-bg-tertiary"></div>
         ) : (
           <Link
             href="/dashboard"
-            className="p-2 rounded-full cursor-pointer group hover:bg-white/10"
+            className="p-2 rounded-full cursor-pointer group hover:bg-bg-tertiary"
             title="One Goal Home"
           >
             <MdRocketLaunch
               size={28}
-              className="text-white transition-transform duration-300 group-hover:scale-110"
+              className="transition-transform duration-300 text-text-primary group-hover:scale-110"
             />
           </Link>
         )}
@@ -87,7 +85,7 @@ export default function NavBar() {
         {authLoading ? (
           <div className="flex flex-col gap-4 items-center">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-12 h-12 rounded-lg animate-pulse bg-white/10"></div>
+              <div key={i} className="w-12 h-12 rounded-lg animate-pulse bg-bg-tertiary"></div>
             ))}
           </div>
         ) : (
@@ -108,11 +106,11 @@ export default function NavBar() {
         <button
           onClick={() => setIsProfileDropdownOpen(prev => !prev)}
           disabled={authLoading}
-          className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
+          className="rounded-full transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-border-accent"
           aria-label="Open profile menu"
         >
           {authLoading ? (
-            <div className="w-10 h-10 rounded-full animate-pulse bg-white/10"></div>
+            <div className="w-10 h-10 rounded-full animate-pulse bg-bg-tertiary"></div>
           ) : currentUser?.photoURL ? (
             <Image
               src={currentUser.photoURL}
@@ -122,7 +120,7 @@ export default function NavBar() {
               className="rounded-full"
             />
           ) : (
-            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold bg-gray-600 rounded-full border-2 cursor-pointer text-white/70 border-white/20">
+            <div className="flex justify-center items-center w-10 h-10 text-lg font-semibold rounded-full border-2 cursor-pointer bg-bg-tertiary text-text-secondary border-border-secondary">
               {(currentUser?.displayName || 'U').charAt(0).toUpperCase()}
             </div>
           )}

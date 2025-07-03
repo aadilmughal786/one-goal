@@ -20,7 +20,7 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { Resource, ResourceType } from '@/types';
 import AddResourceModal from './AddResourceModal';
 import ResourceGrid from './ResourceGrid';
-import ResourceViewer from './ResourceViewer'; // Import the new viewer
+import ResourceViewer from './ResourceViewer';
 
 const resourceFilterOptions: FilterOption[] = [
   { value: 'all', label: 'All Types', icon: FiGrid },
@@ -40,7 +40,7 @@ const ResourcesTab: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [selectedResource, setSelectedResource] = useState<Resource | null>(null); // State for viewer
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
   const resources = useMemo(() => activeGoal?.resources || [], [activeGoal]);
 
@@ -67,12 +67,12 @@ const ResourcesTab: React.FC = () => {
         <ResourceGrid resources={filteredResources} onResourceClick={setSelectedResource} />
       </div>
 
-      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-black/50 border-white/10">
+      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex flex-col gap-4 items-center mx-auto max-w-6xl sm:flex-row">
           <div className="flex-shrink-0">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex gap-2 items-center px-4 py-2 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90"
+              className="flex gap-2 items-center px-4 py-2 font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90"
             >
               <FiPlus />
               Add Resource
@@ -80,13 +80,13 @@ const ResourcesTab: React.FC = () => {
           </div>
           <div className="flex flex-col gap-4 w-full sm:flex-row sm:w-auto sm:flex-grow">
             <div className="relative flex-grow">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
               <input
                 type="text"
                 placeholder="Search resources..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="py-3 pr-4 pl-12 w-full text-white rounded-full border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="py-3 pr-4 pl-12 w-full rounded-full border text-text-primary border-border-primary bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-border-accent"
               />
             </div>
             <FilterDropdown

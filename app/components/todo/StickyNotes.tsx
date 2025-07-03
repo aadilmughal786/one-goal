@@ -184,45 +184,43 @@ const StickyNotes: React.FC = () => {
 
         {isEditing ? (
           <div className="flex justify-between items-center mt-4">
-            <div className="flex gap-2 items-center">
-              <div className="inline-block relative" ref={colorDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setEditColorDropdownOpen(prev => !prev)}
-                  className="flex items-center p-2 text-gray-600 rounded-full cursor-pointer hover:bg-gray-300"
-                  aria-label="Select note color"
-                >
-                  <MdColorLens size={20} />
-                </button>
-                {isEditColorDropdownOpen && (
-                  <div className="absolute bottom-full left-1/2 z-20 p-2 mb-2 w-32 rounded-lg border shadow-lg -translate-x-1/2 bg-neutral-800 border-white/10 animate-fade-in-down">
-                    <div className="grid grid-cols-4 gap-2">
-                      {Object.keys(StickyNoteColor)
-                        .filter(key => isNaN(Number(key)))
-                        .map(colorName => {
-                          const colorEnum =
-                            StickyNoteColor[colorName as keyof typeof StickyNoteColor];
-                          const bgColorClass = stickyNoteColorMap[colorEnum].split(' ')[0];
-                          return (
-                            <button
-                              key={colorName}
-                              type="button"
-                              onClick={() => {
-                                setEditColor(colorEnum);
-                                setEditColorDropdownOpen(false);
-                              }}
-                              className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${bgColorClass} ${
-                                editColor === colorEnum ? 'border-white' : 'border-transparent'
-                              }`}
-                              aria-label={`Set color to ${colorName.toLowerCase()}`}
-                            ></button>
-                          );
-                        })}
-                    </div>
-                    <div className="absolute top-full left-1/2 w-3 h-3 border-r border-b transform rotate-45 -translate-x-1/2 -translate-y-1/2 bg-neutral-800 border-white/10"></div>
+            <div className="inline-block relative" ref={colorDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setEditColorDropdownOpen(prev => !prev)}
+                className="flex items-center p-2 text-gray-600 rounded-full cursor-pointer hover:bg-gray-300"
+                aria-label="Select note color"
+              >
+                <MdColorLens size={20} />
+              </button>
+              {isEditColorDropdownOpen && (
+                <div className="absolute bottom-full left-1/2 z-20 p-2 mb-2 w-32 rounded-lg border shadow-lg -translate-x-1/2 bg-bg-tertiary border-border-primary animate-fade-in-down">
+                  <div className="grid grid-cols-4 gap-2">
+                    {Object.keys(StickyNoteColor)
+                      .filter(key => isNaN(Number(key)))
+                      .map(colorName => {
+                        const colorEnum =
+                          StickyNoteColor[colorName as keyof typeof StickyNoteColor];
+                        const bgColorClass = stickyNoteColorMap[colorEnum].split(' ')[0];
+                        return (
+                          <button
+                            key={colorName}
+                            type="button"
+                            onClick={() => {
+                              setEditColor(colorEnum);
+                              setEditColorDropdownOpen(false);
+                            }}
+                            className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${bgColorClass} ${
+                              editColor === colorEnum ? 'border-white' : 'border-transparent'
+                            }`}
+                            aria-label={`Set color to ${colorName.toLowerCase()}`}
+                          ></button>
+                        );
+                      })}
                   </div>
-                )}
-              </div>
+                  <div className="absolute top-full left-1/2 w-3 h-3 border-r border-b transform rotate-45 -translate-x-1/2 -translate-y-1/2 bg-bg-tertiary border-border-primary"></div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -276,12 +274,12 @@ const StickyNotes: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 text-white">
+    <div className="space-y-8 text-text-primary">
       <div className="flex flex-col gap-4 justify-between items-center mb-6 sm:flex-row">
         <button
           onClick={handleCreateDefaultNote}
           disabled={isAddingNote}
-          className="flex flex-shrink-0 justify-center items-center w-12 h-12 text-black bg-white rounded-full transition-all cursor-pointer hover:bg-white/90 disabled:opacity-50"
+          className="flex flex-shrink-0 justify-center items-center w-12 h-12 rounded-full transition-all cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
           aria-label="Create new sticky note"
         >
           {isAddingNote ? (
@@ -291,23 +289,26 @@ const StickyNotes: React.FC = () => {
           )}
         </button>
         <div className="relative flex-grow w-full max-w-xl sm:w-auto">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" size={20} />
+          <FiSearch
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            size={20}
+          />
           <input
             type="text"
             placeholder="Search sticky notes..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="py-3 pr-4 pl-10 w-full rounded-full border border-white/10 bg-black/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="py-3 pr-4 pl-10 w-full rounded-full border border-border-primary bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-border-accent"
             aria-label="Search sticky notes"
           />
         </div>
-        <div className="flex flex-shrink-0 gap-2">
+        <div className="flex flex-shrink-0 gap-2 p-1 rounded-full bg-bg-tertiary">
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-full transition-colors cursor-pointer ${
               viewMode === 'grid'
                 ? 'bg-blue-500 text-white'
-                : 'bg-white/10 text-white/60 hover:bg-white/20'
+                : 'text-text-secondary hover:bg-bg-secondary'
             }`}
             title="Grid View"
             aria-label="Switch to grid view"
@@ -319,7 +320,7 @@ const StickyNotes: React.FC = () => {
             className={`p-2 rounded-full transition-colors cursor-pointer ${
               viewMode === 'list'
                 ? 'bg-blue-500 text-white'
-                : 'bg-white/10 text-white/60 hover:bg-white/20'
+                : 'text-text-secondary hover:bg-bg-secondary'
             }`}
             title="List View"
             aria-label="Switch to list view"
@@ -330,12 +331,12 @@ const StickyNotes: React.FC = () => {
       </div>
 
       {filteredNotes.length === 0 && searchQuery ? (
-        <div className="py-10 text-center text-white/60">
+        <div className="py-10 text-center text-text-muted">
           <FiInfo size={40} className="mx-auto mb-4" />
           <p>No sticky notes match your search query.</p>
         </div>
       ) : filteredNotes.length === 0 && !searchQuery ? (
-        <div className="py-10 text-center text-white/60">
+        <div className="py-10 text-center text-text-muted">
           <MdStickyNote2 size={40} className="mx-auto mb-4" />
           <p>No sticky notes created yet. Click the + button above to get started!</p>
         </div>

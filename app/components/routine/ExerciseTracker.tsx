@@ -13,15 +13,12 @@ import {
   MdOutlineSportsSoccer,
 } from 'react-icons/md';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
-// Map of icon names (strings) to their actual React component imports
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineDirectionsRun,
   MdOutlineFitnessCenter,
@@ -31,7 +28,6 @@ const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineDirectionsBike,
 };
 
-// Array of icon names to be passed as options to the ScheduleEditModal
 const exerciseIcons: string[] = [
   'MdOutlineDirectionsRun',
   'MdOutlineFitnessCenter',
@@ -41,15 +37,7 @@ const exerciseIcons: string[] = [
   'MdOutlineDirectionsBike',
 ];
 
-/**
- * ExerciseTracker Component
- *
- * Manages the display and functionality for user's exercise routines.
- * This component has been refactored to fetch its own data from the useGoalStore.
- */
 const ExerciseTracker: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
@@ -59,7 +47,6 @@ const ExerciseTracker: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
 
   useEffect(() => {
-    // Update local schedules state when the global store changes
     setSchedules(activeGoal?.routineSettings?.exercise || []);
   }, [activeGoal]);
 

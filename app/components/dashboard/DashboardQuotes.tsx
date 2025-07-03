@@ -118,7 +118,7 @@ const DashboardQuotes: React.FC = () => {
 
   const starButtonClasses = isCurrentQuoteStarred
     ? 'bg-yellow-400 text-black hover:bg-yellow-300'
-    : 'bg-white/10 text-white hover:bg-white/20';
+    : 'bg-bg-tertiary text-text-primary hover:bg-border-primary';
   const starButtonIcon = isCurrentQuoteStarred ? <FiStar fill="currentColor" /> : <FiStar />;
   const starButtonText = isCurrentQuoteStarred ? 'Starred' : 'Star this Quote';
 
@@ -128,19 +128,21 @@ const DashboardQuotes: React.FC = () => {
 
   return (
     <section className="space-y-12">
-      <div className="p-8 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+      <div className="text-center card">
         <h3 className="mb-4 text-2xl font-bold">Quote of the Moment</h3>
         <div className="min-h-[120px] flex flex-col justify-center">
           {randomQuote ? (
             <div
               className={`transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}
             >
-              <p className="mb-4 text-xl italic text-white/80">&quot;{randomQuote.text}&quot;</p>
-              <p className="font-semibold text-white/60">- {randomQuote.author}</p>
+              <p className="mb-4 text-xl italic text-text-secondary">
+                &quot;{randomQuote.text}&quot;
+              </p>
+              <p className="font-semibold text-text-tertiary">- {randomQuote.author}</p>
             </div>
           ) : (
             <div className="flex justify-center items-center py-10">
-              <FiLoader className="w-8 h-8 animate-spin text-white/60" />
+              <FiLoader className="w-8 h-8 animate-spin text-text-muted" />
             </div>
           )}
         </div>
@@ -148,7 +150,7 @@ const DashboardQuotes: React.FC = () => {
           <button
             onClick={getNewRandomQuote}
             disabled={isFetchingNew}
-            className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors cursor-pointer bg-white/10 hover:bg-white/20"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer bg-bg-tertiary text-text-primary hover:bg-border-primary"
           >
             {isFetchingNew ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiRefreshCw />} New
             Quote
@@ -165,7 +167,7 @@ const DashboardQuotes: React.FC = () => {
               </button>
               <button
                 onClick={() => handleCopy(randomQuote)}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors cursor-pointer bg-white/10 hover:bg-white/20"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer bg-bg-tertiary text-text-primary hover:bg-border-primary"
                 aria-label="Copy quote"
               >
                 {copiedId === randomQuote.id ? <FiCheck /> : <FiCopy />}
@@ -176,7 +178,7 @@ const DashboardQuotes: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg">
+      <div className="card">
         <h3 className="mb-6 text-2xl font-bold text-center">Your Starred Quotes</h3>
         {activeGoal.starredQuotes && activeGoal.starredQuotes.length > 0 ? (
           <div className="gap-6 columns-1 sm:columns-2 lg:columns-3">
@@ -187,18 +189,18 @@ const DashboardQuotes: React.FC = () => {
               .map(quote => (
                 <div
                   key={quote.id}
-                  className={`mb-6 rounded-lg bg-white/5 break-inside-avoid transition-opacity duration-300 ${updatingId === quote.id ? 'opacity-50' : 'opacity-100'}`}
+                  className={`mb-6 rounded-lg bg-bg-tertiary break-inside-avoid transition-opacity duration-300 ${updatingId === quote.id ? 'opacity-50' : 'opacity-100'}`}
                 >
                   <div className="p-4">
-                    <p className="italic text-white/90">&quot;{quote.text}&quot;</p>
-                    <p className="mt-2 text-sm font-medium text-right text-white/60">
+                    <p className="italic text-text-primary">&quot;{quote.text}&quot;</p>
+                    <p className="mt-2 text-sm font-medium text-right text-text-tertiary">
                       - {quote.author}
                     </p>
                   </div>
-                  <div className="flex gap-2 justify-end p-2 border-t border-white/10">
+                  <div className="flex gap-2 justify-end p-2 border-t border-border-primary">
                     <button
                       onClick={() => handleCopy(quote)}
-                      className="p-2 rounded-full transition-colors cursor-pointer text-white/70 hover:bg-white/10"
+                      className="p-2 rounded-full transition-colors cursor-pointer text-text-secondary hover:bg-border-primary"
                       aria-label="Copy quote"
                       title="Copy"
                     >
@@ -222,7 +224,7 @@ const DashboardQuotes: React.FC = () => {
               ))}
           </div>
         ) : (
-          <p className="text-center text-white/60">
+          <p className="text-center text-text-muted">
             Your favorite quotes will appear here once you star them for this goal.
           </p>
         )}

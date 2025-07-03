@@ -44,7 +44,6 @@ const ReminderModal: React.FC = () => {
   const reminderQueue = useWellnessStore(state => state.reminderQueue);
   const dismissReminder = useWellnessStore(state => state.dismissReminder);
 
-  // The active reminder is always the first one in the queue.
   const activeReminder = reminderQueue[0] || null;
 
   if (!activeReminder) {
@@ -62,18 +61,17 @@ const ReminderModal: React.FC = () => {
       aria-labelledby="reminder-modal-title"
     >
       <div
-        className="relative p-8 w-full max-w-md text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl animate-fade-in-down"
+        className="relative p-8 w-full max-w-md text-center rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary animate-fade-in-down"
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={dismissReminder}
-          className="absolute top-4 right-4 p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:bg-white/10"
+          className="absolute top-4 right-4 p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:bg-bg-tertiary"
           aria-label="Close reminder"
         >
           <FiX size={24} />
         </button>
 
-        {/* Queue indicator shows if more than one reminder is pending */}
         {reminderQueue.length > 1 && (
           <div className="absolute top-4 left-4 px-3 py-1 text-xs font-semibold text-white bg-blue-500 rounded-full">
             {reminderQueue.length} Reminders Queued
@@ -83,15 +81,14 @@ const ReminderModal: React.FC = () => {
         <div className="flex justify-center items-center mx-auto mb-6 w-20 h-20 text-blue-400 rounded-full border bg-blue-500/10 border-blue-500/20">
           <Icon size={48} />
         </div>
-        <h2 id="reminder-modal-title" className="mb-4 text-2xl font-bold text-white">
+        <h2 id="reminder-modal-title" className="mb-4 text-2xl font-bold text-text-primary">
           {title}
         </h2>
-        <p className="mb-8 text-white/80">{message}</p>
+        <p className="mb-8 text-text-secondary">{message}</p>
         <button
           onClick={dismissReminder}
-          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors cursor-pointer hover:bg-white/90"
+          className="px-8 py-3 font-semibold rounded-full transition-colors cursor-pointer text-bg-primary bg-text-primary hover:opacity-90"
         >
-          {/* Button text changes if more reminders are in the queue */}
           {reminderQueue.length > 1 ? 'Next Reminder' : 'Got it!'}
         </button>
       </div>

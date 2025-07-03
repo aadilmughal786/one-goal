@@ -22,9 +22,9 @@ const breakpointColumnsObj = {
 const ResourceGrid: React.FC<ResourceGridProps> = ({ resources, onResourceClick }) => {
   if (resources.length === 0) {
     return (
-      <div className="flex flex-col justify-center items-center py-20 text-center text-white/50">
+      <div className="flex flex-col justify-center items-center py-20 text-center text-text-muted">
         <FiInbox size={48} className="mb-4" />
-        <h3 className="text-xl font-semibold">No Resources Found</h3>
+        <h3 className="text-xl font-semibold text-text-secondary">No Resources Found</h3>
         <p>Add a resource using the button above to get started.</p>
       </div>
     );

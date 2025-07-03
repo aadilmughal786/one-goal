@@ -79,7 +79,7 @@ const getSatisfactionInfo = (
       },
     };
   if (level === null || level === undefined) {
-    return { bgColor: 'bg-white/5', textColor: 'text-gray-400', label: 'Not Logged' };
+    return { bgColor: 'bg-bg-tertiary', textColor: 'text-text-tertiary', label: 'Not Logged' };
   }
   return infoMap[level];
 };
@@ -153,15 +153,17 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
   }, []);
 
   return (
-    <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
+    <div className="card">
       <div className="rounded-3xl">
-        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-white/10">
-          <h3 className="text-xl font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h3>
+        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-border-primary">
+          <h3 className="text-xl font-bold text-text-primary">
+            {format(currentMonth, 'MMMM yyyy')}
+          </h3>
           <div className="flex gap-2">
             <button
               onClick={handleTodayClick}
               disabled={!isTodayButtonClickable}
-              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
               aria-label="Go to today"
             >
               Today
@@ -170,7 +172,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
               <button
                 onClick={handlePrevMonth}
                 disabled={!canGoToPrevMonth}
-                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
                 aria-label="Previous month"
               >
                 <FiChevronLeft className="w-5 h-5" />
@@ -178,7 +180,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
               <button
                 onClick={handleNextMonth}
                 disabled={!canGoToNextMonth}
-                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
                 aria-label="Next month"
               >
                 <FiChevronRight className="w-5 h-5" />
@@ -200,12 +202,12 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                 let dayClasses = `relative group flex flex-col items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-lg transition-all duration-200 ${satisfactionInfo.bgColor}`;
 
                 if (isClickable) {
-                  dayClasses += ' cursor-pointer hover:ring-2 ring-white';
+                  dayClasses += ' cursor-pointer hover:ring-2 ring-border-accent';
                 } else {
                   dayClasses += ' opacity-50';
                 }
                 if (isToday(day)) {
-                  dayClasses += ' border-2 border-blue-400';
+                  dayClasses += ' border-2 border-border-accent';
                 }
 
                 return (
@@ -215,17 +217,17 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                     onClick={() => isClickable && onDayClick(day)}
                     aria-label={`Progress for ${format(day, 'MMMM d')}`}
                   >
-                    <span className="text-xs text-white/50">{format(day, 'E')}</span>
-                    <span className="z-10 text-lg font-bold text-white sm:text-xl">
+                    <span className="text-xs text-text-tertiary">{format(day, 'E')}</span>
+                    <span className="z-10 text-lg font-bold text-text-primary sm:text-xl">
                       {format(day, 'd')}
                     </span>
 
                     {progress && (
-                      <div className="absolute bottom-full left-1/2 invisible z-50 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 -translate-x-1/2 bg-neutral-900 border-white/10 group-hover:opacity-100 group-hover:visible">
-                        <p className="p-3 pb-1 text-sm font-bold text-white">
+                      <div className="absolute bottom-full left-1/2 invisible z-50 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 -translate-x-1/2 bg-bg-tertiary border-border-primary group-hover:opacity-100 group-hover:visible">
+                        <p className="p-3 pb-1 text-sm font-bold text-text-primary">
                           {format(new Date(progress.date), 'MMMM d, yyyy')}
                         </p>
-                        <hr className="my-1 border-white/10" />
+                        <hr className="my-1 border-border-primary" />
                         <div className="px-3 py-1 space-y-1">
                           <p className="text-xs">
                             <span className="font-semibold">Satisfaction:</span>{' '}
@@ -238,15 +240,17 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                             {getTotalSessionMinutes(progress.sessions).toFixed(0)} mins
                           </p>
                           {progress.notes && (
-                            <p className="mt-1 text-xs italic text-white/70">{progress.notes}</p>
+                            <p className="mt-1 text-xs italic text-text-secondary">
+                              {progress.notes}
+                            </p>
                           )}
                         </div>
                         {progress.routines &&
                           Object.values(progress.routines).some(
                             s => s !== RoutineLogStatus.NOT_LOGGED
                           ) && (
-                            <div className="px-3 pt-2 pb-3 mt-1 border-t border-white/10">
-                              <p className="mb-2 text-xs font-semibold text-white">
+                            <div className="px-3 pt-2 pb-3 mt-1 border-t border-border-primary">
+                              <p className="mb-2 text-xs font-semibold text-text-primary">
                                 Routine Status
                               </p>
                               <div className="flex flex-wrap gap-3">
@@ -274,21 +278,21 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                               </div>
                             </div>
                           )}
-                        <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-neutral-900 border-white/10"></div>
+                        <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-tertiary border-border-primary"></div>
                       </div>
                     )}
                   </div>
                 );
               })
             ) : (
-              <div className="py-10 w-full text-center text-white/50">
+              <div className="py-10 w-full text-center text-text-muted">
                 No goal days in this month.
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-white/10 text-white/70">
+        <div className="flex flex-wrap gap-y-2 gap-x-4 justify-center p-4 text-sm border-t border-border-primary text-text-secondary">
           {legendItems.map(item => {
             const { bgColor: color, label } = getSatisfactionInfo(item.level);
             return (
@@ -299,7 +303,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
             );
           })}
           <div className="flex gap-2 items-center">
-            <span className="w-4 h-4 rounded-md border-2 border-blue-400"></span>
+            <span className="w-4 h-4 rounded-md border-2 border-border-accent"></span>
             <span>Today</span>
           </div>
         </div>

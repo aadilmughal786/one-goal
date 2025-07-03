@@ -9,12 +9,11 @@ import {
   FiArrowUpCircle,
   FiChevronDown,
   FiClock,
+  FiDroplet,
   FiEye,
   FiHeart,
   FiRefreshCw,
 } from 'react-icons/fi';
-// CORRECTED: Using a consistent icon set. All icons are now from react-icons/fi.
-import { FiDroplet } from 'react-icons/fi';
 
 const reminderOptions = [
   { type: ReminderType.WATER, label: 'Drink Water', icon: FiDroplet },
@@ -24,7 +23,6 @@ const reminderOptions = [
   { type: ReminderType.POSTURE, label: 'Posture Check', icon: FiArrowUpCircle },
 ];
 
-// ADDED: 15 minutes option and sorted the array for better UX.
 const frequencyOptions = [
   { label: '15 mins', value: 15 },
   { label: '30 mins', value: 30 },
@@ -33,9 +31,6 @@ const frequencyOptions = [
   { label: '90 mins', value: 90 },
 ];
 
-/**
- * A custom dropdown component for frequency selection, styled to match the app's theme.
- */
 const CustomFrequencyDropdown: React.FC<{
   setting: ReminderSetting;
   onChange: (frequency: number) => void;
@@ -44,7 +39,6 @@ const CustomFrequencyDropdown: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Effect to handle clicks outside the dropdown to close it.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -65,7 +59,7 @@ const CustomFrequencyDropdown: React.FC<{
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className="flex justify-between items-center px-3 py-2 w-36 text-white rounded-md border transition-colors bg-white/10 border-white/20 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex justify-between items-center px-3 py-2 w-36 rounded-md border transition-colors text-text-primary bg-bg-tertiary border-border-secondary hover:bg-border-primary disabled:opacity-50 disabled:cursor-not-allowed"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -76,7 +70,7 @@ const CustomFrequencyDropdown: React.FC<{
       </button>
       {isOpen && (
         <div
-          className="absolute z-10 p-1 mt-2 w-36 rounded-md border shadow-lg bg-neutral-800 border-white/10 animate-fade-in-down"
+          className="absolute z-10 p-1 mt-2 w-36 rounded-md border shadow-lg bg-bg-tertiary border-border-primary animate-fade-in-down"
           role="listbox"
         >
           {frequencyOptions.map(opt => (
@@ -87,7 +81,7 @@ const CustomFrequencyDropdown: React.FC<{
                 onChange(opt.value);
                 setIsOpen(false);
               }}
-              className="block px-3 py-2 w-full text-left rounded hover:bg-blue-500/50"
+              className="block px-3 py-2 w-full text-left rounded text-text-primary hover:bg-blue-500/50"
               role="option"
               aria-selected={setting.frequency === opt.value}
             >
@@ -121,17 +115,19 @@ const WellnessSettings: React.FC = () => {
 
   if (!settings || !activeGoal) {
     return (
-      <div className="p-8 text-center bg-white/[0.02] border border-white/10 rounded-2xl">
-        <FiHeart className="mx-auto mb-4 text-4xl text-white/40" />
-        <p className="text-white/60">Select an active goal to configure your wellness reminders.</p>
+      <div className="p-8 text-center card">
+        <FiHeart className="mx-auto mb-4 text-4xl text-text-muted" />
+        <p className="text-text-secondary">
+          Select an active goal to configure your wellness reminders.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
-      <h2 className="mb-6 text-2xl font-bold text-white">Wellness Reminders</h2>
-      <p className="mb-8 text-white/70">
+    <div className="card">
+      <h2 className="mb-6 text-2xl font-bold text-text-primary">Wellness Reminders</h2>
+      <p className="mb-8 text-text-secondary">
         Enable periodic reminders to help you stay healthy and focused throughout the day. Reminders
         will only be active while the app is open.
       </p>
@@ -141,10 +137,10 @@ const WellnessSettings: React.FC = () => {
           return (
             <div
               key={type}
-              className="flex flex-col gap-4 p-4 rounded-lg border sm:flex-row sm:items-center bg-black/20 border-white/5"
+              className="flex flex-col gap-4 p-4 rounded-lg border sm:flex-row sm:items-center bg-bg-primary border-border-secondary"
             >
               <div className="flex flex-grow gap-4 items-center">
-                <Icon size={24} className="text-blue-400" />
+                <Icon size={24} className="text-text-accent" />
                 <span className="text-lg font-semibold">{label}</span>
               </div>
               <div className="flex gap-4 items-center">
@@ -156,7 +152,7 @@ const WellnessSettings: React.FC = () => {
                 <button
                   onClick={() => handleToggle(type, currentSetting)}
                   className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors cursor-pointer ${
-                    currentSetting.enabled ? 'bg-blue-600' : 'bg-white/20'
+                    currentSetting.enabled ? 'bg-blue-600' : 'bg-bg-tertiary'
                   }`}
                   aria-pressed={currentSetting.enabled}
                   aria-label={`Toggle ${label} reminders`}

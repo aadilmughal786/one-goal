@@ -1,15 +1,13 @@
 // app/not-found.tsx
 'use client';
 
+import FloatingThemeToggle from '@/components/common/FloatingThemeToggle';
+import { onAuthChange } from '@/services/authService';
 import { User } from 'firebase/auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FiArrowRight, FiGrid, FiHome } from 'react-icons/fi';
-
-// --- REFLECTING THE REFACTOR ---
-// We now import the specific onAuthChange function from our new, focused authService.
-import { onAuthChange } from '@/services/authService';
 
 /**
  * A custom 404 "Not Found" page.
@@ -20,7 +18,6 @@ export default function NotFoundPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // This effect subscribes to authentication state changes using the new authService.
   useEffect(() => {
     const unsubscribe = onAuthChange(user => {
       setCurrentUser(user);
@@ -38,10 +35,10 @@ export default function NotFoundPage() {
       return (
         <button
           disabled
-          className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full opacity-60 cursor-not-allowed"
+          className="inline-flex gap-3 items-center px-8 py-4 font-semibold rounded-full opacity-60 cursor-not-allowed bg-bg-tertiary text-text-secondary"
         >
           <svg
-            className="w-5 h-5 text-black animate-spin"
+            className="w-5 h-5 animate-spin"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -69,7 +66,7 @@ export default function NotFoundPage() {
       return (
         <Link
           href="/dashboard"
-          className="inline-flex gap-3 items-center py-2 pr-6 pl-2 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+          className="inline-flex gap-3 items-center py-2 pr-6 pl-2 font-semibold rounded-full transition-all duration-200 cursor-pointer group hover:opacity-90 hover:scale-105 hover:shadow-xl bg-text-primary text-bg-primary"
         >
           {currentUser.photoURL ? (
             <Image
@@ -80,7 +77,7 @@ export default function NotFoundPage() {
               className="rounded-full"
             />
           ) : (
-            <span className="flex justify-center items-center w-8 h-8 bg-gray-200 rounded-full">
+            <span className="flex justify-center items-center w-8 h-8 rounded-full bg-bg-tertiary">
               <FiGrid size={20} />
             </span>
           )}
@@ -93,7 +90,7 @@ export default function NotFoundPage() {
     return (
       <Link
         href="/"
-        className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl"
+        className="inline-flex gap-3 items-center px-8 py-4 font-semibold rounded-full transition-all duration-200 cursor-pointer group hover:opacity-90 hover:scale-105 hover:shadow-xl bg-text-primary text-bg-primary"
       >
         <FiHome size={20} />
         Go to Home
@@ -102,26 +99,26 @@ export default function NotFoundPage() {
   };
 
   return (
-    <div className="relative z-10 px-6 mx-auto max-w-4xl text-center py-15">
-      {/* 404 Text */}
-      <h1 className="text-8xl sm:text-9xl lg:text-[12rem] font-bold tracking-tight mb-4 leading-none text-white/20">
-        404
-      </h1>
+    <>
+      <FloatingThemeToggle />
+      <div className="relative z-10 px-6 mx-auto max-w-4xl text-center py-15">
+        <h1 className="text-8xl sm:text-9xl lg:text-[12rem] font-bold tracking-tight mb-4 leading-none text-border-primary">
+          404
+        </h1>
 
-      {/* Error Message */}
-      <h2 className="mb-6 text-3xl font-bold tracking-tight leading-tight sm:text-4xl lg:text-5xl">
-        Page Not Found
-      </h2>
+        <h2 className="mb-6 text-3xl font-bold tracking-tight leading-tight sm:text-4xl lg:text-5xl text-text-primary">
+          Page Not Found
+        </h2>
 
-      <p className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed sm:text-xl text-white/70">
-        The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you
-        back on track to achieving your goals.
-      </p>
+        <p className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed sm:text-xl text-text-secondary">
+          The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you
+          back on track to achieving your goals.
+        </p>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-4 justify-center items-center h-16 sm:flex-row sm:gap-6">
-        {renderActionLink()}
+        <div className="flex flex-col gap-4 justify-center items-center h-16 sm:flex-row sm:gap-6">
+          {renderActionLink()}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

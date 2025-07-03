@@ -7,17 +7,13 @@ import { Timestamp } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { FiCalendar, FiCheck, FiClock, FiEdit, FiLoader, FiPlus, FiTrash2 } from 'react-icons/fi';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// --- REFACTOR: The props interface is simplified. ---
-// It only needs a callback to open the edit modal, as that's a UI concern managed by the parent page.
 interface TodoListProps {
   onEditTodo: (item: TodoItem) => void;
 }
 
-// --- SUB-COMPONENT FOR A SINGLE TODO ITEM ---
 const TodoListItem: React.FC<{
   item: TodoItem;
   index: number;
@@ -70,7 +66,7 @@ const TodoListItem: React.FC<{
   return (
     <li
       key={item.id}
-      className={`relative flex flex-col p-4 rounded-lg border transition-all duration-300 ${item.completed ? 'bg-green-500/10 border-green-500/30' : 'bg-white/[0.03] border-white/10'} ${isUpdating ? '' : 'cursor-grab'}`}
+      className={`relative flex flex-col p-4 rounded-lg border transition-all duration-300 ${item.completed ? 'bg-green-500/10 border-green-500/30' : 'bg-bg-secondary border-border-primary'} ${isUpdating ? '' : 'cursor-grab'}`}
       draggable={!isUpdating}
       onDragStart={e => onDragStart(e, index)}
       onDragEnter={e => onDragEnter(e, index)}
@@ -81,41 +77,41 @@ const TodoListItem: React.FC<{
       <div className="flex flex-col flex-grow">
         <div className="flex justify-between items-center mb-2">
           <span
-            className={`text-lg font-medium break-words pr-4 cursor-pointer hover:text-blue-400 transition-colors ${item.completed ? 'line-through text-white/50' : 'text-white'}`}
+            className={`text-lg font-medium break-words pr-4 cursor-pointer hover:text-text-accent transition-colors ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'}`}
             onClick={() => !isUpdating && onEditTodo(item)}
           >
             {item.text}
           </span>
-          <span className="flex flex-shrink-0 gap-1 items-center text-xs text-white/50">
+          <span className="flex flex-shrink-0 gap-1 items-center text-xs text-text-tertiary">
             <FiClock size={10} /> Created: {formatDate(item.createdAt)}
           </span>
         </div>
         {item.description && item.description.trim() !== '' && (
-          <p className="mb-2 text-sm italic text-white/80">{item.description}</p>
+          <p className="mb-2 text-sm italic text-text-secondary">{item.description}</p>
         )}
         {item.deadline && !item.completed && (
           <>
-            <div className="flex justify-between items-center mb-2 text-sm text-white/70">
+            <div className="flex justify-between items-center mb-2 text-sm text-text-secondary">
               <span className={`flex gap-1 items-center`}>
                 <FiCalendar size={12} /> Deadline: {formatDate(item.deadline)} at{' '}
                 {formatTime(item.deadline)}
               </span>
               <span
-                className={`flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 ${item.deadline.toDate() < now ? 'text-red-300' : 'text-green-300'}`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-full bg-bg-tertiary ${item.deadline.toDate() < now ? 'text-red-400' : 'text-green-400'}`}
               >
                 <FiClock size={12} /> {formatRelativeTime(item.deadline)}
               </span>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-1.5 mt-3 mb-1 overflow-hidden">
+            <div className="w-full bg-bg-tertiary rounded-full h-1.5 mt-3 mb-1 overflow-hidden">
               <div
-                className="h-1.5 rounded-full bg-blue-400 transition-all duration-500 ease-out"
+                className="h-1.5 rounded-full bg-blue-500 transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               ></div>
             </div>
           </>
         )}
       </div>
-      <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-white/10">
+      <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-border-primary">
         <div className="flex items-center">
           <label className={`flex items-center group ${isUpdating ? '' : 'cursor-pointer'}`}>
             <input
@@ -126,15 +122,15 @@ const TodoListItem: React.FC<{
               disabled={isUpdating}
             />
             <span
-              className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-all duration-300 ${item.completed && !isUpdating ? 'bg-green-500 border-green-500' : 'border-white/30 bg-black/20 group-hover:border-white/50'}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-all duration-300 ${item.completed && !isUpdating ? 'bg-green-500 border-green-500' : 'border-border-secondary bg-bg-tertiary group-hover:border-border-accent'}`}
             >
               {isUpdating ? (
-                <FiLoader className="w-4 h-4 text-white animate-spin" />
+                <FiLoader className="w-4 h-4 animate-spin text-text-primary" />
               ) : item.completed ? (
                 <FiCheck className="w-4 h-4 text-white" />
               ) : null}
             </span>
-            <span className="ml-2 text-sm text-white/70">
+            <span className="ml-2 text-sm text-text-secondary">
               Mark as {item.completed ? 'Undone' : 'Done'}
             </span>
           </label>
@@ -142,14 +138,14 @@ const TodoListItem: React.FC<{
         <div className="flex gap-1 items-center">
           <button
             onClick={() => onEditTodo(item)}
-            className="p-2 rounded-full transition-colors text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
             aria-label="Edit item details"
           >
             <FiEdit />
           </button>
           <button
             onClick={handleDeleteClick}
-            className="p-2 rounded-full transition-colors text-red-400/70 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
             aria-label="Delete item"
           >
             <FiTrash2 />
@@ -160,10 +156,7 @@ const TodoListItem: React.FC<{
   );
 };
 
-// --- MAIN TODO LIST COMPONENT ---
 const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
-  // --- REFACTOR: Get data and actions from stores ---
-  // FIX: Select each piece of state or action individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const addTodo = useGoalStore(state => state.addTodo);
   const updateTodo = useGoalStore(state => state.updateTodo);
@@ -177,7 +170,6 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
     [activeGoal?.toDoList]
   );
 
-  // --- Local UI State ---
   const [newTodoText, setNewTodoText] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [updatingTodoId, setUpdatingTodoId] = useState<string | null>(null);
@@ -234,7 +226,7 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
   };
 
   return (
-    <div className="p-8 mb-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300">
+    <div className="mb-6 transition-all duration-300 card hover:border-border-secondary">
       <div className="flex flex-col gap-2 mb-6 sm:flex-row">
         <input
           type="text"
@@ -242,12 +234,12 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
           onChange={e => setNewTodoText(e.target.value)}
           onKeyPress={e => e.key === 'Enter' && handleAddTodoLocal()}
           placeholder="Add a new task..."
-          className="flex-1 p-3 text-lg text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+          className="flex-1 p-3 text-lg rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
           disabled={isAdding}
         />
         <button
           onClick={handleAddTodoLocal}
-          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-60"
           disabled={isAdding}
         >
           {isAdding ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiPlus />}
@@ -257,7 +249,7 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
 
       <ul className="space-y-3">
         {toDoList.length === 0 ? (
-          <div className="flex flex-col gap-3 items-center p-8 text-center text-white/40">
+          <div className="flex flex-col gap-3 items-center p-8 text-center text-text-muted">
             <FiCheck size={40} />
             <p className="text-lg">Your task list is empty.</p>
             <p>Add a task above to get started!</p>

@@ -21,14 +21,11 @@ interface WeightTrendChartProps {
   dailyProgress: DailyProgress[];
 }
 
-/**
- * Custom Tooltip for the Weight Trend Chart.
- */
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
-      <div className="p-3 text-sm rounded-lg border shadow-xl bg-neutral-800 border-white/10">
-        <p className="font-bold text-white">{label}</p>
+      <div className="p-3 text-sm rounded-lg border shadow-xl bg-bg-tertiary border-border-primary">
+        <p className="font-bold text-text-primary">{label}</p>
         {payload.map((entry, index) => {
           const value = entry.value;
           let displayValue: string;
@@ -55,30 +52,25 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   return null;
 };
 
-/**
- * A dedicated component to render a line chart for weight trends.
- */
 const WeightTrendChart: React.FC<WeightTrendChartProps> = ({ dailyProgress }) => {
-  // Memoize the calculation of weight data to prevent re-computation on every render.
   const weightData = useMemo(() => {
     if (!dailyProgress) return [];
     return dailyProgress
-      .filter(p => p.weight !== null && p.weight > 0) // Filter out days without weight logs
+      .filter(p => p.weight !== null && p.weight > 0)
       .map(p => ({
-        date: format(new Date(p.date), 'MMM d'), // Format date for X-axis
+        date: format(new Date(p.date), 'MMM d'),
         weight: p.weight,
       }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Ensure data is chronological
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [dailyProgress]);
 
-  // If there are fewer than 2 data points, a line chart isn't meaningful.
   if (weightData.length < 2) {
     return (
-      <div className="p-4 text-center bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl sm:p-6">
-        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+      <div className="text-center card">
+        <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
           <FaWeightHanging /> Weight Trend
         </h3>
-        <p className="text-white/60">
+        <p className="text-text-secondary">
           Log your weight on at least two different days to see a trend chart here.
         </p>
       </div>
@@ -86,32 +78,32 @@ const WeightTrendChart: React.FC<WeightTrendChartProps> = ({ dailyProgress }) =>
   }
 
   return (
-    <div className="p-4 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl sm:p-6">
-      <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-white">
+    <div className="card">
+      <h3 className="flex gap-2 justify-center items-center mb-4 text-xl font-bold text-text-primary">
         <FaWeightHanging /> Weight Trend
       </h3>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={weightData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-          <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+          <CartesianGrid stroke="var(--color-border-primary)" strokeDasharray="3 3" />
+          <XAxis dataKey="date" stroke="var(--color-text-secondary)" fontSize={12} />
           <YAxis
-            stroke="#9ca3af"
+            stroke="var(--color-text-secondary)"
             fontSize={12}
-            domain={['dataMin - 2', 'dataMax + 2']} // Add padding to Y-axis
+            domain={['dataMin - 2', 'dataMax + 2']}
             label={{
               value: 'Weight',
               angle: -90,
               position: 'insideLeft',
-              fill: '#9ca3af',
+              fill: 'var(--color-text-secondary)',
             }}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)' }} />
           <Legend iconType="circle" />
           <Line
             type="monotone"
             dataKey="weight"
             name="Weight"
-            stroke="#f472b6" // Pink color for the line
+            stroke="#f472b6"
             strokeWidth={2}
             dot={{ r: 4 }}
             activeDot={{ r: 8 }}

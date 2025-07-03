@@ -16,7 +16,7 @@ const tabItems = [
 ];
 
 const PageSkeletonLoader = () => (
-  <div className="flex justify-center items-center h-screen text-white/70">
+  <div className="flex justify-center items-center h-screen text-text-secondary">
     <div className="animate-pulse">Loading Goal Hub...</div>
   </div>
 );
@@ -56,13 +56,13 @@ const GoalPageContent = () => {
   const ActiveComponent = tabItems.find(item => item.id === activeTab)?.component || GoalHub;
 
   return (
-    <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+    <main className="flex flex-col min-h-screen text-text-primary bg-bg-primary font-poppins">
+      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex space-x-2">
           {isLoading
             ? [...Array(tabItems.length)].map((_, i) => (
                 <div key={i} className="px-4 py-3 animate-pulse">
-                  <div className="w-24 h-6 rounded-md bg-white/10"></div>
+                  <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
                 </div>
               ))
             : tabItems.map(item => {
@@ -74,8 +74,8 @@ const GoalPageContent = () => {
                     onClick={() => handleTabChange(item.id)}
                     className={`flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                       isActive
-                        ? 'text-white border-white'
-                        : 'border-transparent text-white/60 hover:text-white'
+                        ? 'text-text-primary border-border-accent'
+                        : 'border-transparent text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     <Icon size={18} />

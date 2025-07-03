@@ -11,11 +11,9 @@ import {
   MdOutlineSentimentSatisfied,
 } from 'react-icons/md';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
@@ -29,15 +27,7 @@ const IconComponents: { [key: string]: React.ElementType } = {
 
 const teethIcons: string[] = Object.keys(IconComponents);
 
-/**
- * TeethCare Component
- *
- * Manages the user's dental care routines.
- * This component has been refactored to use the new dedicated services and global store.
- */
 const TeethCare: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
@@ -47,7 +37,6 @@ const TeethCare: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
 
   useEffect(() => {
-    // Update local schedules state when the global store changes
     setSchedules(activeGoal?.routineSettings?.teeth || []);
   }, [activeGoal]);
 

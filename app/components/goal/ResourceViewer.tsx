@@ -38,7 +38,6 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
     return match ? `https://player.vimeo.com/video/${match[3]}` : null;
   };
 
-  // Helper to check for direct audio file links
   const isDirectAudioLink = (url: string) => {
     return /\.(mp3|wav|ogg|m4a)$/i.test(url);
   };
@@ -114,14 +113,14 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
           );
         }
         return (
-          <div className="p-4 text-center text-white/70">
+          <div className="p-4 text-center text-text-secondary">
             <FiVideo className="mx-auto mb-4 text-4xl" />
             <p>Unsupported video provider.</p>
             <a
               href={resource.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center mt-2 text-blue-400 hover:underline"
+              className="inline-flex items-center mt-2 text-text-accent hover:underline"
             >
               Watch on original site <FiExternalLink className="ml-1" />
             </a>
@@ -131,28 +130,29 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
         if (isDirectAudioLink(resource.url)) {
           return (
             <div className="p-8">
-              <h3 className="mb-4 text-2xl font-bold text-center text-white">{resource.title}</h3>
+              <h3 className="mb-4 text-2xl font-bold text-center text-text-primary">
+                {resource.title}
+              </h3>
               <audio controls src={resource.url} className="w-full rounded-full">
                 Your browser does not support the audio element.
               </audio>
             </div>
           );
         }
-      // Fallthrough for non-direct audio links (e.g., Spotify)
       case ResourceType.ARTICLE:
       case ResourceType.DOC:
       case ResourceType.OTHER:
         return (
           <div className="flex flex-col justify-between p-8 h-full">
             <div>
-              <h3 className="mb-2 text-2xl font-bold text-white">{resource.title}</h3>
-              <p className="text-sm text-gray-400 break-all">{getDomain(resource.url)}</p>
+              <h3 className="mb-2 text-2xl font-bold text-text-primary">{resource.title}</h3>
+              <p className="text-sm break-all text-text-muted">{getDomain(resource.url)}</p>
             </div>
             <a
               href={resource.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 mt-8 font-semibold text-black bg-white rounded-full"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 mt-8 font-semibold rounded-full text-bg-primary bg-text-primary"
             >
               Visit Link <FiArrowRight />
             </a>
@@ -160,14 +160,14 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
         );
       default:
         return (
-          <div className="p-4 text-center text-white/70">
+          <div className="p-4 text-center text-text-secondary">
             <FiLink className="mx-auto mb-4 text-4xl" />
             <p>Unsupported resource type.</p>
             <a
               href={resource.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center mt-2 text-blue-400 hover:underline"
+              className="inline-flex items-center mt-2 text-text-accent hover:underline"
             >
               Visit the link directly <FiExternalLink className="ml-1" />
             </a>
@@ -182,17 +182,17 @@ const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) =>
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col w-full max-w-2xl bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl"
+        className="flex relative flex-col w-full max-w-2xl rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b border-white/10">
-          <div className="flex gap-3 items-center font-semibold text-white">
+        <div className="flex justify-between items-center p-4 border-b border-border-primary">
+          <div className="flex gap-3 items-center font-semibold text-text-primary">
             <TypeIcon size={20} />
             <span>{typeLabel}</span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 rounded-full transition-colors cursor-pointer hover:bg-white/10 hover:text-white"
+            className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
             aria-label="Close viewer"
           >
             <FiX size={20} />

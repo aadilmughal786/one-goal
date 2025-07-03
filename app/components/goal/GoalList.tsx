@@ -74,11 +74,9 @@ const GoalList: React.FC<GoalListProps> = ({
         title: 'Set Active Goal?',
         message: confirmationMessage,
         action: async () => {
-          // Pause the current active goal if it exists and is different
           if (currentActiveGoal && currentActiveGoal.id !== goalToActivate.id) {
             await updateGoal(currentActiveGoal.id, { status: GoalStatus.PAUSED });
           }
-          // Activate the new goal
           await updateGoal(goalToActivate.id, { status: GoalStatus.ACTIVE });
           await setActiveGoal(goalToActivate.id);
           showToast('New goal set as active!', 'success');
@@ -198,13 +196,12 @@ const GoalList: React.FC<GoalListProps> = ({
         filteredAndSortedGoals.map(goal => (
           <div
             key={goal.id}
-            className={`relative flex flex-col rounded-xl border bg-white/[0.02] shadow-md transition-all overflow-hidden ${
+            className={`relative flex flex-col rounded-xl border bg-bg-secondary shadow-md transition-all overflow-hidden ${
               appState?.activeGoalId === goal.id
-                ? 'border-blue-500 ring-2 ring-blue-500/50'
-                : 'border-white/10'
+                ? 'border-border-accent ring-2 ring-border-accent/50'
+                : 'border-border-primary'
             }`}
           >
-            {/* Status Ribbon */}
             <div className="absolute top-0 right-0 w-24 h-24">
               <div
                 className={`absolute transform rotate-45 text-white text-xs font-semibold text-center py-1 ${getStatusColor(
@@ -217,12 +214,11 @@ const GoalList: React.FC<GoalListProps> = ({
             </div>
 
             <div className="flex-grow p-5">
-              <h3 className="pr-16 text-lg font-bold text-white truncate">{goal.name}</h3>
-              <p className="mt-2 mb-4 h-10 text-sm text-white/70 line-clamp-2">
+              <h3 className="pr-16 text-lg font-bold truncate text-text-primary">{goal.name}</h3>
+              <p className="mt-2 mb-4 h-10 text-sm text-text-secondary line-clamp-2">
                 {goal.description}
               </p>
               <div className="flex flex-wrap gap-2 justify-end">
-                {/* --- ACTION BUTTONS --- */}
                 {goal.status !== GoalStatus.ACTIVE && (
                   <button
                     onClick={() => handleActivateGoal(goal)}
@@ -260,8 +256,8 @@ const GoalList: React.FC<GoalListProps> = ({
               </div>
             </div>
 
-            <div className="border-t border-white/10">
-              <div className="p-5 space-y-2 text-sm text-white/60">
+            <div className="border-t border-border-primary">
+              <div className="p-5 space-y-2 text-sm text-text-tertiary">
                 <div className="flex justify-between">
                   <span className="flex gap-1.5 items-center">
                     <FiCalendar size={14} />
@@ -288,9 +284,8 @@ const GoalList: React.FC<GoalListProps> = ({
               </div>
             </div>
 
-            <div className="border-t border-white/10">
+            <div className="border-t border-border-primary">
               <div className="flex flex-wrap gap-2 justify-end p-5">
-                {/* --- MANAGEMENT BUTTONS --- */}
                 <button
                   onClick={() => onOpenSummaryModal(goal)}
                   className="p-2 text-purple-300 rounded-full transition-colors cursor-pointer bg-purple-500/10 hover:bg-purple-500/20"
@@ -324,7 +319,7 @@ const GoalList: React.FC<GoalListProps> = ({
           </div>
         ))
       ) : (
-        <div className="col-span-full py-10 text-center text-white/50">
+        <div className="col-span-full py-10 text-center text-text-muted">
           No goals found matching your search or filter criteria.
         </div>
       )}

@@ -17,7 +17,7 @@ import {
   FiTrash2,
   FiVideo,
 } from 'react-icons/fi';
-import AddResourceModal from './AddResourceModal'; // Re-use the modal for editing
+import AddResourceModal from './AddResourceModal';
 
 const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
   const { deleteResource } = useGoalStore();
@@ -25,7 +25,7 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening the viewer
+    e.stopPropagation();
     showConfirmation({
       title: 'Delete Resource?',
       message: `Are you sure you want to delete "${resource.title}"? This action cannot be undone.`,
@@ -34,7 +34,7 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
   };
 
   const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening the viewer
+    e.stopPropagation();
     setIsEditModalOpen(true);
   };
 
@@ -63,8 +63,7 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
 
   return (
     <>
-      <div className="flex flex-col bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:border-white/20">
-        {/* Main Content Area - Clickable to open the viewer */}
+      <div className="flex overflow-hidden flex-col rounded-xl border shadow-lg backdrop-blur-sm transition-all duration-300 bg-bg-secondary border-border-primary hover:border-border-secondary">
         <div className="flex-grow cursor-pointer">
           {resource.type === ResourceType.IMAGE ? (
             <div className="relative w-full h-48 group">
@@ -83,21 +82,20 @@ const ResourceCard: React.FC<{ resource: Resource }> = ({ resource }) => {
             </div>
           ) : (
             <div className="p-4">
-              <p className="font-semibold text-white">{resource.title}</p>
-              <p className="mt-2 text-xs text-white/50">{getDomain(resource.url)}</p>
+              <p className="font-semibold text-text-primary">{resource.title}</p>
+              <p className="mt-2 text-xs text-text-muted">{getDomain(resource.url)}</p>
             </div>
           )}
         </div>
 
-        {/* Action Footer with always-visible buttons */}
-        <div className="flex gap-2 justify-between items-center p-2 border-t bg-black/20 border-white/10">
+        <div className="flex gap-2 justify-between items-center p-2 border-t bg-bg-tertiary border-border-primary">
           <div>
-            <Icon className="w-5 h-5 text-blue-400" title={resource.type} />
+            <Icon className="w-5 h-5 text-text-accent" title={resource.type} />
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleEdit}
-              className="p-2 rounded-md transition-colors cursor-pointer text-white/70 hover:bg-white/10 hover:text-white"
+              className="p-2 rounded-md transition-colors cursor-pointer text-text-secondary hover:bg-bg-primary hover:text-text-primary"
               title="Edit Resource"
             >
               <FiEdit size={16} />

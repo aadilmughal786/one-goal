@@ -4,12 +4,11 @@
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { all, create } from 'mathjs';
-import Image from 'next/image'; // Import the Next.js Image component
+import Image from 'next/image';
 import React, { useEffect, useRef, useState } from 'react';
 import { FaRobot } from 'react-icons/fa';
 import { FiSend, FiTrash2, FiUser } from 'react-icons/fi';
 
-// Configure mathjs
 const math = create(all);
 
 interface Message {
@@ -53,7 +52,6 @@ const ChatCalculator: React.FC = () => {
 
   useEffect(() => {
     try {
-      // Only save if there's more than the initial bot message
       if (messages.length > 1 || (messages.length === 1 && !messages[0].text.startsWith('Hello'))) {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(messages));
       }
@@ -69,7 +67,6 @@ const ChatCalculator: React.FC = () => {
     });
   }, [messages]);
 
-  // Updated function with better error handling
   const calculateExpression = (expression: string): string => {
     try {
       const result = math.evaluate(expression);
@@ -78,7 +75,6 @@ const ChatCalculator: React.FC = () => {
       }
       return `The result is: ${math.format(result, { precision: 14 })}`;
     } catch {
-      // Return a more user-friendly error message
       return "Sorry, I couldn't understand that calculation. Please check the syntax (e.g., 'sqrt(16)' or '5 * (2+3)').";
     }
   };
@@ -121,12 +117,11 @@ const ChatCalculator: React.FC = () => {
               className={`max-w-lg p-4 rounded-2xl shadow-md ${
                 msg.type === 'user'
                   ? 'bg-blue-600 text-white rounded-br-none'
-                  : 'bg-white/10 text-white/90 rounded-bl-none'
+                  : 'bg-bg-tertiary text-text-primary rounded-bl-none'
               }`}
             >
-              <p className="text-white whitespace-pre-wrap">{msg.text}</p>
+              <p className="whitespace-pre-wrap">{msg.text}</p>
             </div>
-            {/* Conditional rendering for user avatar */}
             {msg.type === 'user' &&
               (currentUser?.photoURL ? (
                 <Image
@@ -137,7 +132,7 @@ const ChatCalculator: React.FC = () => {
                   className="flex-shrink-0 mt-1 w-8 h-8 rounded-full"
                 />
               ) : (
-                <div className="w-8 h-8 p-1.5 rounded-full bg-white/10 text-white flex-shrink-0 mt-1 flex items-center justify-center">
+                <div className="w-8 h-8 p-1.5 rounded-full bg-bg-tertiary text-text-secondary flex-shrink-0 mt-1 flex items-center justify-center">
                   <FiUser />
                 </div>
               ))}
@@ -145,11 +140,11 @@ const ChatCalculator: React.FC = () => {
         ))}
       </div>
 
-      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-black/50 border-white/10">
+      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex gap-2 items-center mx-auto max-w-3xl">
           <button
             onClick={handleClearHistoryWithConfirmation}
-            className="p-3 text-red-400 rounded-full transition-colors bg-white/5 hover:bg-red-500/20 cursor-pointer"
+            className="p-3 text-red-400 rounded-full transition-colors cursor-pointer bg-bg-tertiary hover:bg-red-500/20"
             aria-label="Clear chat history"
           >
             <FiTrash2 size={20} />
@@ -161,11 +156,11 @@ const ChatCalculator: React.FC = () => {
               onChange={e => setInput(e.target.value)}
               onKeyPress={e => e.key === 'Enter' && handleSend()}
               placeholder="e.g., (2 + 1) * 3 or sin(45 deg)"
-              className="p-4 pr-14 w-full text-base text-white rounded-xl border border-white/20 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="p-4 pr-14 w-full text-base rounded-xl border text-text-primary border-border-secondary bg-bg-secondary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
             />
             <button
               onClick={handleSend}
-              className="absolute right-3 top-1/2 p-2 text-white bg-blue-500 rounded-lg transition-colors -translate-y-1/2 hover:bg-blue-600 disabled:opacity-50 cursor-pointer"
+              className="absolute right-3 top-1/2 p-2 text-white bg-blue-500 rounded-lg transition-colors -translate-y-1/2 cursor-pointer hover:bg-blue-600 disabled:opacity-50"
               disabled={!input.trim()}
               aria-label="Send"
             >

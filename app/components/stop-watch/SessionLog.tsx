@@ -189,7 +189,7 @@ export default function SessionLog() {
 
   if (!activeGoal) {
     return (
-      <div className="mx-auto mt-12 max-w-4xl text-center text-white/60">
+      <div className="mx-auto mt-12 max-w-4xl text-center text-text-secondary">
         <h3 className="flex gap-3 justify-center items-center text-2xl font-bold">
           <FiActivity /> Focus Session Log
         </h3>
@@ -201,23 +201,25 @@ export default function SessionLog() {
   return (
     <div className="mx-auto mt-12 max-w-4xl">
       <div className="mb-8 text-center">
-        <h3 className="flex gap-3 justify-center items-center text-2xl font-bold">
+        <h3 className="flex gap-3 justify-center items-center text-2xl font-bold text-text-primary">
           <FiActivity /> Focus Session Log
         </h3>
-        <p className="mt-2 text-white/60">
+        <p className="mt-2 text-text-secondary">
           Review your tracked work sessions for &quot;{activeGoal.name}&quot;. Select a day to see
           the details.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-sm">
-        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-white/10">
-          <h3 className="text-xl font-bold text-white">{format(currentMonth, 'MMMM yyyy')}</h3>
+      <div className="overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-sm border-border-primary bg-bg-secondary">
+        <div className="flex justify-between items-center p-4 border-b sm:p-6 border-border-primary">
+          <h3 className="text-xl font-bold text-text-primary">
+            {format(currentMonth, 'MMMM yyyy')}
+          </h3>
           <div className="flex gap-2">
             <button
               onClick={handleGoToToday}
               disabled={!isTodayButtonClickable}
-              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="px-4 py-2 text-sm font-semibold rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
               aria-label="Go to today"
             >
               Today
@@ -226,7 +228,7 @@ export default function SessionLog() {
               <button
                 onClick={() => handleMonthChange('prev')}
                 disabled={!canGoPrevMonth}
-                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
                 aria-label="Previous month"
               >
                 <FiChevronLeft className="w-5 h-5" />
@@ -234,7 +236,7 @@ export default function SessionLog() {
               <button
                 onClick={() => handleMonthChange('next')}
                 disabled={!canGoNextMonth}
-                className="p-2 rounded-full transition-colors cursor-pointer bg-white/5 hover:bg-white/10 disabled:opacity-30"
+                className="p-2 rounded-full transition-colors cursor-pointer bg-bg-tertiary text-text-secondary hover:bg-border-primary disabled:opacity-30"
                 aria-label="Next month"
               >
                 <FiChevronRight className="w-5 h-5" />
@@ -243,7 +245,7 @@ export default function SessionLog() {
           </div>
         </div>
 
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-border-primary">
           <div className="flex flex-wrap gap-3 justify-center">
             {daysInView.length > 0 ? (
               daysInView.map(day => {
@@ -257,12 +259,14 @@ export default function SessionLog() {
                     key={dateKey}
                     onClick={() => setSelectedDay(day)}
                     className={`relative flex flex-col items-center justify-start pt-2 w-16 h-16 rounded-lg transition-all duration-200 group
-                      ${isSelected ? 'text-white bg-blue-500 shadow-lg' : 'text-white bg-white/5 hover:bg-white/10'}
-                      ${isCurrentDay && !isSelected ? 'ring-2 ring-blue-400/60' : 'border border-white/10'}
+                      ${isSelected ? 'text-white bg-blue-500 shadow-lg' : 'text-text-primary bg-bg-tertiary hover:bg-border-primary'}
+                      ${isCurrentDay && !isSelected ? 'ring-2 ring-border-accent' : 'border border-border-primary'}
                       cursor-pointer`}
                     aria-label={`Select day ${format(day, 'd MMMM')}`}
                   >
-                    <span className="text-xs font-semibold text-white/60">{format(day, 'E')}</span>
+                    <span className="text-xs font-semibold text-text-tertiary">
+                      {format(day, 'E')}
+                    </span>
                     <span
                       className={`mt-1 text-2xl font-bold transition-colors duration-200 ${hasLog && !isSelected ? 'text-cyan-400' : ''}`}
                     >
@@ -272,15 +276,15 @@ export default function SessionLog() {
                 );
               })
             ) : (
-              <p className="col-span-full text-center text-white/50">
-                No days in view for this goal&apos;s period.
+              <p className="col-span-full text-center text-text-muted">
+                No goal days in this month.
               </p>
             )}
           </div>
         </div>
 
         <div className="min-h-[250px] p-6">
-          <h4 className="mb-4 text-xl font-bold text-white/80">
+          <h4 className="mb-4 text-xl font-bold text-text-primary">
             {selectedDay
               ? `Logs for ${format(selectedDay, 'MMMM d,yyyy')}`
               : 'Select a day to view logs'}
@@ -294,7 +298,7 @@ export default function SessionLog() {
                   return (
                     <li
                       key={session.id}
-                      className="flex flex-col p-4 rounded-lg sm:flex-row sm:justify-between sm:items-center bg-white/5"
+                      className="flex flex-col p-4 rounded-lg sm:flex-row sm:justify-between sm:items-center bg-bg-tertiary"
                     >
                       {isEditing ? (
                         <div className="flex flex-grow gap-2 items-center">
@@ -305,7 +309,7 @@ export default function SessionLog() {
                             onKeyPress={e => e.key === 'Enter' && handleSaveUpdate(session)}
                             autoFocus
                             disabled={isCurrentlySaving}
-                            className="flex-1 py-1 text-base text-white bg-transparent border-b-2 cursor-pointer outline-none border-white/20 focus:border-blue-400 disabled:opacity-50"
+                            className="flex-1 py-1 text-base bg-transparent border-b-2 cursor-pointer outline-none text-text-primary border-border-primary focus:border-border-accent disabled:opacity-50"
                             aria-label="Edit session label"
                           />
                           <button
@@ -323,8 +327,8 @@ export default function SessionLog() {
                         </div>
                       ) : (
                         <div className="flex-grow mb-3 sm:mb-0">
-                          <p className="font-semibold text-white">{session.label}</p>
-                          <p className="text-sm text-white/60">
+                          <p className="font-semibold text-text-primary">{session.label}</p>
+                          <p className="text-sm text-text-secondary">
                             Logged at {format(session.startTime.toDate(), 'h:mm a')}
                           </p>
                         </div>
@@ -337,7 +341,7 @@ export default function SessionLog() {
                         {!isEditing && (
                           <button
                             onClick={() => handleStartEditing(session)}
-                            className="p-2 rounded-full transition-colors cursor-pointer text-white/60 hover:text-white hover:bg-white/10"
+                            className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
                             aria-label="Edit session"
                           >
                             <FiEdit />
@@ -357,14 +361,14 @@ export default function SessionLog() {
                 })}
               </ul>
             ) : (
-              <div className="flex flex-col justify-center items-center pt-10 h-full text-center text-white/50">
+              <div className="flex flex-col justify-center items-center pt-10 h-full text-center text-text-muted">
                 <FiClock size={32} className="mb-4" />
                 <p>No focus sessions logged on this day.</p>
               </div>
             ))}
         </div>
 
-        <div className="flex flex-col gap-4 justify-between items-center p-4 text-sm border-t sm:flex-row border-white/10 text-white/60">
+        <div className="flex flex-col gap-4 justify-between items-center p-4 text-sm border-t sm:flex-row border-border-primary text-text-secondary">
           <div className="flex flex-wrap gap-y-2 gap-x-4 items-center">
             {goalStartDate && (
               <div className="flex gap-2 items-center" title="Goal Start Date">

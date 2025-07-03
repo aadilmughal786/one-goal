@@ -321,15 +321,15 @@ const TimeBlockUI = () => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <div className="flex justify-between items-center p-6 border-b border-white/10">
-          <h2 className="flex gap-3 items-center text-xl font-bold text-white">
+      <div className="card">
+        <div className="flex justify-between items-center p-6 border-b border-border-primary">
+          <h2 className="flex gap-3 items-center text-xl font-bold text-text-primary">
             <FiClock size={24} />
             Daily Timeline
           </h2>
           <button
             onClick={() => handleOpenModal(null)}
-            className="flex justify-center items-center w-8 h-8 text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90"
+            className="flex justify-center items-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90"
             aria-label="Add new time block"
             title="Add new time block"
           >
@@ -338,33 +338,30 @@ const TimeBlockUI = () => {
         </div>
         <div className="p-6 pl-12">
           <div className="flex" style={{ height: '2880px' }}>
-            {/* Hour Labels */}
-            <div className="relative pr-4 text-xs text-right text-white/50">
+            <div className="relative pr-4 text-xs text-right text-text-muted">
               {Array.from({ length: 25 }).map((_, hour) => (
                 <div
                   key={`hour-label-${hour}`}
-                  className="absolute right-4 font-bold transform -translate-y-1/2 text-white/70"
+                  className="absolute right-4 font-bold transform -translate-y-1/2 text-text-tertiary"
                   style={{ top: `${(hour / 24) * 100}%` }}
                 >
                   {hour === 24 ? '' : `${hour.toString().padStart(2, '0')}:00`}
                 </div>
               ))}
             </div>
-            {/* Timeline Grid */}
-            <div className="grid relative flex-grow grid-cols-2 gap-2 rounded-lg bg-black/20">
-              {/* Column 1: Time Blocks */}
+            <div className="grid relative flex-grow grid-cols-2 gap-2 rounded-lg bg-bg-tertiary">
               <div className="relative h-full">
-                {/* Grid Lines */}
                 {Array.from({ length: 143 }).map((_, i) => (
                   <div
                     key={`line-block-${i}`}
                     className={`absolute w-full border-t ${
-                      (i + 1) % 6 === 0 ? 'border-white/20' : 'border-dashed border-white/10'
+                      (i + 1) % 6 === 0
+                        ? 'border-border-primary'
+                        : 'border-dashed border-border-primary/50'
                     }`}
                     style={{ top: `${((i + 1) / 144) * 100}%` }}
                   ></div>
                 ))}
-                {/* Custom Time Blocks */}
                 {sortedTimeBlocks.map(block => {
                   const isCompleted = block.completed;
                   const isUpdating = updatingBlockId === block.id;
@@ -373,13 +370,14 @@ const TimeBlockUI = () => {
                   const isActive = !isCompleted && isWithinInterval(currentTime, { start, end });
 
                   const textColor = isCompleted
-                    ? 'text-green-200'
+                    ? 'text-green-800 dark:text-green-200'
                     : isColorDark(block.color)
                       ? 'text-white'
                       : 'text-black';
                   const blockBgColor = isCompleted ? 'rgba(34, 197, 94, 0.2)' : block.color;
                   let blockBorderStyle = isCompleted ? 'border-green-500' : 'border-transparent';
-                  if (isActive) blockBorderStyle += ' ring-2 ring-yellow-400 ring-offset-black/50';
+                  if (isActive)
+                    blockBorderStyle += ' ring-2 ring-yellow-400 ring-offset-bg-tertiary';
 
                   return (
                     <div
@@ -452,9 +450,7 @@ const TimeBlockUI = () => {
                   );
                 })}
               </div>
-              {/* Column 2: Routines */}
               <div className="relative h-full">
-                {/* Sleep Blocks */}
                 {sleepScheduleBlock?.part1 && (
                   <div
                     className="absolute left-0 p-2 w-full rounded-lg border-2 bg-indigo-900/50 border-indigo-500/50"
@@ -485,7 +481,6 @@ const TimeBlockUI = () => {
                     </div>
                   </div>
                 )}
-                {/* Other Routines */}
                 {sortedRoutines.map(routine => {
                   const RoutineIcon = routineIconMap[routine.icon] || FiZap;
                   const routineStartTime = parse(routine.time, 'HH:mm', new Date());
@@ -503,7 +498,7 @@ const TimeBlockUI = () => {
                     ? 'border-green-500 bg-green-900/50'
                     : 'border-transparent bg-gray-700/50';
                   if (isActive)
-                    routineBorderStyle += ' ring-2 ring-yellow-400 ring-offset-black/50';
+                    routineBorderStyle += ' ring-2 ring-yellow-400 ring-offset-bg-tertiary';
 
                   return (
                     <div
@@ -546,7 +541,6 @@ const TimeBlockUI = () => {
                   );
                 })}
               </div>
-              {/* Current Time Indicator - Spans both columns */}
               <div
                 className="absolute left-0 w-full h-0.5 bg-red-500 z-10"
                 style={{ top: currentTimePosition() }}

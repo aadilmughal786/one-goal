@@ -100,13 +100,13 @@ const ProfilePageContent = () => {
   };
 
   return (
-    <main className="flex flex-col min-h-screen text-white bg-black font-poppins">
-      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-black/50 border-white/10">
+    <main className="flex flex-col min-h-screen text-text-primary bg-bg-primary font-poppins">
+      <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex space-x-2">
           {isLoading ? (
             [...Array(3)].map((_, i) => (
               <div key={i} className="px-4 py-3 animate-pulse">
-                <div className="w-24 h-6 rounded-md bg-white/10"></div>
+                <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
               </div>
             ))
           ) : (
@@ -115,8 +115,8 @@ const ProfilePageContent = () => {
                 onClick={() => handleTabChange('profile')}
                 className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                   activeTab === 'profile'
-                    ? 'text-white border-white'
-                    : 'border-transparent text-white/60 hover:text-white'
+                    ? 'text-text-primary border-border-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 <FiUser /> Profile
@@ -125,8 +125,8 @@ const ProfilePageContent = () => {
                 onClick={() => handleTabChange('data')}
                 className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                   activeTab === 'data'
-                    ? 'text-white border-white'
-                    : 'border-transparent text-white/60 hover:text-white'
+                    ? 'text-text-primary border-border-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 <FiDatabase /> Data Management
@@ -135,8 +135,8 @@ const ProfilePageContent = () => {
                 onClick={() => handleTabChange('wellness')}
                 className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                   activeTab === 'wellness'
-                    ? 'text-white border-white'
-                    : 'border-transparent text-white/60 hover:text-white'
+                    ? 'text-text-primary border-border-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 <FiHeart /> Wellness

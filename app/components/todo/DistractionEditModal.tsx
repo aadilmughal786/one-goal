@@ -95,18 +95,18 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md"
+        className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex justify-between items-center p-6 border-b border-white/10">
+          <div className="flex justify-between items-center p-6 border-b border-border-primary">
             <div className="flex gap-3 items-center">
-              <FiEdit className="w-5 h-5 text-white" />
-              <h2 className="text-xl font-semibold text-white">Edit Distraction</h2>
+              <FiEdit className="w-5 h-5 text-text-primary" />
+              <h2 className="text-xl font-semibold text-text-primary">Edit Distraction</h2>
             </div>
             <button
               type="button"
-              className="p-1.5 text-white/60 rounded-full hover:bg-white/10 hover:text-white cursor-pointer"
+              className="p-1.5 text-text-tertiary rounded-full hover:bg-bg-tertiary hover:text-text-primary cursor-pointer"
               onClick={onClose}
               aria-label="Close modal"
             >
@@ -117,7 +117,7 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
             <div>
               <label
                 htmlFor="distraction-title"
-                className="block mb-2 text-sm font-medium text-white/70"
+                className="block mb-2 text-sm font-medium text-text-secondary"
               >
                 Distraction / Habit <span className="text-red-400">*</span>
               </label>
@@ -125,14 +125,14 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
                 id="distraction-title"
                 type="text"
                 {...register('title')}
-                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="p-3 w-full text-base rounded-md border text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
                 autoFocus
               />
             </div>
             <div>
               <label
                 htmlFor="distraction-description"
-                className="block mb-2 text-sm font-medium text-white/70"
+                className="block mb-2 text-sm font-medium text-text-secondary"
               >
                 Description (Optional)
               </label>
@@ -141,13 +141,13 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
                 {...register('description')}
                 rows={3}
                 placeholder="Why is this a distraction for you?"
-                className="p-3 w-full text-base text-white rounded-md border resize-none bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="p-3 w-full text-base rounded-md border resize-none text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
               />
             </div>
             <div>
               <label
                 htmlFor="distraction-patterns"
-                className="block mb-2 text-sm font-medium text-white/70"
+                className="block mb-2 text-sm font-medium text-text-secondary"
               >
                 Trigger Patterns (Optional, comma-separated)
               </label>
@@ -156,15 +156,15 @@ const DistractionEditModal: React.FC<DistractionEditModalProps> = ({
                 type="text"
                 {...register('triggerPatterns')}
                 placeholder="e.g., feeling tired, bored, after lunch"
-                className="p-3 w-full text-base text-white rounded-md border bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="p-3 w-full text-base rounded-md border text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
               />
             </div>
           </div>
-          <div className="p-6 border-t border-white/10">
+          <div className="p-6 border-t border-border-primary">
             <button
               type="submit"
               disabled={isSubmitting || !isDirty || !isValid}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60 cursor-pointer"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-60"
             >
               {isSubmitting ? (
                 <>

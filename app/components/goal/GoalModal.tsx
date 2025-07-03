@@ -48,11 +48,10 @@ const GoalModal: React.FC<GoalModalProps> = ({
     formState: { errors, isSubmitting, isDirty, isValid },
   } = useForm<GoalFormData>({
     resolver: zodResolver(goalFormSchema),
-    // FIX: Provide a valid default Date that meets the schema's requirements.
     defaultValues: {
       name: '',
       description: '',
-      endDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Default to tomorrow
+      endDate: new Date(new Date().setDate(new Date().getDate() + 1)),
     },
     mode: 'onTouched',
   });
@@ -111,20 +110,20 @@ const GoalModal: React.FC<GoalModalProps> = ({
         onClick={onClose}
       >
         <div
-          className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md"
+          className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
           onClick={e => e.stopPropagation()}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex justify-between items-center p-6 border-b border-white/10">
+            <div className="flex justify-between items-center p-6 border-b border-border-primary">
               <div className="flex gap-3 items-center">
-                <FiTarget className="w-5 h-5 text-white" />
-                <h2 className="text-xl font-semibold text-white">
+                <FiTarget className="w-5 h-5 text-text-primary" />
+                <h2 className="text-xl font-semibold text-text-primary">
                   {isEditMode ? 'Update Your Goal' : 'Set a New Goal'}
                 </h2>
               </div>
               <button
                 type="button"
-                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 focus:outline-none cursor-pointer"
+                className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary focus:outline-none cursor-pointer"
                 onClick={onClose}
               >
                 <FiX className="w-5 h-5" />
@@ -136,7 +135,7 @@ const GoalModal: React.FC<GoalModalProps> = ({
                 <div>
                   <label
                     htmlFor="goalName"
-                    className="block mb-2 text-sm font-medium text-white/70"
+                    className="block mb-2 text-sm font-medium text-text-secondary"
                   >
                     Goal Name <span className="text-red-400">*</span>
                   </label>
@@ -145,19 +144,22 @@ const GoalModal: React.FC<GoalModalProps> = ({
                     type="text"
                     placeholder="e.g., Complete Project Phoenix"
                     {...register('name')}
-                    className="p-3 w-full text-base text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="p-3 w-full text-base rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
                   />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label htmlFor="goalDescription" className="text-sm font-medium text-white/70">
+                    <label
+                      htmlFor="goalDescription"
+                      className="text-sm font-medium text-text-secondary"
+                    >
                       Description <span className="text-red-400">*</span>
                     </label>
                     <span
                       className={`text-xs ${
                         currentDescriptionLength > MAX_DESCRIPTION_LENGTH
                           ? 'text-red-400'
-                          : 'text-white/50'
+                          : 'text-text-muted'
                       }`}
                     >
                       {currentDescriptionLength}/{MAX_DESCRIPTION_LENGTH}
@@ -169,34 +171,37 @@ const GoalModal: React.FC<GoalModalProps> = ({
                     rows={3}
                     maxLength={MAX_DESCRIPTION_LENGTH}
                     {...register('description')}
-                    className="p-3 w-full text-base text-white rounded-md border resize-none border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="p-3 w-full text-base rounded-md border resize-none text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
                   />
                 </div>
                 <div>
-                  <label htmlFor="endDate" className="block mb-2 text-sm font-medium text-white/70">
+                  <label
+                    htmlFor="endDate"
+                    className="block mb-2 text-sm font-medium text-text-secondary"
+                  >
                     <FiCalendar className="inline -mt-1 mr-1" /> Target Date & Time{' '}
                     <span className="text-red-400">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsPickerOpen(true)}
-                    className="p-3 w-full text-base text-left text-white rounded-md border cursor-pointer bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="p-3 w-full text-base text-left rounded-md border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
                   >
                     {currentEndDate ? (
                       format(currentEndDate, "MMMM d,yyyy 'at' h:mm a")
                     ) : (
-                      <span className="text-white/50">Set a deadline</span>
+                      <span className="text-text-muted">Set a deadline</span>
                     )}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-white/10">
+            <div className="p-6 border-t border-border-primary">
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-60"
               >
                 {isSubmitting ? (
                   <>
@@ -218,7 +223,6 @@ const GoalModal: React.FC<GoalModalProps> = ({
         isOpen={isPickerOpen}
         value={currentEndDate}
         onChange={date => {
-          // FIX: Ensure the date from the picker is not null before setting it.
           if (date) {
             setValue('endDate', date, { shouldValidate: true, shouldDirty: true });
           }

@@ -102,17 +102,17 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
         onClick={onClose}
       >
         <div
-          className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md"
+          className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
           onClick={e => e.stopPropagation()}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex justify-between items-center p-6 border-b border-white/10">
-              <h2 className="text-xl font-semibold text-white">
+            <div className="flex justify-between items-center p-6 border-b border-border-primary">
+              <h2 className="text-xl font-semibold text-text-primary">
                 {blockToEdit ? 'Edit' : 'Create'} Time Block
               </h2>
               <button
                 type="button"
-                className="p-1.5 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+                className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -121,38 +121,38 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <label className="block mb-2 text-sm text-white/70">Label</label>
+                <label className="block mb-2 text-sm text-text-secondary">Label</label>
                 <input
                   type="text"
                   placeholder="e.g., Deep Work"
                   {...register('label')}
-                  className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                  className="p-3 w-full rounded-lg border text-text-primary bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-2 text-sm text-white/70">Start Time</label>
+                  <label className="block mb-2 text-sm text-text-secondary">Start Time</label>
                   <button
                     type="button"
                     onClick={() => setIsStartPickerOpen(true)}
-                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="p-3 w-full text-left rounded-lg border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
                   >
                     {watchedStartTime ? format(watchedStartTime, 'h:mm a') : 'Select'}
                   </button>
                 </div>
                 <div>
-                  <label className="block mb-2 text-sm text-white/70">End Time</label>
+                  <label className="block mb-2 text-sm text-text-secondary">End Time</label>
                   <button
                     type="button"
                     onClick={() => setIsEndPickerOpen(true)}
-                    className="p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="p-3 w-full text-left rounded-lg border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
                   >
                     {watchedEndTime ? format(watchedEndTime, 'h:mm a') : 'Select'}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block mb-2 text-sm text-white/70">Color</label>
+                <label className="block mb-2 text-sm text-text-secondary">Color</label>
                 <div className="flex gap-2">
                   {colorPalette.map(color => (
                     <button
@@ -170,11 +170,11 @@ const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-white/10">
+            <div className="p-6 border-t border-border-primary">
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty || !isValid}
-                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-white/90 disabled:opacity-60"
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
               >
                 {isSubmitting ? <FiLoader className="w-5 h-5 animate-spin" /> : <FiCheck />}{' '}
                 {isSubmitting ? 'Saving...' : blockToEdit ? 'Save Changes' : 'Add Block'}

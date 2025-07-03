@@ -54,14 +54,12 @@ const Stopwatch: React.FC = () => {
     setSessionLabel,
   } = useTimerStore();
 
-  // Get the confirmation modal function from the notification store
   const { showConfirmation } = useNotificationStore();
 
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isStarting, setIsStarting] = useState(false); // State for the fake loader
+  const [isStarting, setIsStarting] = useState(false);
   const fullScreenRef = useRef<HTMLDivElement>(null);
 
-  // --- Fetch today's stats from the goal store ---
   const appState = useGoalStore(state => state.appState);
   const todayKey = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
@@ -70,7 +68,7 @@ const Stopwatch: React.FC = () => {
     const todaysProgress = activeGoal?.dailyProgress[todayKey];
     return {
       sessions: todaysProgress?.sessions?.length || 0,
-      totalTime: todaysProgress?.totalSessionDuration || 0, // in milliseconds
+      totalTime: todaysProgress?.totalSessionDuration || 0,
     };
   }, [appState, todayKey]);
 
@@ -81,7 +79,6 @@ const Stopwatch: React.FC = () => {
     setTimer(minutes, label, isBreakSession);
   };
 
-  // --- Confirmation Handlers ---
   const handleSaveConfirm = () => {
     showConfirmation({
       title: 'Finish & Save Session?',
@@ -99,14 +96,12 @@ const Stopwatch: React.FC = () => {
     });
   };
 
-  // --- Start Timer with Fake Loader ---
   const handleStartTimerWithLoader = () => {
     setIsStarting(true);
-    // Simulate a short delay before starting the timer
     setTimeout(() => {
       startTimer();
       setIsStarting(false);
-    }, 500); // 500ms fake delay
+    }, 500);
   };
 
   const toggleFullScreen = () => {
@@ -128,11 +123,10 @@ const Stopwatch: React.FC = () => {
 
   const renderInitialState = () => (
     <div className="w-full text-center animate-fade-in">
-      <p className="mb-8 text-white/60">Select a preset to begin a session.</p>
+      <p className="mb-8 text-text-tertiary">Select a preset to begin a session.</p>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        {/* Focus Section */}
-        <div className="p-4 rounded-lg bg-white/5">
-          <h4 className="flex gap-2 justify-center items-center mb-3 font-semibold text-white">
+        <div className="p-4 rounded-lg bg-bg-tertiary">
+          <h4 className="flex gap-2 justify-center items-center mb-3 font-semibold text-text-primary">
             <FiZap className="text-blue-400" />
             Focus
           </h4>
@@ -141,16 +135,15 @@ const Stopwatch: React.FC = () => {
               <button
                 key={`f-${p.minutes}`}
                 onClick={() => handlePresetClick(p.minutes, `${p.label} Focus`, false)}
-                className="p-3 text-lg font-semibold rounded-lg transition-colors cursor-pointer bg-black/20 hover:bg-blue-500/20 hover:text-blue-300"
+                className="p-3 text-lg font-semibold rounded-lg transition-colors cursor-pointer bg-bg-primary text-text-secondary hover:bg-blue-500/20 hover:text-blue-300"
               >
                 {p.label}
               </button>
             ))}
           </div>
         </div>
-        {/* Break Section */}
-        <div className="p-4 rounded-lg bg-white/5">
-          <h4 className="flex gap-2 justify-center items-center mb-3 font-semibold text-white">
+        <div className="p-4 rounded-lg bg-bg-tertiary">
+          <h4 className="flex gap-2 justify-center items-center mb-3 font-semibold text-text-primary">
             <FiCoffee className="text-green-400" />
             Break
           </h4>
@@ -159,7 +152,7 @@ const Stopwatch: React.FC = () => {
               <button
                 key={`b-${p.minutes}`}
                 onClick={() => handlePresetClick(p.minutes, `${p.label} Break`, true)}
-                className="p-3 text-lg font-semibold rounded-lg transition-colors cursor-pointer bg-black/20 hover:bg-green-500/20 hover:text-green-300"
+                className="p-3 text-lg font-semibold rounded-lg transition-colors cursor-pointer bg-bg-primary text-text-secondary hover:bg-green-500/20 hover:text-green-300"
               >
                 {p.label}
               </button>
@@ -172,18 +165,18 @@ const Stopwatch: React.FC = () => {
 
   const renderPreparationState = () => (
     <div className="w-full max-w-xs text-center animate-fade-in">
-      <p className="mb-4 text-white/80">Label your {isBreak ? 'break' : 'focus'} session:</p>
+      <p className="mb-4 text-text-secondary">Label your {isBreak ? 'break' : 'focus'} session:</p>
       <input
         type="text"
         value={sessionLabel}
         onChange={e => setSessionLabel(e.target.value)}
         autoFocus
-        className="p-3 mb-4 w-full text-lg text-center text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="p-3 mb-4 w-full text-lg text-center rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
       />
       <button
         onClick={handleStartTimerWithLoader}
         disabled={isStarting}
-        className="p-3 w-full font-semibold text-black bg-white rounded-lg transition-colors cursor-pointer hover:bg-white/90 disabled:opacity-50"
+        className="p-3 w-full font-semibold rounded-lg transition-colors cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
       >
         {isStarting ? <FiLoader className="inline-block w-5 h-5 animate-spin" /> : 'Start Timer'}
       </button>
@@ -200,7 +193,7 @@ const Stopwatch: React.FC = () => {
           cx="60"
           cy="60"
           r="54"
-          stroke="rgba(255, 255, 255, 0.1)"
+          stroke="var(--color-border-primary)"
           strokeWidth="4"
           fill="transparent"
         />
@@ -208,7 +201,7 @@ const Stopwatch: React.FC = () => {
           cx="60"
           cy="60"
           r="54"
-          stroke="white"
+          stroke="var(--color-text-primary)"
           strokeWidth="4"
           fill="transparent"
           strokeLinecap="round"
@@ -226,23 +219,23 @@ const Stopwatch: React.FC = () => {
           {isBreak ? 'Break' : 'Focus'}
         </p>
         <div
-          className="font-mono text-5xl font-bold tracking-wider text-white"
+          className="font-mono text-5xl font-bold tracking-wider text-text-primary"
           style={{ fontVariantNumeric: 'tabular-nums' }}
         >
           {`${minutes}:${seconds}`}
         </div>
-        <p className="font-mono text-lg text-white/50">{centiseconds}</p>
+        <p className="font-mono text-lg text-text-muted">{centiseconds}</p>
       </div>
     </div>
   );
   return (
     <div
       ref={fullScreenRef}
-      className={`relative p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-lg max-w-5xl mx-auto transition-all duration-300 ${
-        isFullScreen ? 'h-screen flex flex-col justify-center items-center' : ''
+      className={`relative p-8 bg-bg-secondary backdrop-blur-sm border border-border-primary rounded-3xl shadow-lg max-w-5xl mx-auto transition-all duration-300 ${
+        isFullScreen ? 'flex flex-col justify-center items-center h-screen' : ''
       }`}
     >
-      <h2 className="mb-8 text-2xl font-bold text-center text-white">Focus Session Timer</h2>
+      <h2 className="mb-8 text-2xl font-bold text-center text-text-primary">Focus Session Timer</h2>
 
       <div className="flex relative justify-center items-center mx-auto mb-8 w-full h-64">
         {isPreparing
@@ -273,7 +266,7 @@ const Stopwatch: React.FC = () => {
             </button>
             <button
               onClick={isRunning ? pauseTimer : startTimer}
-              className="flex justify-center items-center w-20 h-20 text-xl font-bold text-black bg-white rounded-full transition-transform cursor-pointer hover:scale-105"
+              className="flex justify-center items-center w-20 h-20 text-xl font-bold rounded-full transition-transform cursor-pointer text-bg-primary bg-text-primary hover:scale-105"
               aria-label={isRunning ? 'Pause' : 'Play'}
             >
               {isRunning ? <FiPause size={32} /> : <FiPlay size={32} className="ml-1" />}
@@ -294,24 +287,24 @@ const Stopwatch: React.FC = () => {
         )}
       </div>
 
-      <div className="flex justify-around px-8 pt-6 -mx-8 mt-8 text-center border-t border-white/10">
+      <div className="flex justify-around px-8 pt-6 -mx-8 mt-8 text-center border-t border-border-primary">
         <div>
-          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-white">
+          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-text-primary">
             <FiCheckSquare /> {todaysStats.sessions}
           </p>
-          <p className="text-sm text-white/60">Sessions Today</p>
+          <p className="text-sm text-text-secondary">Sessions Today</p>
         </div>
         <div>
-          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-white">
+          <p className="flex gap-2 justify-center items-center text-2xl font-bold text-text-primary">
             <FiActivity /> {formatTotalTime(todaysStats.totalTime)}
           </p>
-          <p className="text-sm text-white/60">Focus Time Today</p>
+          <p className="text-sm text-text-secondary">Focus Time Today</p>
         </div>
       </div>
 
       <button
         onClick={toggleFullScreen}
-        className="absolute top-4 right-4 p-2 cursor-pointer text-white/50 hover:text-white"
+        className="absolute top-4 right-4 p-2 cursor-pointer text-text-muted hover:text-text-primary"
         aria-label="Toggle Fullscreen"
       >
         {isFullScreen ? <FiMinimize /> : <FiMaximize />}

@@ -1,31 +1,99 @@
+/* app/globals.css */
 @import 'tailwindcss';
+@import './styles/scrollbars.css';
+
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* === Custom Scrollbar Styles === */
+/*
+  This block tells Tailwind CSS to recognize our CSS variables as themeable colors.
+  This allows us to use classes like `bg-primary`, `text-secondary`, etc.
+*/
+@theme {
+  /* Text Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
 
-/* For Webkit-based browsers (Chrome, Safari, Edge) */
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  /* Background Colors */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+
+  /* Border Colors */
+  --color-border-primary: var(--border-primary);
+  --color-border-secondary: var(--border-secondary);
+  --color-border-accent: var(--border-accent);
 }
 
-::-webkit-scrollbar-track {
-  background: #1a1a1a; /* A very dark grey, slightly lighter than pure black */
-  border-radius: 10px;
+/* --------------------- */
+
+@layer base {
+  /*
+    :root defines the variables for the default (light) theme.
+  */
+  :root {
+    /* Text */
+    --text-primary: theme('colors.gray.900');
+    --text-secondary: theme('colors.gray.600');
+    --text-tertiary: theme('colors.gray.500');
+    --text-muted: theme('colors.gray.400');
+    --text-accent: theme('colors.blue.600');
+
+    /* Background */
+    --bg-primary: theme('colors.white');
+    --bg-secondary: theme('colors.gray.50');
+    --bg-tertiary: theme('colors.gray.100');
+
+    /* Border */
+    --border-primary: theme('colors.gray.200');
+    --border-secondary: theme('colors.gray.300');
+    --border-accent: theme('colors.blue.500');
+  }
+
+  /*
+    .dark defines the variables for the dark theme, overriding the :root variables.
+    This is based on the project's original dark theme.
+  */
+  .dark {
+    /* Text */
+    --text-primary: theme('colors.white');
+    --text-secondary: theme('colors.white / 70%');
+    --text-tertiary: theme('colors.white / 60%');
+    --text-muted: theme('colors.white / 40%');
+    --text-accent: theme('colors.blue.400');
+
+    /* Background */
+    --bg-primary: theme('colors.black');
+    --bg-secondary: theme('colors.white / 2%');
+    --bg-tertiary: theme('colors.white / 5%');
+
+    /* Border */
+    --border-primary: theme('colors.white / 10%');
+    --border-secondary: theme('colors.white / 20%');
+    --border-accent: theme('colors.blue.500');
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background-color: #4b5563; /* A medium grey for the scrollbar handle */
-  border-radius: 10px;
-  border: 3px solid #1a1a1a; /* Creates a padding effect around the thumb */
-}
+@layer utilities {
+  .icon {
+    @apply inline-block w-5 h-5 cursor-pointer;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background-color: #6b7280; /* Lighter grey on hover for better visibility */
-}
+  .link {
+    @apply font-medium hover:text-text-tertiary;
+  }
 
-/* For Firefox */
-html {
-  scrollbar-width: thin; /* "auto" or "thin" */
-  scrollbar-color: #4b5563 #1a1a1a; /* thumb and track color */
+  .glass {
+    @apply backdrop-filter backdrop-blur-md bg-bg-secondary;
+  }
+
+  /*
+    New utility class for card elements.
+    This encapsulates the common styling for bordered, rounded containers.
+  */
+  .card {
+    @apply p-8 rounded-2xl border shadow-lg backdrop-blur-sm bg-bg-secondary border-border-primary;
+  }
 }

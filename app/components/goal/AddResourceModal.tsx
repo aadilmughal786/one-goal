@@ -120,40 +120,40 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
       onClick={onClose}
     >
       <div
-        className="bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl w-full max-w-md"
+        className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex justify-between items-center p-6 border-b border-white/10">
-            <h2 className="text-xl font-semibold text-white">
+          <div className="flex justify-between items-center p-6 border-b border-border-primary">
+            <h2 className="text-xl font-semibold text-text-primary">
               {isEditMode ? 'Edit Resource' : 'Add New Resource'}
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-white/60 hover:bg-white/10"
+              className="p-1.5 rounded-full text-text-tertiary hover:bg-bg-tertiary"
             >
               <FiX />
             </button>
           </div>
           <div className="p-6 space-y-4">
             <div>
-              <label className="block mb-2 text-sm text-white/70">Type *</label>
+              <label className="block mb-2 text-sm text-text-secondary">Type *</label>
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex justify-between items-center p-3 w-full text-left text-white rounded-lg border cursor-pointer bg-black/20 border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="flex justify-between items-center p-3 w-full text-left rounded-lg border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
                   aria-haspopup="listbox"
                   aria-expanded={isDropdownOpen}
                 >
                   {selectedOption ? (
                     <span className="flex gap-3 items-center">
-                      {SelectedIcon && <SelectedIcon className="text-white/70" />}
+                      {SelectedIcon && <SelectedIcon className="text-text-secondary" />}
                       {selectedOption.label}
                     </span>
                   ) : (
-                    <span className="text-white/50">Select a type...</span>
+                    <span className="text-text-muted">Select a type...</span>
                   )}
                   <FiChevronDown
                     className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
@@ -161,7 +161,7 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
                 </button>
                 {isDropdownOpen && (
                   <div
-                    className="absolute z-10 p-2 mt-2 w-full rounded-md border shadow-lg bg-neutral-900 border-white/10"
+                    className="absolute z-10 p-2 mt-2 w-full rounded-md border shadow-lg bg-bg-tertiary border-border-primary"
                     role="listbox"
                   >
                     {typeOptions.map(option => (
@@ -175,7 +175,7 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
                           });
                           setIsDropdownOpen(false);
                         }}
-                        className={`flex items-center w-full gap-3 px-3 py-2 text-left rounded-md transition-colors cursor-pointer hover:bg-white/10 ${
+                        className={`flex items-center w-full gap-3 px-3 py-2 text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary ${
                           selectedType === option.value ? 'bg-blue-500/50' : ''
                         }`}
                         role="option"
@@ -190,27 +190,27 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
               </div>
             </div>
             <div>
-              <label className="block mb-2 text-sm text-white/70">URL *</label>
+              <label className="block mb-2 text-sm text-text-secondary">URL *</label>
               <input
                 {...register('url')}
                 placeholder="https://example.com"
-                className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                className="p-3 w-full rounded-lg border text-text-primary bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm text-white/70">Title *</label>
+              <label className="block mb-2 text-sm text-text-secondary">Title *</label>
               <input
                 {...register('title')}
                 placeholder="My Awesome Resource"
-                className="p-3 w-full text-white rounded-lg border bg-black/20 border-white/10 focus:ring-2 focus:ring-white focus:outline-none"
+                className="p-3 w-full rounded-lg border text-text-primary bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
             </div>
           </div>
-          <div className="p-6 border-t border-white/10">
+          <div className="p-6 border-t border-border-primary">
             <button
               type="submit"
               disabled={isSubmitting || !isValid}
-              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 hover:bg-white/90 disabled:opacity-60"
+              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-60"
             >
               {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheck />}
               <span>{isEditMode ? 'Save Changes' : 'Add Resource'}</span>

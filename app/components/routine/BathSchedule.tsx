@@ -6,15 +6,12 @@ import { Timestamp } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import { MdOutlineHotTub, MdOutlinePool, MdOutlineShower, MdOutlineWash } from 'react-icons/md';
 
-// --- REFACTOR: Import the global Zustand stores ---
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-// Import the reusable components
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 
-// Map of icon names (strings) to their actual React component imports
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineShower,
   MdOutlineHotTub,
@@ -22,7 +19,6 @@ const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineWash,
 };
 
-// Array of icon names to be passed as options to the ScheduleEditModal
 const bathIcons: string[] = [
   'MdOutlineShower',
   'MdOutlineHotTub',
@@ -30,15 +26,7 @@ const bathIcons: string[] = [
   'MdOutlineWash',
 ];
 
-/**
- * BathSchedule Component
- *
- * Manages the display and functionality for user's bath and hygiene routines.
- * This component has been refactored to fetch its own data from the useGoalStore.
- */
 const BathSchedule: React.FC = () => {
-  // --- REFACTOR: Get all necessary state and actions from the stores ---
-  // FIX: Select each piece of state individually to prevent infinite loops.
   const appState = useGoalStore(state => state.appState);
   const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
   const showToast = useNotificationStore(state => state.showToast);
@@ -48,14 +36,9 @@ const BathSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
 
   useEffect(() => {
-    // Update local schedules state when the global store changes
     setSchedules(activeGoal?.routineSettings?.bath || []);
   }, [activeGoal]);
 
-  /**
-   * Toggles the completion status of a bath schedule.
-   * This function now directly calls the `updateRoutineSettings` action from the store.
-   */
   const toggleBathCompletion = useCallback(
     async (index: number) => {
       if (!activeGoal) return;
@@ -80,17 +63,12 @@ const BathSchedule: React.FC = () => {
         await updateRoutineSettings(newSettings);
         showToast('Bath schedule updated!', 'success');
       } catch (error) {
-        // The store handles rollbacks, so we just log the error here.
         console.error('Failed to update bath schedule:', error);
       }
     },
     [schedules, activeGoal, updateRoutineSettings, showToast]
   );
 
-  /**
-   * Saves a new or updated bath schedule.
-   * This function now directly calls the `updateRoutineSettings` action from the store.
-   */
   const handleSaveSchedule = useCallback(
     async (schedule: ScheduledRoutineBase, index: number | null) => {
       if (!activeGoal) return;
@@ -119,10 +97,6 @@ const BathSchedule: React.FC = () => {
     [schedules, activeGoal, updateRoutineSettings, showToast]
   );
 
-  /**
-   * Removes a bath schedule from the list.
-   * This function now directly calls the `updateRoutineSettings` action from the store.
-   */
   const handleRemoveSchedule = useCallback(
     async (indexToRemove: number) => {
       if (!activeGoal) return;

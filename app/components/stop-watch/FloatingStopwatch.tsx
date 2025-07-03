@@ -73,7 +73,7 @@ const FloatingStopwatch: React.FC = () => {
         className={`absolute top-0 left-0 h-full transition-all duration-500 ease-linear ${progressFillColor}`}
         style={{ width: `${progressPercentage}%` }}
       />
-      <div className="flex relative z-10 gap-3 items-center w-full">
+      <div className="flex relative z-10 gap-3 items-center w-full text-white">
         <Icon size={20} className="flex-shrink-0" />
         <div className="flex gap-2 items-baseline leading-none">
           <span className="text-sm font-semibold truncate"> {isBreak ? 'Break' : 'Focus'}</span>

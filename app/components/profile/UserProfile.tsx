@@ -18,7 +18,7 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({ onAvatarModalOpen }) =>
 
   return (
     <div className="space-y-8">
-      <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
+      <div className="card">
         <div className="flex flex-col gap-6 items-center text-center">
           <div className="relative group">
             <Image
@@ -26,7 +26,7 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({ onAvatarModalOpen }) =>
               alt="Profile picture"
               width={120}
               height={120}
-              className="rounded-full border-2 border-white/20"
+              className="rounded-full border-2 border-border-secondary"
             />
             <button
               onClick={onAvatarModalOpen}
@@ -37,39 +37,39 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({ onAvatarModalOpen }) =>
             </button>
           </div>
           <div className="flex-grow">
-            <h1 className="text-2xl font-bold text-white md:text-3xl">
+            <h1 className="text-2xl font-bold text-text-primary md:text-3xl">
               {currentUser.displayName || 'Anonymous User'}
             </h1>
-            <p className="mt-2 text-white/70">{currentUser.email}</p>
+            <p className="mt-2 text-text-secondary">{currentUser.email}</p>
           </div>
         </div>
       </div>
 
-      <div className="p-8 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl">
-        <h2 className="mb-6 text-2xl font-bold text-white">Account Information</h2>
+      <div className="card">
+        <h2 className="mb-6 text-2xl font-bold text-text-primary">Account Information</h2>
         <div className="space-y-4">
           <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">User ID</span>
-            <span className="font-mono text-sm text-white/80">{currentUser.uid}</span>
+            <span className="text-text-secondary">User ID</span>
+            <span className="font-mono text-sm text-text-tertiary">{currentUser.uid}</span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Account Created</span>
-            <span className="text-white/80">
+            <span className="text-text-secondary">Account Created</span>
+            <span className="text-text-tertiary">
               {currentUser.metadata.creationTime
                 ? formatDate(new Date(currentUser.metadata.creationTime), 'MMM d, yyyy')
                 : 'Unknown'}
             </span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Last Sign In</span>
-            <span className="text-white/80">
+            <span className="text-text-secondary">Last Sign In</span>
+            <span className="text-text-tertiary">
               {currentUser.metadata.lastSignInTime
                 ? formatDate(new Date(currentUser.metadata.lastSignInTime), 'MMM d, yyyy')
                 : 'Unknown'}
             </span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-white/60">Email Verified</span>
+            <span className="text-text-secondary">Email Verified</span>
             <span className={`${currentUser.emailVerified ? 'text-green-400' : 'text-red-400'}`}>
               {currentUser.emailVerified ? 'Yes' : 'No'}
             </span>

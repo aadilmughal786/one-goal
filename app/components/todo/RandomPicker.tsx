@@ -6,7 +6,6 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 import React, { useEffect, useState } from 'react';
 import { FiLoader, FiPlus, FiShuffle, FiTrash2, FiX } from 'react-icons/fi';
 
-// --- Sub-component for the Picker Modal ---
 const PickerModal = ({
   isOpen,
   items,
@@ -48,20 +47,20 @@ const PickerModal = ({
       onClick={onClose}
     >
       <div
-        className="relative p-8 w-full max-w-md text-center bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl"
+        className="relative p-8 w-full max-w-md text-center rounded-3xl border shadow-2xl backdrop-blur-md bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-xl font-semibold text-white">
+        <h2 className="mb-4 text-xl font-semibold text-text-primary">
           {isPicking ? 'Picking a Topic...' : 'Your Topic Is...'}
         </h2>
         <div className="flex justify-center items-center my-8 min-h-[80px]">
-          <p className="text-4xl font-bold text-blue-300 transition-all duration-100">
+          <p className="text-4xl font-bold transition-all duration-100 text-text-accent">
             {currentItem}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="px-8 py-3 font-semibold text-black bg-white rounded-full transition-colors cursor-pointer hover:bg-white/90"
+          className="px-8 py-3 font-semibold rounded-full transition-colors cursor-pointer text-bg-primary bg-text-primary hover:opacity-90"
         >
           {isPicking ? 'Cancel' : 'Close'}
         </button>
@@ -70,11 +69,10 @@ const PickerModal = ({
   );
 };
 
-// --- Main Component ---
 const RandomPicker: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUpdatingList, setIsUpdatingList] = useState(false); // For loaders
+  const [isUpdatingList, setIsUpdatingList] = useState(false);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
   const showToast = useNotificationStore(state => state.showToast);
 
@@ -150,7 +148,7 @@ const RandomPicker: React.FC = () => {
           <button
             onClick={handleOpenPicker}
             disabled={items.length < 2 || isUpdatingList}
-            className="inline-flex gap-3 items-center px-8 py-4 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer group hover:bg-white/90 hover:scale-105 hover:shadow-xl disabled:opacity-50"
+            className="inline-flex gap-3 items-center px-8 py-4 font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary group hover:opacity-90 hover:scale-105 hover:shadow-xl disabled:opacity-50"
           >
             <FiShuffle />
             <span>Pick a Topic</span>
@@ -158,14 +156,14 @@ const RandomPicker: React.FC = () => {
         </div>
 
         <div className="text-center">
-          <h2 className="mb-2 text-2xl font-bold text-white">Reduces Decision Fatigue</h2>
-          <p className="mx-auto max-w-2xl text-white/60">
+          <h2 className="mb-2 text-2xl font-bold text-text-primary">Reduces Decision Fatigue</h2>
+          <p className="mx-auto max-w-2xl text-text-secondary">
             Add items to the list and let fate decide. Perfect for study topics, choosing tasks, or
             making decisions.
           </p>
         </div>
 
-        <div className="p-6 bg-white/[0.03] border border-white/10 rounded-2xl">
+        <div className="card">
           <div className="flex flex-col gap-4 sm:flex-row">
             <input
               type="text"
@@ -174,22 +172,22 @@ const RandomPicker: React.FC = () => {
               onKeyPress={e => e.key === 'Enter' && handleAddItem()}
               placeholder="Add a new item or topic..."
               disabled={isUpdatingList}
-              className="flex-grow p-3 text-white rounded-md border border-white/10 bg-black/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="flex-grow p-3 rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-50"
             />
             <button
               onClick={handleAddItem}
               disabled={isUpdatingList || !inputValue.trim()}
-              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-white rounded-lg transition-colors cursor-pointer bg-white/10 hover:bg-white/20 disabled:opacity-50"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer text-text-primary bg-bg-tertiary hover:bg-border-primary disabled:opacity-50"
             >
               {isUpdatingList ? <FiLoader className="animate-spin" /> : <FiPlus />}
               Add Item
             </button>
           </div>
 
-          <div className="my-6 border-t border-white/10"></div>
+          <div className="my-6 border-t border-border-primary"></div>
 
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-white">Your List ({items.length})</h3>
+            <h3 className="font-semibold text-text-primary">Your List ({items.length})</h3>
             <button
               onClick={handleClearAll}
               disabled={items.length === 0 || isUpdatingList}
@@ -205,9 +203,9 @@ const RandomPicker: React.FC = () => {
               {items.map((item, index) => (
                 <div
                   key={index}
-                  className="flex gap-2 items-center p-3 rounded-lg animate-fade-in-down bg-white/5"
+                  className="flex gap-2 items-center p-3 rounded-lg animate-fade-in-down bg-bg-tertiary"
                 >
-                  <span className="flex-grow break-all text-white/90">{item}</span>
+                  <span className="flex-grow break-all text-text-primary">{item}</span>
                   <button
                     onClick={() => handleDeleteItem(index, item)}
                     disabled={isUpdatingList}
@@ -220,7 +218,7 @@ const RandomPicker: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-white/50">
+            <div className="py-8 text-center text-text-muted">
               <FiShuffle size={32} className="mx-auto mb-4" />
               <p>Your list is empty. Add an item to get started.</p>
             </div>

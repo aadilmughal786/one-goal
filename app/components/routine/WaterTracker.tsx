@@ -9,12 +9,6 @@ import { RoutineType, WaterRoutineSettings } from '@/types';
 import React from 'react';
 import { MdAdd, MdOutlineWaterDrop, MdRemove } from 'react-icons/md';
 
-/**
- * WaterTracker Component
- * Manages the user's daily water intake goal and tracks current consumption.
- * This component relies on the global Zustand store and assumes default settings
- * are initialized when a goal is created.
- */
 const WaterTracker: React.FC = () => {
   const activeGoal = useGoalStore(state =>
     state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
@@ -27,13 +21,11 @@ const WaterTracker: React.FC = () => {
   const currentWater = waterSettings?.current ?? 0;
 
   const handleWaterSettingsChange = async (newValues: Partial<WaterRoutineSettings>) => {
-    // This check is now robust. It handles old goals that might not have water settings.
     if (!activeGoal) {
       showToast('Cannot update water settings: no active goal found.', 'error');
       return;
     }
 
-    // If water settings don't exist (for old goals), create them on the fly.
     const currentWaterSettings = activeGoal.routineSettings.water || { goal: 8, current: 0 };
     const newWaterSettings = { ...currentWaterSettings, ...newValues };
 
@@ -63,8 +55,8 @@ const WaterTracker: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="p-6 bg-white/[0.02] backdrop-blur-sm border border-white/10 rounded-3xl shadow-2xl">
-        <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-white">
+      <div className="card">
+        <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-text-primary">
           <MdOutlineWaterDrop size={28} />
           Daily Water Intake
         </h2>
@@ -72,9 +64,9 @@ const WaterTracker: React.FC = () => {
         <div className="mb-6 text-center">
           <div className="text-4xl font-bold text-blue-400">
             {currentWater}
-            <span className="text-2xl text-white/50">/{waterGoal}</span>
+            <span className="text-2xl text-text-muted">/{waterGoal}</span>
           </div>
-          <div className="text-sm text-white/70">Glasses Consumed Today</div>
+          <div className="text-sm text-text-secondary">Glasses Consumed Today</div>
         </div>
 
         <div className="flex flex-wrap gap-2 justify-center mb-8">
@@ -85,7 +77,7 @@ const WaterTracker: React.FC = () => {
                 ${
                   i < currentWater
                     ? 'bg-blue-500/50 border-blue-400'
-                    : 'bg-white/10 border-white/30'
+                    : 'bg-bg-tertiary border-border-secondary'
                 }`}
               title={`Glass ${i + 1} ${i < currentWater ? '(Full)' : '(Empty)'}`}
               aria-label={`Glass ${i + 1}, ${i < currentWater ? 'filled' : 'empty'}`}
@@ -100,7 +92,7 @@ const WaterTracker: React.FC = () => {
         <div className="flex gap-4 justify-center items-center mb-8">
           <button
             onClick={() => handleWaterChange(-1)}
-            className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 cursor-pointer"
+            className="flex justify-center items-center w-14 h-14 text-3xl text-red-400 rounded-full transition-colors cursor-pointer bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50"
             aria-label="Remove one glass"
             disabled={currentWater <= 0}
           >
@@ -108,18 +100,18 @@ const WaterTracker: React.FC = () => {
           </button>
           <button
             onClick={() => handleWaterChange(1)}
-            className="flex justify-center items-center w-14 h-14 text-3xl text-blue-400 rounded-full transition-colors bg-blue-500/20 hover:bg-blue-500/30 cursor-pointer"
+            className="flex justify-center items-center w-14 h-14 text-3xl text-blue-400 rounded-full transition-colors cursor-pointer bg-blue-500/20 hover:bg-blue-500/30"
             aria-label="Add one glass"
           >
             <MdAdd size={32} />
           </button>
         </div>
 
-        <div className="p-6 rounded-xl border bg-black/20 border-white/10">
-          <h3 className="mb-4 font-semibold text-white">Adjust Daily Goal</h3>
+        <div className="p-6 rounded-xl border bg-bg-tertiary border-border-primary">
+          <h3 className="mb-4 font-semibold text-text-primary">Adjust Daily Goal</h3>
           <div className="mb-2 text-center">
             <span className="text-3xl font-bold text-blue-400">{waterGoal}</span>
-            <span className="ml-2 text-white/70">glasses/day</span>
+            <span className="ml-2 text-text-secondary">glasses/day</span>
           </div>
           <input
             type="range"
@@ -127,10 +119,10 @@ const WaterTracker: React.FC = () => {
             max="20"
             value={waterGoal}
             onChange={e => handleGoalChange(parseInt(e.target.value, 10))}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/20 accent-blue-500"
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-bg-primary accent-blue-500"
             aria-label="Daily water goal in glasses"
           />
-          <div className="flex justify-between mt-1 text-xs text-white/50">
+          <div className="flex justify-between mt-1 text-xs text-text-muted">
             <span>4</span>
             <span>20</span>
           </div>
