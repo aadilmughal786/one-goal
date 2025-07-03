@@ -1,4 +1,4 @@
-// app/components/resources/AddResourceModal.tsx
+// app/components/goal/AddResourceModal.tsx
 'use client';
 
 import { useGoalStore } from '@/store/useGoalStore';

@@ -19,9 +19,9 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal, GoalStatus } from '@/types';
 
-import GoalSummaryModal from '@/components/archive/GoalSummaryModal';
 import GoalList from '@/components/goal/GoalList';
 import GoalModal from '@/components/goal/GoalModal';
+import GoalSummaryModal from '@/components/goal/GoalSummaryModal';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
 import { deserializeGoalsForImport } from '@/services/dataService';
 import { serializableGoalsArraySchema } from '@/utils/schemas';

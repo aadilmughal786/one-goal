@@ -1,4 +1,4 @@
-// app/components/archive/GoalSummaryModal.tsx
+// app/components/goal/GoalSummaryModal.tsx
 'use client';
 
 import Charts from '@/components/dashboard/Charts'; // Assuming Charts component is correct
