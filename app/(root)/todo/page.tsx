@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'; // Import useRef
 import { FiList, FiShuffle } from 'react-icons/fi';
 import { MdStickyNote2, MdWarning } from 'react-icons/md';
 
@@ -55,10 +55,31 @@ const TodoPageContent = () => {
   const [selectedDistractionForEdit, setSelectedDistractionForEdit] =
     useState<DistractionItem | null>(null);
 
+  // Refs for focusing input fields
+  const todoInputRef = useRef<HTMLInputElement>(null);
+  const distractionInputRef = useRef<HTMLInputElement>(null);
+  const stickyNoteTriggerRef = useRef<HTMLButtonElement>(null); // Ref for the add sticky note button
+
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
     setActiveTabInternal(targetTab);
+
+    // Handle KBar direct actions
+    const action = searchParams.get('action');
+    if (action) {
+      if (targetTab === 'todo' && action === 'newTask') {
+        setTimeout(() => todoInputRef.current?.focus(), 100); // Small delay to ensure render
+      } else if (targetTab === 'distractions' && action === 'newDistraction') {
+        setTimeout(() => distractionInputRef.current?.focus(), 100);
+      } else if (targetTab === 'notes' && action === 'newNote') {
+        setTimeout(() => stickyNoteTriggerRef.current?.click(), 100);
+      }
+      // Clear the action param from URL to prevent re-triggering on subsequent renders
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('action');
+      window.history.replaceState(null, '', `?${newSearchParams.toString()}`);
+    }
   }, [searchParams]);
 
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
@@ -120,10 +141,18 @@ const TodoPageContent = () => {
 
     if (ActiveComponent) {
       if (activeTab === 'todo') {
-        return <TodoList onEditTodo={handleOpenTodoEditModal} />;
+        return <TodoList onEditTodo={handleOpenTodoEditModal} inputRef={todoInputRef} />;
       }
       if (activeTab === 'distractions') {
-        return <DistractionList onEditDistraction={handleOpenDistractionEditModal} />;
+        return (
+          <DistractionList
+            onEditDistraction={handleOpenDistractionEditModal}
+            inputRef={distractionInputRef}
+          />
+        );
+      }
+      if (activeTab === 'notes') {
+        return <StickyNotes addNoteButtonRef={stickyNoteTriggerRef} />;
       }
       return <ActiveComponent />;
     }

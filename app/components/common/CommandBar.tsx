@@ -86,7 +86,7 @@ export default function CommandBar() {
   return (
     <KBarPortal>
       <KBarPositioner className="z-50 p-4 backdrop-blur-sm bg-bg-primary/60">
-        <KBarAnimator className="overflow-hidden w-full max-w-xl rounded-xl border shadow-2xl bg-bg-secondary border-border-primary">
+        <KBarAnimator className="overflow-hidden w-full max-w-xl rounded-xl border shadow-2xl bg-bg-primary border-border-primary">
           <KBarSearch
             defaultPlaceholder="Type a command or search..."
             className="px-4 py-3 w-full text-lg bg-transparent border-b text-text-primary border-border-primary focus:outline-none"

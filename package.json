@@ -1,6 +1,7 @@
 {
   "name": "one-goal",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
+  "description": "Your singular focus in a world of distractions. Achieve clarity, drive action, and conquer your most important objectives.",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

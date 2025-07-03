@@ -14,9 +14,14 @@ import { FaAnglesRight } from 'react-icons/fa6';
 
 interface DistractionListProps {
   onEditDistraction: (item: DistractionItem) => void;
+  // Fix: Allow inputRef to be null initially
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistraction }) => {
+const DistractionListComponent: React.FC<DistractionListProps> = ({
+  onEditDistraction,
+  inputRef,
+}) => {
   const appState = useGoalStore(state => state.appState);
   const addDistraction = useGoalStore(state => state.addDistraction);
   const updateDistraction = useGoalStore(state => state.updateDistraction);
@@ -86,6 +91,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({ onEditDistra
           className="flex-1 p-3 text-lg rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
           disabled={isAdding}
           aria-label="Add new distraction"
+          ref={inputRef}
         />
         <button
           onClick={handleAddItem}

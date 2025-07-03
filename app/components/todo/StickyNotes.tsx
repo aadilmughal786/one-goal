@@ -23,7 +23,12 @@ import { MdColorLens, MdStickyNote2 } from 'react-icons/md';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
-const StickyNotes: React.FC = () => {
+interface StickyNotesProps {
+  // Fix: Allow addNoteButtonRef to be null initially
+  addNoteButtonRef?: React.RefObject<HTMLButtonElement | null>;
+}
+
+const StickyNotes: React.FC<StickyNotesProps> = ({ addNoteButtonRef }) => {
   const appState = useGoalStore(state => state.appState);
   const addStickyNote = useGoalStore(state => state.addStickyNote);
   const updateStickyNote = useGoalStore(state => state.updateStickyNote);
@@ -218,7 +223,7 @@ const StickyNotes: React.FC = () => {
                         );
                       })}
                   </div>
-                  <div className="absolute top-full left-1/2 w-3 h-3 border-r border-b transform rotate-45 -translate-x-1/2 -translate-y-1/2 bg-bg-tertiary border-border-primary"></div>
+                  <div className="absolute top-full left-1/2 w-3 h-3 border-r border-b transform rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-tertiary border-border-primary"></div>
                 </div>
               )}
             </div>
@@ -281,6 +286,7 @@ const StickyNotes: React.FC = () => {
           disabled={isAddingNote}
           className="flex flex-shrink-0 justify-center items-center w-12 h-12 rounded-full transition-all cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
           aria-label="Create new sticky note"
+          ref={addNoteButtonRef} // Assign the ref here
         >
           {isAddingNote ? (
             <FiLoader className="w-6 h-6 animate-spin" />

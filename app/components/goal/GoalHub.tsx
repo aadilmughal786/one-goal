@@ -2,7 +2,7 @@
 'use client';
 
 import { Timestamp } from 'firebase/firestore';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiCheckCircle,
   FiGrid,
@@ -25,6 +25,7 @@ import GoalSummaryModal from '@/components/goal/GoalSummaryModal';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
 import { deserializeGoalsForImport } from '@/services/dataService';
 import { serializableGoalsArraySchema } from '@/utils/schemas';
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 
 const goalFilterOptions: FilterOption[] = [
   { value: 'all', label: 'All Goals', icon: FiGrid },
@@ -37,6 +38,7 @@ const goalFilterOptions: FilterOption[] = [
 const GoalHub: React.FC = () => {
   const { currentUser, createGoal, updateGoal, importGoals } = useGoalStore();
   const showToast = useNotificationStore(state => state.showToast);
+  const searchParams = useSearchParams(); // Get search params
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [selectedGoalForModal, setSelectedGoalForModal] = useState<Goal | null>(null);
@@ -48,6 +50,18 @@ const GoalHub: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Effect to handle KBar direct actions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'newGoal') {
+      handleOpenGoalModal(null, false);
+      // Clear the action param from URL to prevent re-triggering on subsequent renders
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('action');
+      window.history.replaceState(null, '', `?${newSearchParams.toString()}`);
+    }
+  }, [searchParams]); // Depend on searchParams to react to URL changes
 
   const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
     setSelectedGoalForModal(goal);

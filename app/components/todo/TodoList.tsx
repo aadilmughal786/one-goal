@@ -12,6 +12,8 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 
 interface TodoListProps {
   onEditTodo: (item: TodoItem) => void;
+  // Fix: Allow inputRef to be null initially
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 const TodoListItem: React.FC<{
@@ -156,7 +158,7 @@ const TodoListItem: React.FC<{
   );
 };
 
-const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
+const TodoList: React.FC<TodoListProps> = ({ onEditTodo, inputRef }) => {
   const appState = useGoalStore(state => state.appState);
   const addTodo = useGoalStore(state => state.addTodo);
   const updateTodo = useGoalStore(state => state.updateTodo);
@@ -236,6 +238,7 @@ const TodoList: React.FC<TodoListProps> = ({ onEditTodo }) => {
           placeholder="Add a new task..."
           className="flex-1 p-3 text-lg rounded-md border text-text-primary border-border-primary bg-bg-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-border-accent"
           disabled={isAdding}
+          ref={inputRef}
         />
         <button
           onClick={handleAddTodoLocal}
