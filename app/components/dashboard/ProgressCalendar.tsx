@@ -225,7 +225,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                     </span>
 
                     {progress && (
-                      <div className="absolute bottom-full left-1/2 invisible z-50 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 -translate-x-1/2 bg-bg-tertiary border-border-primary group-hover:opacity-100 group-hover:visible">
+                      <div className="absolute bottom-full left-1/2 invisible z-50 mb-2 w-max max-w-xs text-left rounded-lg border shadow-xl opacity-0 transition-opacity duration-300 -translate-x-1/2 bg-bg-primary border-border-primary group-hover:opacity-100 group-hover:visible">
                         <p className="p-3 pb-1 text-sm font-bold text-text-primary">
                           {format(new Date(progress.date), 'MMMM d, yyyy')}
                         </p>
@@ -280,7 +280,7 @@ const ProgressCalendar: React.FC<ProgressCalendarProps> = ({ goal, dailyProgress
                               </div>
                             </div>
                           )}
-                        <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-tertiary border-border-primary"></div>
+                        <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-primary border-border-primary"></div>
                       </div>
                     )}
                   </div>

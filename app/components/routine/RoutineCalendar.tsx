@@ -89,7 +89,7 @@ const CustomTooltip = ({
           {isFutureDate ? 'Cannot Log' : buttonText}
         </button>
       </div>
-      <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-secondary border-border-primary"></div>
+      <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-primary border-border-primary"></div>
     </div>
   );
 };
@@ -242,7 +242,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   return (
     <div
       ref={calendarRef}
-      className="rounded-3xl border shadow-2xl  bg-bg-secondary border-border-primary"
+      className="rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary"
     >
       <div className="px-4 sm:px-6">
         <div className="flex justify-between items-center py-4 sm:py-6">
