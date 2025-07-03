@@ -142,6 +142,12 @@ export const updateStopwatchSession = async (
       [`goals.${goalId}.updatedAt`]: Timestamp.now(),
     });
   } catch (error) {
+    // FIX: If the error is a ServiceError we already handled (like NOT_FOUND),
+    // re-throw it directly to preserve the specific error message for the test.
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+    // Otherwise, wrap the unexpected error in a new, generic ServiceError.
     throw new ServiceError(
       `Failed to update stopwatch session ${sessionId}.`,
       ServiceErrorCode.OPERATION_FAILED,
@@ -187,6 +193,10 @@ export const deleteStopwatchSession = async (
       [`goals.${goalId}.updatedAt`]: Timestamp.now(),
     });
   } catch (error) {
+    // FIX: Apply the same error handling correction here for consistency.
+    if (error instanceof ServiceError) {
+      throw error;
+    }
     throw new ServiceError(
       `Failed to delete stopwatch session ${sessionId}.`,
       ServiceErrorCode.OPERATION_FAILED,

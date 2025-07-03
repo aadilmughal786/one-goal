@@ -58,13 +58,16 @@ export const saveDailyProgress = async (
   goalId: string,
   progressData: DailyProgress
 ): Promise<void> => {
+  // FIX: Moved validation outside the try...catch block.
+  // This ensures that an invalid input error is thrown directly, instead of being
+  // caught and re-thrown as a generic operation failure.
+  const dateKey = progressData.date; // The date string 'YYYY-MM-DD'
+  if (!dateKey) {
+    throw new ServiceError('Progress data must include a date.', ServiceErrorCode.INVALID_INPUT);
+  }
+
   const userDocRef = doc(db, 'users', userId);
   try {
-    const dateKey = progressData.date; // The date string 'YYYY-MM-DD'
-    if (!dateKey) {
-      throw new ServiceError('Progress data must include a date.', ServiceErrorCode.INVALID_INPUT);
-    }
-
     // The dot notation allows us to update a specific entry in the dailyProgress map.
     await updateDoc(userDocRef, {
       [`goals.${goalId}.dailyProgress.${dateKey}`]: progressData,
