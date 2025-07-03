@@ -109,7 +109,44 @@ yarn install
 
 ### Configuration
 
-Set up a Firebase project and create a `.env.local` file with your Firebase configuration keys. Detailed instructions can be found in the [original README](./AGENTS.md).
+1.  **Firebase Setup**:
+
+    - Go to the [Firebase Console](https://console.firebase.google.com/).
+    - Create a new Firebase project.
+    - Enable **Google Authentication** in the "Authentication" -> "Sign-in method" tab.
+    - Create a **Firestore Database** in production mode.
+    - Register a new **Web App** in your project settings to get your Firebase configuration keys.
+
+2.  **Environment Variables**:
+    Create a file named `.env.local` in the root of your project and add your Firebase configuration keys to it. This file is included in `.gitignore` and should not be committed to your repository.
+
+    ```bash
+    # .env.local
+
+    NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
+    NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-ABCDEFGHIJ # Optional
+    ```
+
+3.  **Firestore Security Rules**:
+    In the Firebase Console, navigate to "Firestore Database" -> "Rules" and paste the following rules. This ensures that users can only read and write their own data.
+
+    ```javascript
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /users/{userId}/{documents=**} {
+          allow read, write: if request.auth.uid == userId;
+        }
+      }
+    }
+    ```
+
+    Click **Publish** to save the rules.
 
 ### Running the App
 
