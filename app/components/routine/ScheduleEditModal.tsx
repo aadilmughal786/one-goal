@@ -162,7 +162,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
         role="dialog"
       >
         <div
-          className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
+          className="w-full max-w-xl rounded-3xl border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
           onClick={e => e.stopPropagation()}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -172,7 +172,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
               </h2>
               <button
                 type="button"
-                className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
+                className="p-1.5 cursor-pointer rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -199,7 +199,10 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
                         className={`flex justify-center items-center p-3 rounded-md transition-all duration-200
                           ${isSelected ? 'text-white bg-blue-500' : 'text-text-secondary bg-bg-tertiary hover:bg-border-primary hover:text-text-primary'} cursor-pointer`}
                         aria-label={`Select ${optionIconName} icon`}
-                        title={optionIconName.replace('MdOutline', '').replace('Fa', '')}
+                        title={optionIconName
+                          .replace('MdOutline', '')
+                          .replace('Fa', '')
+                          .replace('MdSports', '')}
                       >
                         <IconComponent size={24} />
                       </button>

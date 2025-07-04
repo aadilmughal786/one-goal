@@ -131,7 +131,7 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-text-tertiary hover:bg-bg-tertiary"
+              className="p-1.5 cursor-pointer rounded-full text-text-tertiary hover:bg-bg-tertiary"
             >
               <FiX />
             </button>
@@ -210,7 +210,7 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, re
             <button
               type="submit"
               disabled={isSubmitting || !isValid}
-              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-60"
+              className="inline-flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold rounded-full transition-all duration-200 cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-60"
             >
               {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheck />}
               <span>{isEditMode ? 'Save Changes' : 'Add Resource'}</span>

@@ -5,12 +5,14 @@ import { RoutineType, ScheduledRoutineBase } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  MdOutlineAccessibility,
   MdOutlineDirectionsBike,
   MdOutlineDirectionsRun,
   MdOutlineFitnessCenter,
   MdOutlineSportsBasketball,
   MdOutlineSportsHandball,
-  MdOutlineSportsSoccer,
+  MdSportsCricket,
+  MdSportsGymnastics,
 } from 'react-icons/md';
 
 import { useGoalStore } from '@/store/useGoalStore';
@@ -18,23 +20,30 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import { FaDumbbell } from 'react-icons/fa6';
 
 const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineDirectionsRun,
   MdOutlineFitnessCenter,
   MdOutlineSportsHandball,
-  MdOutlineSportsSoccer,
   MdOutlineSportsBasketball,
   MdOutlineDirectionsBike,
+  FaDumbbell,
+  MdSportsCricket,
+  MdOutlineAccessibility,
+  MdSportsGymnastics,
 };
 
 const exerciseIcons: string[] = [
   'MdOutlineDirectionsRun',
   'MdOutlineFitnessCenter',
   'MdOutlineSportsHandball',
-  'MdOutlineSportsSoccer',
   'MdOutlineSportsBasketball',
   'MdOutlineDirectionsBike',
+  'FaDumbbell',
+  'MdSportsCricket',
+  'MdOutlineAccessibility',
+  'MdSportsGymnastics',
 ];
 
 const ExerciseTracker: React.FC = () => {
