@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useWellnessStore } from '@/store/useWellnessStore';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react'; // Removed useRef as fetchInitiated is no longer needed.
 
 /**
  * Custom hook for managing authentication state and initial data loading.
@@ -17,10 +17,9 @@ import { useEffect, useRef } from 'react';
  */
 export const useAuth = () => {
   const router = useRouter();
-  const fetchInitiated = useRef(false);
 
-  // --- Get state and actions from the new stores ---
-  const { fetchInitialData, isLoading, currentUser } = useAuthStore();
+  // Get state and actions from the new stores
+  const { fetchInitialData, isLoading, currentUser, hasInitialDataFetched } = useAuthStore();
   const { appState } = useGoalStore();
   const { initialize: initializeWellness } = useWellnessStore();
 
@@ -28,10 +27,15 @@ export const useAuth = () => {
   useEffect(() => {
     const unsubscribe = onAuthChange(async user => {
       if (user) {
-        // If a user is found and data hasn't been fetched yet, fetch it.
-        if (!fetchInitiated.current) {
-          fetchInitiated.current = true;
+        // Only fetch initial data if it hasn't been fetched before in this session.
+        // This relies on the global 'hasInitialDataFetched' flag in useAuthStore.
+        if (!hasInitialDataFetched) {
           await fetchInitialData(user);
+        } else if (!currentUser) {
+          // If data was already fetched (hasInitialDataFetched is true)
+          // but currentUser is null (e.g., after a browser refresh),
+          // set the user and mark loading as false without re-fetching data.
+          useAuthStore.setState({ currentUser: user, isLoading: false });
         }
       } else {
         // If no user is found, redirect to the login page.
@@ -41,9 +45,8 @@ export const useAuth = () => {
 
     // Clean up the listener when the component unmounts.
     return () => unsubscribe();
-    // The dependency array is empty to ensure this runs only once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Added dependencies to ensure useEffect re-runs if critical state changes
+  }, [fetchInitialData, hasInitialDataFetched, router, currentUser]);
 
   // Effect to initialize wellness reminders once data is loaded
   useEffect(() => {

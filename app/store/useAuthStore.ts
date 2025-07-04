@@ -11,17 +11,29 @@ import { useNotificationStore } from './useNotificationStore';
 interface AuthStore {
   currentUser: User | null;
   isLoading: boolean;
+  hasInitialDataFetched: boolean; // Added new state
   fetchInitialData: (user: User) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   currentUser: null,
   isLoading: true,
+  hasInitialDataFetched: false, // Initialized as false
+
   fetchInitialData: async (user: User) => {
-    set({ currentUser: user, isLoading: true });
+    const { hasInitialDataFetched } = get();
+
+    // If initial data has already been fetched and current user is set, avoid re-fetching.
+    if (hasInitialDataFetched && get().currentUser !== null) {
+      set({ currentUser: user, isLoading: false });
+      return;
+    }
+
+    set({ currentUser: user, isLoading: true, hasInitialDataFetched: false }); // Reset hasInitialDataFetched if a new fetch is truly starting
+
     try {
       const appData = await goalService.getUserData(user.uid);
-      set({ isLoading: false });
+      set({ isLoading: false, hasInitialDataFetched: true }); // Mark as fetched on success
       useGoalStore.setState({ appState: appData });
     } catch (error) {
       console.error('Failed to fetch user data:', error);
@@ -66,19 +78,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
           try {
             const defaultState = await goalService.resetUserData(currentUser.uid);
-            set({ isLoading: false });
+            set({ isLoading: false, hasInitialDataFetched: true }); // Mark as fetched on reset
             useGoalStore.setState({ appState: defaultState });
             useNotificationStore
               .getState()
               .showToast('Your data was incompatible and has been safely reset.', 'info');
           } catch (resetError) {
             console.error('Failed to reset user data after validation failure:', resetError);
-            set({ isLoading: false, currentUser: null });
+            set({ isLoading: false, currentUser: null, hasInitialDataFetched: true }); // Mark as fetched even on reset failure
             useGoalStore.setState({ appState: null });
           }
         }
       } else {
-        set({ isLoading: false, currentUser: null });
+        set({ isLoading: false, currentUser: null, hasInitialDataFetched: true }); // Mark as fetched on general error
         useGoalStore.setState({ appState: null });
       }
     }
