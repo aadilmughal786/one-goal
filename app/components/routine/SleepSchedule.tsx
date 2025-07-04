@@ -41,7 +41,7 @@ const sleepTips = [
 const SleepSchedule: React.FC = () => {
   const { appState } = useGoalStore();
   const { updateRoutineSettings } = useRoutineStore();
-  const { showToast } = useNotificationStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const activeGoal = useMemo(
     () => (appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null),
@@ -149,9 +149,9 @@ const SleepSchedule: React.FC = () => {
   );
 
   const toggleNapCompletion = useCallback(
-    async (index: number) => {
-      const updatedNaps = napSchedule.map((nap, i) =>
-        i === index
+    async (scheduleId: string) => {
+      const updatedNaps = napSchedule.map(nap =>
+        nap.id === scheduleId
           ? {
               ...nap,
               completed: !nap.completed,
@@ -165,11 +165,11 @@ const SleepSchedule: React.FC = () => {
   );
 
   const handleSaveNapSchedule = useCallback(
-    async (schedule: ScheduledRoutineBase, index: number | null) => {
+    async (schedule: ScheduledRoutineBase, scheduleId: string | null) => {
       let updatedNaps: ScheduledRoutineBase[];
-      const message = index !== null ? 'Nap updated!' : 'Nap added!';
-      if (index !== null) {
-        updatedNaps = napSchedule.map((n, i) => (i === index ? schedule : n));
+      const message = scheduleId !== null ? 'Nap updated!' : 'Nap added!';
+      if (scheduleId !== null) {
+        updatedNaps = napSchedule.map(n => (n.id === scheduleId ? schedule : n));
       } else {
         updatedNaps = [...napSchedule, schedule];
       }
@@ -179,11 +179,20 @@ const SleepSchedule: React.FC = () => {
   );
 
   const handleRemoveNapSchedule = useCallback(
-    async (indexToRemove: number) => {
-      const updatedNaps = napSchedule.filter((_, index) => index !== indexToRemove);
-      await handleNapSchedulesUpdate(updatedNaps, 'Nap schedule removed.');
+    (scheduleIdToRemove: string) => {
+      const napToRemove = napSchedule.find(nap => nap.id === scheduleIdToRemove);
+      if (!napToRemove) return;
+
+      showConfirmation({
+        title: 'Delete Nap?',
+        message: `Are you sure you want to delete the nap "${napToRemove.label}"?`,
+        action: async () => {
+          const updatedNaps = napSchedule.filter(nap => nap.id !== scheduleIdToRemove);
+          await handleNapSchedulesUpdate(updatedNaps, 'Nap schedule removed.');
+        },
+      });
     },
-    [napSchedule, handleNapSchedulesUpdate]
+    [napSchedule, handleNapSchedulesUpdate, showConfirmation]
   );
 
   const formatTimeLeft = (minutes: number) => {

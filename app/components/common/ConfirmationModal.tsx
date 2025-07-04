@@ -66,7 +66,7 @@ const ConfirmationModal: React.FC = () => {
       aria-modal="true"
     >
       <div
-        className="relative w-full max-w-sm text-center rounded-md border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
+        className="relative w-full max-w-md text-center rounded-2xl border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-6 py-4 border-b border-border-primary">
@@ -82,9 +82,17 @@ const ConfirmationModal: React.FC = () => {
         </div>
         <div className="p-6">
           <p className="mb-6 leading-relaxed text-left text-text-secondary">{message}</p>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-row gap-3">
             <button
-              className={`px-4 w-full py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer bg-red-600 text-white hover:bg-red-700
+              onClick={hideConfirmation}
+              className={
+                'flex flex-1 gap-2 justify-center items-center px-4 py-3 rounded-lg border transition-all duration-300 cursor-pointer text-text-primary bg-bg-tertiary border-border-primary hover:bg-border-primary'
+              }
+            >
+              <FiX /> Cancel
+            </button>
+            <button
+              className={`px-4 w-full flex-1 py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer bg-red-600 text-white hover:bg-red-700
                 ${!actionsEnabled || isConfirming ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleConfirm}
               disabled={!actionsEnabled || isConfirming}
@@ -94,14 +102,6 @@ const ConfirmationModal: React.FC = () => {
               {actionDelayMs > 0 && !actionsEnabled && (
                 <span className="text-sm font-semibold">({countdown}s)</span>
               )}
-            </button>
-            <button
-              onClick={hideConfirmation}
-              className={
-                'flex gap-2 justify-center items-center px-4 py-3 w-full rounded-md border transition-all duration-300 cursor-pointer text-text-primary bg-bg-tertiary border-border-primary hover:bg-border-primary'
-              }
-            >
-              <FiX /> Cancel
             </button>
           </div>
         </div>

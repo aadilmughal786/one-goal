@@ -104,6 +104,16 @@ const routineIconMap: { [key: string]: React.ElementType } = {
   MdOutlineNightlight,
 };
 
+// Color mapping for different routine types
+const routineTypeColors: { [key: string]: { border: string; icon: string; bg: string } } = {
+  bath: { border: 'border-cyan-500/70', icon: 'text-cyan-300', bg: 'bg-cyan-900/50' },
+  exercise: { border: 'border-orange-500/70', icon: 'text-orange-300', bg: 'bg-orange-900/50' },
+  meal: { border: 'border-lime-500/70', icon: 'text-lime-300', bg: 'bg-lime-900/50' },
+  teeth: { border: 'border-sky-500/70', icon: 'text-sky-300', bg: 'bg-sky-900/50' },
+  'sleep.naps': { border: 'border-indigo-500/70', icon: 'text-indigo-300', bg: 'bg-indigo-900/50' },
+  default: { border: 'border-gray-500/70', icon: 'text-gray-300', bg: 'bg-gray-800/50' },
+};
+
 type RoutineWithType = ScheduledRoutineBase & { type: keyof UserRoutineSettings | 'sleep.naps' };
 
 const TimeBlockUI = () => {
@@ -490,16 +500,18 @@ const TimeBlockUI = () => {
                     });
                   const isUpdating = updatingRoutineId === routine.id;
 
+                  const colorConfig = routineTypeColors[routine.type] || routineTypeColors.default;
+
                   let routineBorderStyle = routine.completed
-                    ? 'border-green-500 bg-green-900/50'
-                    : 'border-transparent bg-gray-700/50';
+                    ? 'border-green-500/70 bg-green-900/50'
+                    : `${colorConfig.border} ${colorConfig.bg}`;
                   if (isActive)
                     routineBorderStyle += ' ring-2 ring-yellow-400 ring-offset-bg-tertiary';
 
                   return (
                     <div
                       key={routine.id}
-                      className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group ${routineBorderStyle} ${
+                      className={`absolute left-0 w-full p-2 rounded-lg transition-all duration-300 border-2 group backdrop-blur-sm ${routineBorderStyle} ${
                         isActive ? 'animate-pulse' : ''
                       }`}
                       style={{ ...calculatePosition(routine.time, routineEndTime) }}
@@ -510,7 +522,10 @@ const TimeBlockUI = () => {
                         }`}
                       >
                         <div className="flex gap-2 items-center">
-                          <RoutineIcon size={16} />
+                          <RoutineIcon
+                            size={16}
+                            className={routine.completed ? 'text-green-300' : colorConfig.icon}
+                          />
                           <span>{routine.label}</span>
                         </div>
                         <div className="flex gap-1 items-center opacity-0 transition-opacity group-hover:opacity-100">

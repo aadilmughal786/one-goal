@@ -9,6 +9,7 @@ import {
   MdOutlineHealthAndSafety,
   MdOutlineSentimentSatisfied,
 } from 'react-icons/md';
+import { RiToothFill } from 'react-icons/ri';
 import GenericRoutineTab from './GenericRoutineTab';
 
 const IconComponents: { [key: string]: React.ElementType } = {
@@ -17,6 +18,7 @@ const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineCleaningServices,
   MdOutlineHealthAndSafety,
   MdOutlineSentimentSatisfied,
+  RiToothFill,
 };
 
 const teethIcons: string[] = Object.keys(IconComponents);

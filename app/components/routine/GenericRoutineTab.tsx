@@ -43,7 +43,7 @@ const GenericRoutineTab: React.FC<GenericRoutineTabProps> = ({
 }) => {
   const { appState } = useGoalStore();
   const { updateRoutineSettings } = useRoutineStore();
-  const { showToast } = useNotificationStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
   const [schedules, setSchedules] = useState<ScheduledRoutineBase[]>([]);
@@ -102,9 +102,9 @@ const GenericRoutineTab: React.FC<GenericRoutineTabProps> = ({
   );
 
   const toggleCompletion = useCallback(
-    async (index: number) => {
-      const updatedSchedules = schedules.map((schedule, i) =>
-        i === index
+    async (scheduleId: string) => {
+      const updatedSchedules = schedules.map(schedule =>
+        schedule.id === scheduleId
           ? {
               ...schedule,
               completed: !schedule.completed,
@@ -119,12 +119,12 @@ const GenericRoutineTab: React.FC<GenericRoutineTabProps> = ({
   );
 
   const handleSaveSchedule = useCallback(
-    async (schedule: ScheduledRoutineBase, index: number | null) => {
+    async (schedule: ScheduledRoutineBase, scheduleId: string | null) => {
       let updatedSchedules: ScheduledRoutineBase[];
-      const message = index !== null ? `${sectionTitle} updated!` : `${sectionTitle} added!`;
+      const message = scheduleId !== null ? `${sectionTitle} updated!` : `${sectionTitle} added!`;
 
-      if (index !== null) {
-        updatedSchedules = schedules.map((s, i) => (i === index ? schedule : s));
+      if (scheduleId !== null) {
+        updatedSchedules = schedules.map(s => (s.id === scheduleId ? schedule : s));
       } else {
         updatedSchedules = [...schedules, schedule];
       }
@@ -134,11 +134,20 @@ const GenericRoutineTab: React.FC<GenericRoutineTabProps> = ({
   );
 
   const handleRemoveSchedule = useCallback(
-    async (indexToRemove: number) => {
-      const updatedSchedules = schedules.filter((_, index) => index !== indexToRemove);
-      await handleSaveSchedules(updatedSchedules, `${sectionTitle} schedule removed.`);
+    (scheduleIdToRemove: string) => {
+      const scheduleToRemove = schedules.find(s => s.id === scheduleIdToRemove);
+      if (!scheduleToRemove) return;
+
+      showConfirmation({
+        title: `Delete ${sectionTitle}?`,
+        message: `Are you sure you want to delete "${scheduleToRemove.label}"? This action cannot be undone.`,
+        action: async () => {
+          const updatedSchedules = schedules.filter(schedule => schedule.id !== scheduleIdToRemove);
+          await handleSaveSchedules(updatedSchedules, `${sectionTitle} schedule removed.`);
+        },
+      });
     },
-    [schedules, handleSaveSchedules, sectionTitle]
+    [schedules, handleSaveSchedules, sectionTitle, showConfirmation]
   );
 
   const completedSchedulesCount = schedules.filter(s => s.completed).length;

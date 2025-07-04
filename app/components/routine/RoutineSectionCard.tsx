@@ -16,9 +16,9 @@ interface RoutineSectionCardProps {
   listTitle: string;
   listEmptyMessage: string;
   schedules: ScheduledRoutineBase[];
-  onToggleCompletion: (index: number) => void;
-  onRemoveSchedule: (index: number) => void;
-  onSaveSchedule: (schedule: ScheduledRoutineBase, index: number | null) => Promise<void>;
+  onToggleCompletion: (scheduleId: string) => void;
+  onRemoveSchedule: (scheduleId: string) => void;
+  onSaveSchedule: (schedule: ScheduledRoutineBase, scheduleId: string | null) => Promise<void>;
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
   iconComponentsMap: { [key: string]: React.ElementType };
@@ -42,7 +42,6 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [scheduleToEdit, setScheduleToEdit] = useState<ScheduledRoutineBase | null>(null);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -62,15 +61,19 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
     return sortedSchedules.map(schedule => {
       const targetDateTime = parse(schedule.time, 'HH:mm', now);
       let timeLeftText = '';
+      let statusColorClass = 'text-text-tertiary'; // Default color for upcoming
 
       if (schedule.completed) {
         timeLeftText = 'Completed Today';
+        statusColorClass = 'text-green-400';
       } else if (isPast(targetDateTime)) {
         const minutesAgo = differenceInMinutes(now, targetDateTime);
         if (minutesAgo < schedule.duration) {
           timeLeftText = 'In Progress';
+          statusColorClass = 'text-blue-400'; // Color for In Progress
         } else {
           timeLeftText = 'Missed';
+          statusColorClass = 'text-red-400'; // Color for Missed
         }
       } else {
         const minutesUntil = differenceInMinutes(targetDateTime, now);
@@ -82,19 +85,18 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
       return {
         ...schedule,
         timeLeftText,
+        statusColorClass,
       };
     });
   }, [sortedSchedules, currentTime]);
 
   const handleOpenModalForAdd = () => {
     setScheduleToEdit(null);
-    setEditingIndex(null);
     setIsEditModalOpen(true);
   };
 
-  const handleOpenModalForEdit = (schedule: ScheduledRoutineBase, index: number) => {
+  const handleOpenModalForEdit = (schedule: ScheduledRoutineBase) => {
     setScheduleToEdit(schedule);
-    setEditingIndex(index);
     setIsEditModalOpen(true);
   };
 
@@ -140,7 +142,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
               <p className="py-8 text-center text-text-muted">{listEmptyMessage}</p>
             ) : (
               <div className="space-y-3">
-                {annotatedSchedules.map((schedule, index) => {
+                {annotatedSchedules.map(schedule => {
                   const ScheduleIconComponent =
                     iconComponentsMap[schedule.icon] || MdOutlineSettings;
                   return (
@@ -170,16 +172,14 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                             <div className="text-sm text-text-secondary">
                               {schedule.time} for {schedule.duration} min
                             </div>
-                            <div
-                              className={`text-sm font-semibold ${schedule.completed ? 'text-green-400' : 'text-text-tertiary'}`}
-                            >
+                            <div className={`text-sm font-semibold ${schedule.statusColorClass}`}>
                               {schedule.timeLeftText}
                             </div>
                           </div>
                         </div>
                         <div className="flex gap-1 items-center">
                           <button
-                            onClick={() => onToggleCompletion(index)}
+                            onClick={() => onToggleCompletion(schedule.id)}
                             className={`p-2 rounded-full transition-colors cursor-pointer ${
                               schedule.completed ? 'text-green-400' : 'text-text-tertiary'
                             }`}
@@ -196,14 +196,14 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
                             )}
                           </button>
                           <button
-                            onClick={() => handleOpenModalForEdit(schedule, index)}
+                            onClick={() => handleOpenModalForEdit(schedule)}
                             className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:bg-bg-tertiary"
                             aria-label={`Edit ${schedule.label}`}
                           >
                             <FiEdit size={16} />
                           </button>
                           <button
-                            onClick={() => onRemoveSchedule(index)}
+                            onClick={() => onRemoveSchedule(schedule.id)}
                             className="p-2 rounded-full transition-colors cursor-pointer text-red-400/70 hover:bg-red-500/10"
                             aria-label={`Delete ${schedule.label}`}
                           >
@@ -224,7 +224,6 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         scheduleToEdit={scheduleToEdit}
-        originalIndex={editingIndex}
         onSave={onSaveSchedule}
         newInputLabelPlaceholder={newInputLabelPlaceholder}
         newIconOptions={newIconOptions}

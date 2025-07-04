@@ -21,8 +21,7 @@ interface ScheduleEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   scheduleToEdit: ScheduledRoutineBase | null;
-  originalIndex: number | null;
-  onSave: (schedule: ScheduledRoutineBase, originalIndex: number | null) => Promise<void>;
+  onSave: (schedule: ScheduledRoutineBase, scheduleId: string | null) => Promise<void>;
   newInputLabelPlaceholder: string;
   newIconOptions: string[];
   iconComponentsMap: { [key: string]: React.ElementType };
@@ -35,7 +34,6 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
   isOpen,
   onClose,
   scheduleToEdit,
-  originalIndex,
   onSave,
   newInputLabelPlaceholder,
   newIconOptions,
@@ -143,7 +141,7 @@ const ScheduleEditModal: React.FC<ScheduleEditModalProps> = ({
     }
 
     try {
-      await onSave(newOrUpdatedSchedule, originalIndex);
+      await onSave(newOrUpdatedSchedule, scheduleToEdit ? scheduleToEdit.id : null);
       onClose();
     } catch (error) {
       console.error('Error saving schedule:', error);

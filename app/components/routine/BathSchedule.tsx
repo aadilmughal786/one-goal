@@ -3,6 +3,7 @@
 
 import { RoutineType } from '@/types';
 import React from 'react';
+import { LuBath } from 'react-icons/lu';
 import { MdOutlineHotTub, MdOutlinePool, MdOutlineShower, MdOutlineWash } from 'react-icons/md';
 import GenericRoutineTab from './GenericRoutineTab';
 
@@ -11,6 +12,7 @@ const IconComponents: { [key: string]: React.ElementType } = {
   MdOutlineHotTub,
   MdOutlinePool,
   MdOutlineWash,
+  LuBath,
 };
 
 const bathIcons: string[] = Object.keys(IconComponents);

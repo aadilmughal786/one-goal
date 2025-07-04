@@ -13,15 +13,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { FaTooth } from 'react-icons/fa6';
 import { IconType } from 'react-icons/lib';
+import { LuBath } from 'react-icons/lu';
 import {
   MdOutlineDirectionsRun,
   MdOutlineNightlight,
   MdOutlineRestaurant,
-  MdOutlineShower,
   MdOutlineWaterDrop,
 } from 'react-icons/md';
+import { RiToothFill } from 'react-icons/ri';
 
 const routineTabItems: {
   id: string;
@@ -34,8 +34,8 @@ const routineTabItems: {
   { id: 'water', label: 'Water', icon: MdOutlineWaterDrop, component: WaterTracker },
   { id: 'exercise', label: 'Exercise', icon: MdOutlineDirectionsRun, component: ExerciseTracker },
   { id: 'meals', label: 'Meals', icon: MdOutlineRestaurant, component: MealSchedule },
-  { id: 'teeth', label: 'Teeth', icon: FaTooth, component: TeethCare },
-  { id: 'bath', label: 'Bath', icon: MdOutlineShower, component: BathSchedule },
+  { id: 'teeth', label: 'Teeth', icon: RiToothFill, component: TeethCare },
+  { id: 'bath', label: 'Bath', icon: LuBath, component: BathSchedule },
 ];
 
 const RoutinePageContent = () => {
