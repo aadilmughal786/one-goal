@@ -252,7 +252,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
             {title}
           </h3>
           <div className="text-lg font-semibold text-center text-text-primary">
-            {format(currentMonth, 'MMMM<x_bin_615>')}
+            {format(currentMonth, 'MMMM yyyy')}
           </div>
           <div className="flex gap-2 items-center">
             <button
