@@ -526,7 +526,7 @@ const TimeBlockUI = () => {
                             size={16}
                             className={routine.completed ? 'text-green-300' : colorConfig.icon}
                           />
-                          <span>{routine.label}</span>
+                          <span>{`${routine.label} (${routine.duration} min) - ${routine.time}`}</span>
                         </div>
                         <div className="flex gap-1 items-center opacity-0 transition-opacity group-hover:opacity-100">
                           <button

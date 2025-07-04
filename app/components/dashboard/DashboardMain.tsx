@@ -26,23 +26,10 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
   return (
     <div className="space-y-12">
       <section>
-        <div className="mb-8 text-center">
-          <h3 className="mb-2 text-2xl font-bold">Your Mission Control</h3>
-          <p className="mx-auto max-w-2xl text-text-secondary">
-            This is your command center. Monitor your progress, track your time, and stay focused on
-            the one thing that matters most right now.
-          </p>
-        </div>
         <CountdownCard goal={activeGoal} />
       </section>
 
       <section>
-        <div className="mb-8 text-center">
-          <h3 className="mb-2 text-2xl font-bold">Progress Calendar</h3>
-          <p className="mx-auto max-w-2xl text-text-secondary">
-            Visualize your daily satisfaction and log today&apos;s progress with a single click.
-          </p>
-        </div>
         <ProgressCalendar
           goal={activeGoal}
           dailyProgress={activeGoal.dailyProgress}
