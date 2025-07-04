@@ -10,6 +10,7 @@ import { FiBarChart2, FiClock, FiFeather, FiGrid } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRoutineStore } from '@/store/useRoutineStore';
 import { DailyProgress } from '@/types';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
@@ -39,8 +40,8 @@ const ConsolidatedDashboardPageContent = () => {
   const searchParams = useSearchParams();
   const { isLoading } = useAuth();
 
-  const appState = useGoalStore(state => state.appState);
-  const saveDailyProgressAction = useGoalStore(state => state.saveDailyProgress);
+  const { appState } = useGoalStore();
+  const { saveDailyProgress } = useRoutineStore();
   const showToast = useNotificationStore(state => state.showToast);
 
   const [isDailyProgressModalOpen, setIsDailyProgressModalOpen] = useState(false);
@@ -87,7 +88,7 @@ const ConsolidatedDashboardPageContent = () => {
   const handleSaveProgress = useCallback(
     async (progressData: Partial<DailyProgress>) => {
       try {
-        await saveDailyProgressAction({
+        await saveDailyProgress({
           ...progressData,
           date: progressData.date || format(new Date(), 'yyyy-MM-dd'),
         } as DailyProgress);
@@ -98,7 +99,7 @@ const ConsolidatedDashboardPageContent = () => {
         console.error(error);
       }
     },
-    [saveDailyProgressAction, showToast]
+    [saveDailyProgress, showToast]
   );
 
   const initialProgress = useMemo(() => {

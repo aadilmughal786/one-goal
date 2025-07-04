@@ -15,17 +15,17 @@ import {
 } from 'react-icons/fi';
 
 import FilterDropdown, { FilterOption } from '@/components/common/FilterDropdown';
-import { useGoalStore } from '@/store/useGoalStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
-import { Goal, GoalStatus } from '@/types';
-
 import GoalList from '@/components/goal/GoalList';
 import GoalModal from '@/components/goal/GoalModal';
 import GoalSummaryModal from '@/components/goal/GoalSummaryModal';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
 import { deserializeGoalsForImport } from '@/services/dataService';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useGoalActionsStore } from '@/store/useGoalActionsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { Goal, GoalStatus } from '@/types';
 import { serializableGoalsArraySchema } from '@/utils/schemas';
-import { useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useSearchParams } from 'next/navigation';
 
 const goalFilterOptions: FilterOption[] = [
   { value: 'all', label: 'All Goals', icon: FiGrid },
@@ -36,9 +36,10 @@ const goalFilterOptions: FilterOption[] = [
 ];
 
 const GoalHub: React.FC = () => {
-  const { currentUser, createGoal, updateGoal, importGoals } = useGoalStore();
+  const { currentUser } = useAuthStore();
+  const { createGoal, updateGoal, importGoals } = useGoalActionsStore();
   const showToast = useNotificationStore(state => state.showToast);
-  const searchParams = useSearchParams(); // Get search params
+  const searchParams = useSearchParams();
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [selectedGoalForModal, setSelectedGoalForModal] = useState<Goal | null>(null);
@@ -51,23 +52,21 @@ const GoalHub: React.FC = () => {
   const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Effect to handle KBar direct actions
-  useEffect(() => {
-    const action = searchParams.get('action');
-    if (action === 'newGoal') {
-      handleOpenGoalModal(null, false);
-      // Clear the action param from URL to prevent re-triggering on subsequent renders
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.delete('action');
-      window.history.replaceState(null, '', `?${newSearchParams.toString()}`);
-    }
-  }, [searchParams]); // Depend on searchParams to react to URL changes
-
   const handleOpenGoalModal = useCallback((goal: Goal | null, isEditMode: boolean) => {
     setSelectedGoalForModal(goal);
     setIsGoalModalEditMode(isEditMode);
     setIsGoalModalOpen(true);
   }, []);
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'newGoal') {
+      handleOpenGoalModal(null, false);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('action');
+      window.history.replaceState(null, '', `?${newSearchParams.toString()}`);
+    }
+  }, [searchParams, handleOpenGoalModal]);
 
   const handleSetGoal = useCallback(
     async (name: string, endDate: Date, description: string) => {

@@ -3,7 +3,7 @@
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { useTimerStore } from '@/store/useTimerStore';
+import { useStopwatchStore } from '@/store/useStopwatchStore';
 import { formatStopwatchTime, formatTotalTime } from '@/utils/dateUtils';
 import { format } from 'date-fns';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -52,7 +52,7 @@ const Stopwatch: React.FC = () => {
     resetTimer,
     saveSession,
     setSessionLabel,
-  } = useTimerStore();
+  } = useStopwatchStore();
 
   const { showConfirmation } = useNotificationStore();
 
@@ -60,7 +60,7 @@ const Stopwatch: React.FC = () => {
   const [isStarting, setIsStarting] = useState(false);
   const fullScreenRef = useRef<HTMLDivElement>(null);
 
-  const appState = useGoalStore(state => state.appState);
+  const { appState } = useGoalStore();
   const todayKey = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
   const todaysStats = useMemo(() => {

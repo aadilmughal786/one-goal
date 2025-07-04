@@ -33,14 +33,17 @@ const resourceFilterOptions: FilterOption[] = [
 ];
 
 const ResourcesTab: React.FC = () => {
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
+  const { appState } = useGoalStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+
+  const activeGoal = useMemo(() => {
+    if (!appState?.activeGoalId || !appState.goals) return null;
+    return appState.goals[appState.activeGoalId];
+  }, [appState]);
 
   const resources = useMemo(() => activeGoal?.resources || [], [activeGoal]);
 

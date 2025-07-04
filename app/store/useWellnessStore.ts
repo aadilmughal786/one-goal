@@ -1,9 +1,9 @@
 // app/store/useWellnessStore.ts
+import * as wellnessService from '@/services/wellnessService';
 import { ReminderSetting, ReminderType, WellnessSettings } from '@/types';
 import * as Tone from 'tone';
 import { create } from 'zustand';
-
-import { updateWellnessSettings } from '@/services/wellnessService';
+import { useAuthStore } from './useAuthStore';
 import { useGoalStore } from './useGoalStore';
 import { useNotificationStore } from './useNotificationStore';
 
@@ -22,7 +22,7 @@ interface WellnessState {
   startTimers: (settings: WellnessSettings) => void;
 }
 
-const useWellnessStore = create<WellnessState>((set, get) => ({
+export const useWellnessStore = create<WellnessState>((set, get) => ({
   settings: null,
   activeTimers: {},
   reminderQueue: [],
@@ -46,19 +46,20 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
     const newSettings = { ...settings, [type]: newSetting };
     set({ settings: newSettings });
 
-    const { currentUser, appState } = useGoalStore.getState();
+    const { currentUser } = useAuthStore.getState();
+    const { appState } = useGoalStore.getState();
     const activeGoalId = appState?.activeGoalId;
 
     if (currentUser && activeGoalId) {
       try {
-        await updateWellnessSettings(currentUser.uid, activeGoalId, newSettings);
+        await wellnessService.updateWellnessSettings(currentUser.uid, activeGoalId, newSettings);
         stopAllTimers();
         startTimers(newSettings);
       } catch {
         useNotificationStore.getState().showToast('Failed to save reminder settings.', 'error');
-        set({ settings });
+        set({ settings }); // Revert optimistic update
         stopAllTimers();
-        startTimers(settings);
+        startTimers(settings); // Restart with old settings
       }
     }
   },
@@ -78,9 +79,7 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
 
     const { reminderQueue, synth } = get();
     if (reminderQueue.length > 0 && synth) {
-      // FIX: Schedule the next sound slightly in the future (+0.1s)
-      // to prevent timing conflicts in the audio context.
-      synth.triggerAttackRelease('C4', '8n', '+0.1');
+      synth.triggerAttackRelease('C4', '8n', Tone.now() + 0.1);
     }
   },
 
@@ -109,5 +108,3 @@ const useWellnessStore = create<WellnessState>((set, get) => ({
     set({ activeTimers: newActiveTimers });
   },
 }));
-
-export { useWellnessStore };

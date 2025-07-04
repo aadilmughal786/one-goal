@@ -5,16 +5,19 @@ import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import CountdownCard from '@/components/dashboard/CountdownCard';
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import { useGoalStore } from '@/store/useGoalStore';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface DashboardMainProps {
   handleDayClick: (date: Date) => void;
 }
 
 const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
+  const { appState } = useGoalStore();
+
+  const activeGoal = useMemo(() => {
+    if (!appState?.activeGoalId || !appState.goals) return null;
+    return appState.goals[appState.activeGoalId];
+  }, [appState]);
 
   if (!activeGoal) {
     return <NoActiveGoalMessage />;

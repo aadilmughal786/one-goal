@@ -5,42 +5,37 @@ import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { quotes as allQuotes } from '@/data/quotes';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useQuoteStore } from '@/store/useQuoteStore';
 import { Quote } from '@/types';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiCheck, FiCopy, FiLoader, FiRefreshCw, FiStar } from 'react-icons/fi';
 
 /**
  * DashboardQuotes Component
  * Displays a "Quote of the Moment" and a list of starred quotes.
- * It has been refactored to use the new dedicated quoteService for all data operations.
  */
 const DashboardQuotes: React.FC = () => {
   const [randomQuote, setRandomQuote] = useState<Quote | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isFetchingNew, setIsFetchingNew] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [isFading, setIsFading] = useState(false); // For quote of the moment animation
-  const [copiedId, setCopiedId] = useState<number | null>(null); // To show feedback on copy button
+  const [isFading, setIsFading] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const showToast = useNotificationStore(state => state.showToast);
 
-  // FIX: Select each piece of state individually to prevent infinite loops.
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
-  const addStarredQuote = useGoalStore(state => state.addStarredQuote);
-  const removeStarredQuote = useGoalStore(state => state.removeStarredQuote);
+  const { appState } = useGoalStore();
+  const { addStarredQuote, removeStarredQuote } = useQuoteStore();
 
-  /**
-   * Copies the provided quote text and author to the clipboard.
-   * Uses a temporary textarea to ensure compatibility across browsers and iframes.
-   * @param quote The quote object to copy.
-   */
+  const activeGoal = useMemo(() => {
+    if (!appState?.activeGoalId || !appState.goals) return null;
+    return appState.goals[appState.activeGoalId];
+  }, [appState]);
+
   const handleCopy = (quote: Quote) => {
     const textToCopy = `"${quote.text}" - ${quote.author}`;
     const textArea = document.createElement('textarea');
     textArea.value = textToCopy;
-    // Make the textarea non-editable and invisible
     textArea.style.position = 'absolute';
     textArea.style.left = '-9999px';
     textArea.setAttribute('readonly', '');
@@ -50,25 +45,22 @@ const DashboardQuotes: React.FC = () => {
       document.execCommand('copy');
       showToast('Quote copied to clipboard!', 'success');
       setCopiedId(quote.id);
-      setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
+      setTimeout(() => setCopiedId(null), 2000);
     } catch {
       showToast('Failed to copy quote.', 'error');
     }
     document.body.removeChild(textArea);
   };
 
-  /**
-   * Fetches a new random quote with a fade animation.
-   */
   const getNewRandomQuote = useCallback(() => {
     setIsFetchingNew(true);
-    setIsFading(true); // Start fade out
+    setIsFading(true);
     setTimeout(() => {
       const randomIndex = Math.floor(Math.random() * allQuotes.length);
       setRandomQuote(allQuotes[randomIndex]);
       setIsFetchingNew(false);
-      setIsFading(false); // Start fade in
-    }, 300); // Duration must match the CSS transition duration
+      setIsFading(false);
+    }, 300);
   }, []);
 
   useEffect(() => {
@@ -93,7 +85,6 @@ const DashboardQuotes: React.FC = () => {
         showToast('Quote starred!', 'success');
       }
     } catch (error) {
-      // Error is handled by the store
       console.error('Failed to update quote status:', error);
     } finally {
       setIsUpdating(false);
@@ -109,9 +100,6 @@ const DashboardQuotes: React.FC = () => {
     } catch (error) {
       console.error('Failed to unstar quote from list:', error);
     } finally {
-      // The item will be removed from the list by the store update,
-      // so we only need to reset the loader state if the operation fails and the item remains.
-      // However, for simplicity and robustness, we reset it anyway.
       setUpdatingId(null);
     }
   };

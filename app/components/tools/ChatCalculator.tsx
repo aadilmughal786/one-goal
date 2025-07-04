@@ -1,7 +1,7 @@
 // app/components/tools/ChatCalculator.tsx
 'use client';
 
-import { useGoalStore } from '@/store/useGoalStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { all, create } from 'mathjs';
 import Image from 'next/image';
@@ -23,7 +23,7 @@ const ChatCalculator: React.FC = () => {
   const [input, setInput] = useState('');
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const currentUser = useGoalStore(state => state.currentUser);
+  const { currentUser } = useAuthStore();
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
   useEffect(() => {

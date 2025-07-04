@@ -2,7 +2,7 @@
 'use client';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
-import AboutDev from '@/components/profile/AboutDev'; // Import the new component
+import AboutDev from '@/components/profile/AboutDev';
 import AvatarSelectionModal from '@/components/profile/AvatarSelectionModal';
 import DataManagementTab from '@/components/profile/DataManagement';
 import ImportSelectionModal from '@/components/profile/ImportSelectionModal';
@@ -10,12 +10,13 @@ import UserProfileTab from '@/components/profile/UserProfile';
 import WellnessSettings from '@/components/profile/WellnessSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { updateUserProfile } from '@/services/authService';
-import { useGoalStore } from '@/store/useGoalStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useGoalActionsStore } from '@/store/useGoalActionsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal } from '@/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { FaCode } from 'react-icons/fa6'; // Import FaCode for the new tab icon
+import { FaCode } from 'react-icons/fa6';
 import { FiDatabase, FiHeart, FiUser } from 'react-icons/fi';
 
 const ProfilePageContent = () => {
@@ -23,19 +24,18 @@ const ProfilePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Add 'about-dev' to the valid tabs
   const [activeTab, setActiveTab] = useState('profile');
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [stagedGoalsForImport, setStagedGoalsForImport] = useState<Goal[]>([]);
 
-  const currentUser = useGoalStore(state => state.currentUser);
-  const importGoals = useGoalStore(state => state.importGoals);
+  const { currentUser } = useAuthStore();
+  const { importGoals } = useGoalActionsStore();
   const showToast = useNotificationStore(state => state.showToast);
 
   useEffect(() => {
-    const validTabs = ['profile', 'data', 'wellness', 'about-dev']; // Updated valid tabs
+    const validTabs = ['profile', 'data', 'wellness', 'about-dev'];
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
@@ -97,7 +97,7 @@ const ProfilePageContent = () => {
         return <DataManagementTab onGoalsImported={handleGoalsImported} />;
       case 'wellness':
         return <WellnessSettings />;
-      case 'about-dev': // New case for AboutDev tab
+      case 'about-dev':
         return <AboutDev />;
       default:
         return <UserProfileTab onAvatarModalOpen={() => setIsAvatarModalOpen(true)} />;
@@ -109,17 +109,11 @@ const ProfilePageContent = () => {
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-bg-primary/50 border-border-primary">
         <div className="flex space-x-2">
           {isLoading ? (
-            // Skeleton loaders for tabs
-            [...Array(4)].map(
-              (
-                _,
-                i // Increased array size for new tab
-              ) => (
-                <div key={i} className="px-4 py-3 animate-pulse">
-                  <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
-                </div>
-              )
-            )
+            [...Array(4)].map((_, i) => (
+              <div key={i} className="px-4 py-3 animate-pulse">
+                <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
+              </div>
+            ))
           ) : (
             <>
               <button
@@ -152,7 +146,7 @@ const ProfilePageContent = () => {
               >
                 <FiHeart /> Wellness
               </button>
-              <button // New About Dev tab button
+              <button
                 onClick={() => handleTabChange('about-dev')}
                 className={`flex items-center cursor-pointer gap-2 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
                   activeTab === 'about-dev'

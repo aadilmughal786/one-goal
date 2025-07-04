@@ -4,9 +4,9 @@
 import { DateTimePicker } from '@/components/common/DateTimePicker';
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
-import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRoutineStore } from '@/store/useRoutineStore';
 import { RoutineType, ScheduledRoutineBase, SleepRoutineSettings } from '@/types';
 import { addDays, differenceInMinutes, format, isAfter, isBefore, parse } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
@@ -20,13 +20,16 @@ import {
   MdOutlineNightlight,
   MdOutlineWbSunny,
 } from 'react-icons/md';
+import RoutineSectionCard from './RoutineSectionCard';
+
+const napIcons: string[] = ['MdOutlineAccessTime', 'MdOutlineWbSunny', 'MdOutlineNightlight'];
 
 const IconComponents: { [key: string]: React.ElementType } = {
+  MdOutlineAccessTime,
   MdOutlineWbSunny,
   MdOutlineNightlight,
-  MdOutlineAccessTime,
 };
-const napIcons: string[] = ['MdOutlineAccessTime', 'MdOutlineWbSunny', 'MdOutlineNightlight'];
+
 const sleepTips = [
   "Stick to a regular sleep schedule, even on weekends, to regulate your body's internal clock.",
   "Create a relaxing bedtime routine. A warm bath, reading a book, or listening to calm music can signal to your body that it's time to wind down.",
@@ -36,16 +39,18 @@ const sleepTips = [
 ];
 
 const SleepSchedule: React.FC = () => {
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  const { appState } = useGoalStore();
+  const { updateRoutineSettings } = useRoutineStore();
+  const { showToast } = useNotificationStore();
+
+  const activeGoal = useMemo(
+    () => (appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null),
+    [appState]
   );
-  const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
-  const showToast = useNotificationStore(state => state.showToast);
 
   const sleepSettings = activeGoal?.routineSettings?.sleep;
   const bedtime = sleepSettings?.sleepTime || '22:00';
   const wakeTime = sleepSettings?.wakeTime || '06:00';
-
   const napSchedule = useMemo(() => sleepSettings?.naps || [], [sleepSettings?.naps]);
 
   const [isBedtimePickerOpen, setIsBedtimePickerOpen] = useState(false);
@@ -106,19 +111,30 @@ const SleepSchedule: React.FC = () => {
   const handleTimeChange = async (type: 'bedtime' | 'wakeTime', newTime: string | null) => {
     if (!activeGoal || !newTime) return;
 
+    const currentSleepSettings = activeGoal.routineSettings.sleep || {
+      sleepTime: '22:00',
+      wakeTime: '06:00',
+      naps: [],
+    };
+
     const newSleepSettings: SleepRoutineSettings = {
-      ...activeGoal.routineSettings.sleep!,
+      ...currentSleepSettings,
       [type === 'bedtime' ? 'sleepTime' : 'wakeTime']: newTime,
     };
     const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
     await updateRoutineSettings(newSettings);
+    showToast(`${type === 'bedtime' ? 'Bedtime' : 'Wake time'} updated!`, 'success');
   };
 
-  const updateNapSchedules = useCallback(
+  const handleNapSchedulesUpdate = useCallback(
     async (updatedNaps: ScheduledRoutineBase[], successMessage: string) => {
       if (!activeGoal) return;
       const newSleepSettings: SleepRoutineSettings = {
-        ...activeGoal.routineSettings.sleep!,
+        ...(activeGoal.routineSettings.sleep || {
+          sleepTime: '22:00',
+          wakeTime: '06:00',
+          naps: [],
+        }),
         naps: updatedNaps,
       };
       const newSettings = { ...activeGoal.routineSettings, sleep: newSleepSettings };
@@ -143,9 +159,9 @@ const SleepSchedule: React.FC = () => {
             }
           : nap
       );
-      await updateNapSchedules(updatedNaps, 'Nap schedule updated!');
+      await handleNapSchedulesUpdate(updatedNaps, 'Nap schedule updated!');
     },
-    [napSchedule, updateNapSchedules]
+    [napSchedule, handleNapSchedulesUpdate]
   );
 
   const handleSaveNapSchedule = useCallback(
@@ -157,17 +173,17 @@ const SleepSchedule: React.FC = () => {
       } else {
         updatedNaps = [...napSchedule, schedule];
       }
-      await updateNapSchedules(updatedNaps, message);
+      await handleNapSchedulesUpdate(updatedNaps, message);
     },
-    [napSchedule, updateNapSchedules]
+    [napSchedule, handleNapSchedulesUpdate]
   );
 
   const handleRemoveNapSchedule = useCallback(
     async (indexToRemove: number) => {
       const updatedNaps = napSchedule.filter((_, index) => index !== indexToRemove);
-      await updateNapSchedules(updatedNaps, 'Nap schedule removed.');
+      await handleNapSchedulesUpdate(updatedNaps, 'Nap schedule removed.');
     },
-    [napSchedule, updateNapSchedules]
+    [napSchedule, handleNapSchedulesUpdate]
   );
 
   const formatTimeLeft = (minutes: number) => {
@@ -180,6 +196,8 @@ const SleepSchedule: React.FC = () => {
   if (!activeGoal) {
     return <NoActiveGoalMessage />;
   }
+
+  const completedNapsCount = napSchedule.filter(s => s.completed).length;
 
   return (
     <>
@@ -278,12 +296,10 @@ const SleepSchedule: React.FC = () => {
 
         <RoutineSectionCard
           sectionTitle="Nap Schedule"
-          summaryCount={`${napSchedule.filter(n => n.completed).length}/${napSchedule.length}`}
+          summaryCount={`${completedNapsCount}/${napSchedule.length}`}
           summaryLabel="Naps Completed Today"
           progressPercentage={
-            napSchedule.length > 0
-              ? (napSchedule.filter(n => n.completed).length / napSchedule.length) * 100
-              : 0
+            napSchedule.length > 0 ? (completedNapsCount / napSchedule.length) * 100 : 0
           }
           listTitle="Your Scheduled Naps"
           listEmptyMessage="No naps scheduled. Add one below!"

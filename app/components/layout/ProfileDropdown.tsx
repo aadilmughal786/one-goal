@@ -28,7 +28,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
   const [theme, setTheme] = useState('dark');
   const [mounted, setMounted] = useState(false);
 
-  // This effect runs on the client to determine the initial theme and OS.
   useEffect(() => {
     setMounted(true);
     const root = window.document.documentElement;
@@ -36,10 +35,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
     setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
   }, []);
 
-  /**
-   * Toggles the theme by updating the class on the <html> element,
-   * saving the preference to localStorage, and updating the component's state.
-   */
   const toggleTheme = () => {
     const root = window.document.documentElement;
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -131,7 +126,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
                 {isMac ? '⌘K' : 'Ctrl+K'}
               </kbd>
             </button>
-            {/* Updated Theme Toggle Button */}
             {mounted && (
               <button
                 onClick={toggleTheme}

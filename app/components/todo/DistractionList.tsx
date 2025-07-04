@@ -7,6 +7,7 @@ import React, { useCallback, useState } from 'react';
 import { FiClock, FiEdit, FiLoader, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { RiAlarmWarningLine } from 'react-icons/ri';
 
+import { useDistractionStore } from '@/store/useDistractionStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { DistractionItem } from '@/types';
@@ -14,7 +15,6 @@ import { FaAnglesRight } from 'react-icons/fa6';
 
 interface DistractionListProps {
   onEditDistraction: (item: DistractionItem) => void;
-  // Fix: Allow inputRef to be null initially
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -22,12 +22,9 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
   onEditDistraction,
   inputRef,
 }) => {
-  const appState = useGoalStore(state => state.appState);
-  const addDistraction = useGoalStore(state => state.addDistraction);
-  const updateDistraction = useGoalStore(state => state.updateDistraction);
-  const deleteDistraction = useGoalStore(state => state.deleteDistraction);
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const { appState } = useGoalStore();
+  const { addDistraction, updateDistraction, deleteDistraction } = useDistractionStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const list = appState?.goals[appState.activeGoalId || '']?.notToDoList || [];
 

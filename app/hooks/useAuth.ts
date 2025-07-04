@@ -2,10 +2,11 @@
 'use client';
 
 import { onAuthChange } from '@/services/authService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useWellnessStore } from '@/store/useWellnessStore';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * Custom hook for managing authentication state and initial data loading.
@@ -16,39 +17,43 @@ import { useEffect, useRef, useState } from 'react';
  */
 export const useAuth = () => {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
   const fetchInitiated = useRef(false);
 
-  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
-  const currentUser = useGoalStore(state => state.currentUser);
-  const appState = useGoalStore(state => state.appState);
-  const initializeWellness = useWellnessStore(state => state.initialize);
+  // --- Get state and actions from the new stores ---
+  const { fetchInitialData, isLoading, currentUser } = useAuthStore();
+  const { appState } = useGoalStore();
+  const { initialize: initializeWellness } = useWellnessStore();
 
+  // Effect to handle authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthChange(async user => {
       if (user) {
+        // If a user is found and data hasn't been fetched yet, fetch it.
         if (!fetchInitiated.current) {
           fetchInitiated.current = true;
           await fetchInitialData(user);
         }
       } else {
-        setIsLoading(false);
+        // If no user is found, redirect to the login page.
         router.replace('/login');
       }
     });
 
+    // Clean up the listener when the component unmounts.
     return () => unsubscribe();
+    // The dependency array is empty to ensure this runs only once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Effect to initialize wellness reminders once data is loaded
   useEffect(() => {
-    if (currentUser !== null && appState !== null) {
-      // Once the main app state is loaded, initialize the wellness reminders
+    // Check if the user and appState are loaded.
+    if (currentUser && appState) {
       const activeGoal = appState.activeGoalId ? appState.goals[appState.activeGoalId] : null;
+      // If there's an active goal with wellness settings, initialize the timers.
       if (activeGoal?.wellnessSettings) {
         initializeWellness(activeGoal.wellnessSettings);
       }
-      setIsLoading(false);
     }
   }, [currentUser, appState, initializeWellness]);
 

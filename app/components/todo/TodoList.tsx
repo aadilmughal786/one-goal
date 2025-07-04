@@ -9,10 +9,10 @@ import { FiCalendar, FiCheck, FiClock, FiEdit, FiLoader, FiPlus, FiTrash2 } from
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useTodoStore } from '@/store/useTodoStore';
 
 interface TodoListProps {
   onEditTodo: (item: TodoItem) => void;
-  // Fix: Allow inputRef to be null initially
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -159,11 +159,8 @@ const TodoListItem: React.FC<{
 };
 
 const TodoList: React.FC<TodoListProps> = ({ onEditTodo, inputRef }) => {
-  const appState = useGoalStore(state => state.appState);
-  const addTodo = useGoalStore(state => state.addTodo);
-  const updateTodo = useGoalStore(state => state.updateTodo);
-  const deleteTodo = useGoalStore(state => state.deleteTodo);
-  const reorderTodos = useGoalStore(state => state.reorderTodos);
+  const { appState } = useGoalStore();
+  const { addTodo, updateTodo, deleteTodo, reorderTodos } = useTodoStore();
   const showToast = useNotificationStore(state => state.showToast);
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];

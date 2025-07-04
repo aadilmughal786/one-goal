@@ -4,6 +4,8 @@
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRoutineStore } from '@/store/useRoutineStore';
+import { useTimeBlockStore } from '@/store/useTimeBlockStore';
 import { ScheduledRoutineBase, TimeBlock, UserRoutineSettings } from '@/types';
 import {
   addMinutes,
@@ -111,10 +113,11 @@ const TimeBlockUI = () => {
   const [updatingBlockId, setUpdatingBlockId] = useState<string | null>(null);
   const [updatingRoutineId, setUpdatingRoutineId] = useState<string | null>(null);
 
-  const { appState, addTimeBlock, deleteTimeBlock, updateTimeBlock, updateRoutineSettings } =
-    useGoalStore();
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const { appState } = useGoalStore();
+  const { addTimeBlock, deleteTimeBlock, updateTimeBlock } = useTimeBlockStore();
+  const { updateRoutineSettings } = useRoutineStore();
+  const { showToast, showConfirmation } = useNotificationStore();
+
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
   useEffect(() => {

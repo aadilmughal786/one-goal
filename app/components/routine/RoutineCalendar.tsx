@@ -20,6 +20,7 @@ import { FiCheckCircle, FiChevronLeft, FiChevronRight, FiLoader, FiXCircle } fro
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRoutineStore } from '@/store/useRoutineStore';
 
 interface RoutineCalendarProps {
   routineType: RoutineType;
@@ -99,9 +100,9 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
   title,
   icon: IconComponent,
 }) => {
-  const appState = useGoalStore(state => state.appState);
-  const saveDailyProgress = useGoalStore(state => state.saveDailyProgress);
-  const showToast = useNotificationStore(state => state.showToast);
+  const { appState } = useGoalStore();
+  const { saveDailyProgress } = useRoutineStore();
+  const { showToast } = useNotificationStore();
 
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
   const goalStartDate = activeGoal?.startDate?.toDate();
@@ -251,7 +252,7 @@ const RoutineCalendar: React.FC<RoutineCalendarProps> = ({
             {title}
           </h3>
           <div className="text-lg font-semibold text-center text-text-primary">
-            {format(currentMonth, 'MMMM yyyy')}
+            {format(currentMonth, 'MMMM<x_bin_615>')}
           </div>
           <div className="flex gap-2 items-center">
             <button

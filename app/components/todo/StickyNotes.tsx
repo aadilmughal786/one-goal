@@ -2,6 +2,9 @@
 'use client';
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
+import { useGoalStore } from '@/store/useGoalStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { useStickyNoteStore } from '@/store/useStickyNoteStore';
 import { StickyNote, StickyNoteColor } from '@/types';
 import { format as formatDate } from 'date-fns';
 import Fuse from 'fuse.js';
@@ -20,22 +23,14 @@ import {
 } from 'react-icons/fi';
 import { MdColorLens, MdStickyNote2 } from 'react-icons/md';
 
-import { useGoalStore } from '@/store/useGoalStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
-
 interface StickyNotesProps {
-  // Fix: Allow addNoteButtonRef to be null initially
   addNoteButtonRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 const StickyNotes: React.FC<StickyNotesProps> = ({ addNoteButtonRef }) => {
-  const appState = useGoalStore(state => state.appState);
-  const addStickyNote = useGoalStore(state => state.addStickyNote);
-  const updateStickyNote = useGoalStore(state => state.updateStickyNote);
-  const deleteStickyNote = useGoalStore(state => state.deleteStickyNote);
-
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const { appState } = useGoalStore();
+  const { addStickyNote, updateStickyNote, deleteStickyNote } = useStickyNoteStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
 
@@ -286,7 +281,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ addNoteButtonRef }) => {
           disabled={isAddingNote}
           className="flex flex-shrink-0 justify-center items-center w-12 h-12 rounded-full transition-all cursor-pointer text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
           aria-label="Create new sticky note"
-          ref={addNoteButtonRef} // Assign the ref here
+          ref={addNoteButtonRef}
         >
           {isAddingNote ? (
             <FiLoader className="w-6 h-6 animate-spin" />

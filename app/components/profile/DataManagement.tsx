@@ -3,6 +3,7 @@
 
 import { deserializeGoalsForImport, serializeGoalsForExport } from '@/services/dataService';
 import { resetUserData } from '@/services/goalService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { Goal } from '@/types';
@@ -16,9 +17,8 @@ interface DataManagementTabProps {
 
 const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const currentUser = useGoalStore(state => state.currentUser);
-  const appState = useGoalStore(state => state.appState);
-  const fetchInitialData = useGoalStore(state => state.fetchInitialData);
+  const { currentUser, fetchInitialData } = useAuthStore();
+  const { appState } = useGoalStore();
   const showToast = useNotificationStore(state => state.showToast);
   const showConfirmation = useNotificationStore(state => state.showConfirmation);
 
@@ -26,13 +26,15 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
     (event: React.ChangeEvent<HTMLInputElement>) => {
       if (isLoading) return;
       const file = event.target.files?.[0];
-      if (!file || !currentUser) return;
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('File is too large (max 5MB).', 'error');
+      if (!file || !currentUser) {
+        showToast('No file selected or user not authenticated.', 'error');
         return;
       }
-      event.target.value = '';
-      setIsLoading(true);
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File is too large (max 5MB).', 'error');
+        if (event.target) event.target.value = '';
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = async e => {
@@ -44,11 +46,15 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
             return;
           }
           const deserializedGoals = deserializeGoalsForImport(validation.data);
-          onGoalsImported(deserializedGoals);
+          if (deserializedGoals.length > 0) {
+            onGoalsImported(deserializedGoals);
+          } else {
+            showToast('No goals found in the selected file.', 'info');
+          }
         } catch {
           showToast('Import failed. Please check file format.', 'error');
         } finally {
-          setIsLoading(false);
+          if (event.target) event.target.value = '';
         }
       };
       reader.readAsText(file);

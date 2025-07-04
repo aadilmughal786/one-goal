@@ -1,7 +1,7 @@
 // app/components/stop-watch/FloatingStopwatch.tsx
 'use client';
 
-import { useTimerStore } from '@/store/useTimerStore';
+import { useStopwatchStore } from '@/store/useStopwatchStore';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { FiCoffee, FiZap } from 'react-icons/fi';
@@ -16,7 +16,7 @@ const FloatingStopwatch: React.FC = () => {
   });
 
   useEffect(() => {
-    const unsubscribe = useTimerStore.subscribe(state => {
+    const unsubscribe = useStopwatchStore.subscribe(state => {
       setTimerData({
         isRunning: state.isRunning,
         remainingTime: state.remainingTime,
@@ -26,7 +26,7 @@ const FloatingStopwatch: React.FC = () => {
       });
     });
 
-    const currentState = useTimerStore.getState();
+    const currentState = useStopwatchStore.getState();
     setTimerData({
       isRunning: currentState.isRunning,
       remainingTime: currentState.remainingTime,

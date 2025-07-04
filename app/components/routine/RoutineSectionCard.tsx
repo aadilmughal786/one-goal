@@ -229,7 +229,7 @@ const RoutineSectionCard: React.FC<RoutineSectionCardProps> = ({
         newInputLabelPlaceholder={newInputLabelPlaceholder}
         newIconOptions={newIconOptions}
         iconComponentsMap={iconComponentsMap}
-        buttonLabel={scheduleToEdit ? 'Save Changes' : 'Add & Save Schedule'}
+        buttonLabel={scheduleToEdit ? 'Update Schedule' : 'Add Schedule'}
       />
     </>
   );

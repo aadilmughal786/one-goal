@@ -1,8 +1,8 @@
 // app/components/goal/AddResourceModal.tsx
 'use client';
 
-import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useResourceStore } from '@/store/useResourceStore';
 import { Resource, ResourceType } from '@/types';
 import { resourceFormSchema } from '@/utils/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,7 +40,7 @@ const typeOptions = [
 ];
 
 const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, resourceToEdit }) => {
-  const { addResource, updateResource } = useGoalStore();
+  const { addResource, updateResource } = useResourceStore();
   const { showToast } = useNotificationStore();
   const isEditMode = !!resourceToEdit;
 

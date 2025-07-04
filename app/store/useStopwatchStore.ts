@@ -1,14 +1,13 @@
-// app/store/useTimerStore.ts
+// app/store/useStopwatchStore.ts
+import * as stopwatchService from '@/services/stopwatchService';
 import { StopwatchSession } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import { create } from 'zustand';
-
-import * as stopwatchService from '@/services/stopwatchService';
 import { useAuthStore } from './useAuthStore';
 import { useGoalStore } from './useGoalStore';
 import { useNotificationStore } from './useNotificationStore';
 
-interface TimerState {
+interface StopwatchState {
   // --- STATE ---
   isRunning: boolean;
   isPreparing: boolean; // True when setting label, before countdown starts
@@ -30,7 +29,7 @@ interface TimerState {
 
 let timerInterval: number | null = null;
 
-export const useTimerStore = create<TimerState>((set, get) => ({
+export const useStopwatchStore = create<StopwatchState>((set, get) => ({
   // --- INITIAL STATE ---
   isRunning: false,
   isPreparing: false,
@@ -108,7 +107,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   /** Saves the completed stopwatch session. */
   saveSession: async isFinished => {
     const { sessionLabel, duration, remainingTime, startTime, isBreak } = get();
-    const { currentUser, fetchInitialData } = useAuthStore.getState();
+    const { currentUser } = useAuthStore.getState();
     const { appState } = useGoalStore.getState();
     const activeGoalId = appState?.activeGoalId;
     const showToast = useNotificationStore.getState().showToast;
@@ -146,7 +145,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     try {
       await stopwatchService.addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
       showToast('Focus session saved!', 'success');
-      await fetchInitialData(currentUser);
+      await useAuthStore.getState().fetchInitialData(currentUser);
     } catch (error) {
       console.error('Failed to save session', error);
       showToast('Failed to save focus session.', 'error');

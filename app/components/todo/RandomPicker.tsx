@@ -3,6 +3,7 @@
 
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRandomPickerStore } from '@/store/useRandomPickerStore';
 import React, { useEffect, useState } from 'react';
 import { FiLoader, FiPlus, FiShuffle, FiTrash2 } from 'react-icons/fi';
 
@@ -74,14 +75,12 @@ const PickerModal = ({
 const RandomPicker: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUpdatingList, setIsUpdatingList] = useState(false); // For loaders
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
-  const showToast = useNotificationStore(state => state.showToast);
+  const [isUpdatingList, setIsUpdatingList] = useState(false);
+  const { showConfirmation, showToast } = useNotificationStore();
 
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
-  const updateRandomPickerItems = useGoalStore(state => state.updateRandomPickerItems);
+  const { appState } = useGoalStore();
+  const { updateRandomPickerItems } = useRandomPickerStore();
+  const activeGoal = appState?.goals[appState.activeGoalId || ''];
   const items = activeGoal?.randomPickerItems || [];
 
   const handleAddItem = async () => {

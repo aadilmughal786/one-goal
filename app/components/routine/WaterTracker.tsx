@@ -5,23 +5,23 @@ import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import RoutineCalendar from '@/components/routine/RoutineCalendar';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useRoutineStore } from '@/store/useRoutineStore';
 import { RoutineType, WaterRoutineSettings } from '@/types';
 import React from 'react';
 import { MdAdd, MdOutlineWaterDrop, MdRemove } from 'react-icons/md';
 
 const WaterTracker: React.FC = () => {
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
-  const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
-  const showToast = useNotificationStore(state => state.showToast);
+  const { appState } = useGoalStore();
+  const { updateRoutineSettings } = useRoutineStore();
+  const { showToast } = useNotificationStore();
 
+  const activeGoal = appState?.goals[appState?.activeGoalId || ''];
   const waterSettings = activeGoal?.routineSettings?.water;
   const waterGoal = waterSettings?.goal ?? 8;
   const currentWater = waterSettings?.current ?? 0;
 
   const handleWaterSettingsChange = async (newValues: Partial<WaterRoutineSettings>) => {
-    if (!activeGoal) {
+    if (!activeGoal?.routineSettings) {
       showToast('Cannot update water settings: no active goal found.', 'error');
       return;
     }

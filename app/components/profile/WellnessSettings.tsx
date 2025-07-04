@@ -95,11 +95,9 @@ const CustomFrequencyDropdown: React.FC<{
 };
 
 const WellnessSettings: React.FC = () => {
-  const settings = useWellnessStore(state => state.settings);
-  const updateSetting = useWellnessStore(state => state.updateSetting);
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
+  const { settings, updateSetting } = useWellnessStore();
+  const { appState } = useGoalStore();
+  const activeGoal = appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null;
 
   const handleToggle = (type: ReminderType, currentSetting: ReminderSetting) => {
     updateSetting(type, { ...currentSetting, enabled: !currentSetting.enabled });

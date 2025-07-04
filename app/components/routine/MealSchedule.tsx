@@ -1,9 +1,8 @@
 // app/components/routine/MealSchedule.tsx
 'use client';
 
-import { RoutineType, ScheduledRoutineBase } from '@/types';
-import { Timestamp } from 'firebase/firestore';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { RoutineType } from '@/types';
+import React, { useMemo } from 'react';
 import {
   MdOutlineCake,
   MdOutlineCookie,
@@ -21,10 +20,8 @@ import {
 } from 'react-icons/md';
 
 import { useGoalStore } from '@/store/useGoalStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
 
-import RoutineCalendar from '@/components/routine/RoutineCalendar';
-import RoutineSectionCard from '@/components/routine/RoutineSectionCard';
+import GenericRoutineTab from './GenericRoutineTab';
 import WeightTrendChart from './WeightTrendChart';
 
 const IconComponents: { [key: string]: React.ElementType } = {
@@ -46,110 +43,27 @@ const IconComponents: { [key: string]: React.ElementType } = {
 const mealIcons: string[] = Object.keys(IconComponents);
 
 const MealSchedule: React.FC = () => {
-  const appState = useGoalStore(state => state.appState);
-  const updateRoutineSettings = useGoalStore(state => state.updateRoutineSettings);
-  const showToast = useNotificationStore(state => state.showToast);
-
+  const { appState } = useGoalStore();
   const activeGoal = appState?.goals[appState?.activeGoalId || ''];
-
-  const [meals, setMeals] = useState<ScheduledRoutineBase[]>([]);
 
   const dailyProgress = useMemo(() => {
     return activeGoal ? Object.values(activeGoal.dailyProgress) : [];
   }, [activeGoal]);
 
-  useEffect(() => {
-    setMeals(activeGoal?.routineSettings?.meal || []);
-  }, [activeGoal]);
-
-  const toggleMealCompletion = useCallback(
-    async (index: number) => {
-      if (!activeGoal) return;
-      const updatedMeals = meals.map((meal, i) =>
-        i === index
-          ? {
-              ...meal,
-              completed: !meal.completed,
-              updatedAt: Timestamp.now(),
-              completedAt: !meal.completed ? Timestamp.now() : null,
-            }
-          : meal
-      );
-      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
-      try {
-        await updateRoutineSettings(newSettings);
-        showToast('Meal schedule updated!', 'success');
-      } catch (error) {
-        console.error('Failed to save meal settings:', error);
-      }
-    },
-    [meals, activeGoal, updateRoutineSettings, showToast]
-  );
-
-  const handleSaveSchedule = useCallback(
-    async (schedule: ScheduledRoutineBase, index: number | null) => {
-      if (!activeGoal) return;
-      let updatedMeals: ScheduledRoutineBase[];
-      const messageType = index !== null ? 'updated' : 'added';
-
-      if (index !== null) {
-        updatedMeals = meals.map((m, i) => (i === index ? schedule : m));
-      } else {
-        updatedMeals = [...meals, schedule];
-      }
-      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
-      try {
-        await updateRoutineSettings(newSettings);
-        showToast(messageType === 'updated' ? 'Meal updated!' : 'Meal added!', 'success');
-      } catch (error) {
-        console.error('Failed to save meal schedule:', error);
-      }
-    },
-    [meals, activeGoal, updateRoutineSettings, showToast]
-  );
-
-  const handleRemoveSchedule = useCallback(
-    async (indexToRemove: number) => {
-      if (!activeGoal) return;
-      const updatedMeals = meals.filter((_, index) => index !== indexToRemove);
-      const newSettings = { ...activeGoal.routineSettings, meal: updatedMeals };
-      try {
-        await updateRoutineSettings(newSettings);
-        showToast('Meal schedule removed.', 'info');
-      } catch (error) {
-        console.error('Failed to remove meal schedule:', error);
-      }
-    },
-    [meals, activeGoal, updateRoutineSettings, showToast]
-  );
-
-  const completedMealsCount = meals.filter(meal => meal.completed).length;
-
   return (
     <div className="space-y-8">
-      <RoutineSectionCard
+      <GenericRoutineTab
+        routineType={RoutineType.MEAL}
         sectionTitle="Daily Meal Plan"
-        summaryCount={`${completedMealsCount}/${meals.length}`}
         summaryLabel="Meals Completed Today"
-        progressPercentage={meals.length > 0 ? (completedMealsCount / meals.length) * 100 : 0}
-        listTitle="Your Meal Schedules"
         listEmptyMessage="No meals scheduled. Add one below!"
-        schedules={meals}
-        onToggleCompletion={toggleMealCompletion}
-        onRemoveSchedule={handleRemoveSchedule}
-        onSaveSchedule={handleSaveSchedule}
         newInputLabelPlaceholder="e.g., Lunch"
-        newIconOptions={mealIcons}
+        iconOptions={mealIcons}
         iconComponentsMap={IconComponents}
+        calendarIcon={MdOutlineRestaurantMenu}
       />
 
       <WeightTrendChart dailyProgress={dailyProgress} />
-
-      <RoutineCalendar
-        routineType={RoutineType.MEAL}
-        title="Meal Log"
-        icon={MdOutlineRestaurantMenu}
-      />
     </div>
   );
 };

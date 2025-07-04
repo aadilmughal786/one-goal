@@ -1,8 +1,8 @@
 // app/components/goal/ResourceViewer.tsx
 'use client';
 
-import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useResourceStore } from '@/store/useResourceStore';
 import { Resource, ResourceType } from '@/types';
 import Image from 'next/image';
 import React, { useState } from 'react';
@@ -28,7 +28,7 @@ interface ResourceViewerProps {
 }
 
 const ResourceViewer: React.FC<ResourceViewerProps> = ({ resource, onClose }) => {
-  const { deleteResource } = useGoalStore();
+  const { deleteResource } = useResourceStore();
   const { showConfirmation } = useNotificationStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 

@@ -19,6 +19,7 @@ import {
 } from 'react-icons/fi';
 
 import { serializeGoalsForExport } from '@/services/dataService';
+import { useGoalActionsStore } from '@/store/useGoalActionsStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
@@ -35,12 +36,9 @@ const GoalList: React.FC<GoalListProps> = ({
   searchQuery,
   filterStatus,
 }) => {
-  const appState = useGoalStore(state => state.appState);
-  const setActiveGoal = useGoalStore(state => state.setActiveGoal);
-  const deleteGoal = useGoalStore(state => state.deleteGoal);
-  const updateGoal = useGoalStore(state => state.updateGoal);
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const { appState } = useGoalStore();
+  const { setActiveGoal, deleteGoal, updateGoal } = useGoalActionsStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const allGoals = useMemo(() => Object.values(appState?.goals || {}), [appState?.goals]);
 

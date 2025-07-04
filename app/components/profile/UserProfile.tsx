@@ -1,7 +1,7 @@
 // app/components/profile/UserProfile.tsx
 'use client';
 
-import { useGoalStore } from '@/store/useGoalStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { format as formatDate } from 'date-fns';
 import Image from 'next/image';
 import React from 'react';
@@ -12,7 +12,7 @@ interface UserProfileTabProps {
 }
 
 const UserProfileTab: React.FC<UserProfileTabProps> = ({ onAvatarModalOpen }) => {
-  const currentUser = useGoalStore(state => state.currentUser);
+  const { currentUser } = useAuthStore();
 
   if (!currentUser) return null;
 

@@ -28,7 +28,7 @@ const StopwatchPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading } = useAuth();
-  const appState = useGoalStore(state => state.appState);
+  const { appState } = useGoalStore();
 
   const [isTabContentLoading, setIsTabContentLoading] = useState(false);
   const [activeTab, setActiveTabInternal] = useState<string>(tabItems[0].id);

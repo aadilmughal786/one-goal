@@ -1,8 +1,10 @@
 // app/components/stop-watch/SessionLog.tsx
 'use client';
 
+import { useAuthStore } from '@/store/useAuthStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useStopwatchActionsStore } from '@/store/useStopwatchActionsStore';
 import { StopwatchSession } from '@/types';
 import {
   addMonths,
@@ -33,16 +35,15 @@ import {
 } from 'react-icons/fi';
 
 export default function SessionLog() {
-  const showToast = useNotificationStore(state => state.showToast);
-  const showConfirmation = useNotificationStore(state => state.showConfirmation);
+  const { showToast, showConfirmation } = useNotificationStore();
+  const { currentUser } = useAuthStore();
+  const { appState } = useGoalStore();
+  const { deleteStopwatchSession, updateStopwatchSession } = useStopwatchActionsStore();
 
-  const currentUser = useGoalStore(state => state.currentUser);
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
+  const activeGoal = useMemo(
+    () => (appState?.activeGoalId ? appState.goals[appState.activeGoalId] : null),
+    [appState]
   );
-  const deleteStopwatchSession = useGoalStore(state => state.deleteStopwatchSession);
-  const updateStopwatchSession = useGoalStore(state => state.updateStopwatchSession);
-
   const activeGoalId = activeGoal?.id;
   const goalStartDate = activeGoal?.startDate?.toDate();
   const goalEndDate = activeGoal?.endDate?.toDate();
@@ -286,7 +287,7 @@ export default function SessionLog() {
         <div className="min-h-[250px] p-6">
           <h4 className="mb-4 text-xl font-bold text-text-primary">
             {selectedDay
-              ? `Logs for ${format(selectedDay, 'MMMM d,yyyy')}`
+              ? `Logs for ${format(selectedDay, 'MMMM d, yyyy')}`
               : 'Select a day to view logs'}
           </h4>
           {selectedDay &&

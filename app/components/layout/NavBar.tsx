@@ -1,8 +1,7 @@
 // app/components/layout/NavBar.tsx
 'use client';
 
-import { onAuthChange } from '@/services/authService';
-import { User } from 'firebase/auth';
+import { useAuthStore } from '@/store/useAuthStore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,8 +21,7 @@ const navLinks = [
 
 export default function NavBar() {
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { currentUser, isLoading: authLoading } = useAuthStore();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,18 +38,9 @@ export default function NavBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = onAuthChange(user => {
-      setCurrentUser(user);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const getNavLinkClasses = (navPath: string) => {
     const baseClasses =
       'flex items-center justify-center w-full h-12 rounded-lg transition-colors duration-200 cursor-pointer';
-    // Use CSS variables for theme-aware styling
     const activeClasses = 'bg-text-primary text-bg-primary';
     const inactiveClasses = 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary';
 

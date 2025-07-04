@@ -9,9 +9,12 @@ import React, { useMemo } from 'react';
 import { FiBarChart2 } from 'react-icons/fi';
 
 const DashboardAnalytics: React.FC = () => {
-  const activeGoal = useGoalStore(state =>
-    state.appState?.activeGoalId ? state.appState.goals[state.appState.activeGoalId] : null
-  );
+  const { appState } = useGoalStore();
+
+  const activeGoal = useMemo(() => {
+    if (!appState?.activeGoalId || !appState.goals) return null;
+    return appState.goals[appState.activeGoalId];
+  }, [appState]);
 
   const dailyProgressArray = useMemo(
     () => (activeGoal ? Object.values(activeGoal.dailyProgress) : []),
