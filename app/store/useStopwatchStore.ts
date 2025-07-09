@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
 import { useGoalStore } from './useGoalStore';
 import { useNotificationStore } from './useNotificationStore';
+import { useStopwatchActionsStore } from './useStopwatchActionsStore';
 
 interface StopwatchState {
   // --- STATE ---
@@ -142,13 +143,38 @@ export const useStopwatchStore = create<StopwatchState>((set, get) => ({
       startTime: Timestamp.fromMillis(startTime),
     };
 
+    // Declare newSessionWithMeta outside try-catch for scope
+    let newSessionWithMeta: StopwatchSession | undefined;
+
     try {
-      await stopwatchService.addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
+      // Optimistically update the UI
+      newSessionWithMeta = {
+        ...newSessionData,
+        id: crypto.randomUUID(), // Generate a temporary ID for optimistic update
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      };
+
+      useStopwatchActionsStore
+        .getState()
+        .addStopwatchSessionToGoal(activeGoalId, newSessionWithMeta);
       showToast('Focus session saved!', 'success');
-      await useAuthStore.getState().fetchInitialData(currentUser);
+
+      // Save to DB
+      await stopwatchService.addStopwatchSession(currentUser.uid, activeGoalId, newSessionData);
+
+      // If DB save is successful, the optimistic update is confirmed.
+      // No need to fetchInitialData as the state is already updated.
     } catch (error) {
       console.error('Failed to save session', error);
       showToast('Failed to save focus session.', 'error');
+      // Revert optimistic update if save fails
+      if (newSessionWithMeta) {
+        // Check if it was defined
+        useStopwatchActionsStore
+          .getState()
+          .removeStopwatchSessionFromGoal(activeGoalId, newSessionWithMeta.id);
+      }
     } finally {
       set({ isSaving: false });
       get().resetTimer();
