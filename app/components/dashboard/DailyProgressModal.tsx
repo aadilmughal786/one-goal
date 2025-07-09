@@ -229,7 +229,7 @@ const DailyProgressModal: React.FC<DailyProgressModalProps> = ({
                 </button>
                 {isDropdownOpen && (
                   <div
-                    className="absolute z-10 p-2 mt-2 w-full rounded-md border shadow-lg bg-bg-tertiary border-border-primary"
+                    className="absolute z-10 p-2 mt-2 w-full rounded-md border shadow-lg bg-bg-primary border-border-primary"
                     role="listbox"
                   >
                     {satisfactionOptions.map(option => (

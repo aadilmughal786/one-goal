@@ -144,6 +144,54 @@ export interface DailyProgress {
   weight: number | null;
 }
 
+export interface ChartDataItem {
+  date: string;
+  satisfaction: number;
+  timeSpent: number;
+  efficiency: number;
+  movingAvg: number;
+}
+
+export interface SatisfactionDistributionItem {
+  name: string;
+  value: number;
+  percentage: number;
+  color: string;
+}
+
+export interface CumulativeChartDataItem {
+  date: string; // yyyy-MM-DD format
+  cumulativeHours: number;
+  avgSatisfaction: number;
+}
+
+export interface DayOfWeekPerformanceDataItem {
+  name: string; // Day of the week, e.g., "Monday"
+  avgTime: number;
+  avgSatisfaction: number;
+  successRate: number;
+}
+
+export interface GoalProgressData {
+  totalDays: number;
+  daysPassed: number;
+  daysRemaining: number;
+  daysLogged: number;
+  unloggedDays: number;
+}
+
+export interface WeightDataItem {
+  date: string; // yyyy-MM-DD format
+  weight: number | null;
+}
+
+export interface CorrelationDataItem {
+  date: string;
+  satisfaction: number;
+  timeSpent: number;
+  efficiency: number;
+}
+
 export interface ScheduledRoutineBase extends BaseEntity, Completable {
   time: string; // HH:mm format
   duration: number; // in minutes
