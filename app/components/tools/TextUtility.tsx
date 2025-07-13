@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  FaTextHeight,
+  FaExchangeAlt,
+  FaRedo,
   FaSortAlphaDown,
   FaSortAlphaUp,
-  FaRedo,
-  FaExchangeAlt,
+  FaTextHeight,
 } from 'react-icons/fa';
+import { FiLoader } from 'react-icons/fi';
 
 const TextUtility: React.FC = () => {
   const [text, setText] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const charCount = useMemo(() => text.length, [text]);
   const wordCount = useMemo(() => text.split(/\s+/).filter(word => word !== '').length, [text]);
@@ -18,6 +20,14 @@ const TextUtility: React.FC = () => {
 
   const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
+  }, []);
+
+  const performTextOperation = useCallback((operation: () => void) => {
+    setIsLoading(true);
+    setTimeout(() => {
+      operation();
+      setIsLoading(false);
+    }, 500); // Fake delay
   }, []);
 
   const toUppercase = useCallback(() => {
@@ -41,7 +51,7 @@ const TextUtility: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Text Utility</h2>
 
       <div className="mb-4">
@@ -50,56 +60,68 @@ const TextUtility: React.FC = () => {
           placeholder="Enter your text here..."
           value={text}
           onChange={handleTextChange}
+          disabled={isLoading}
         ></textarea>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-3 bg-bg-primary rounded-md border border-border-primary text-center">
+      <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-4">
+        <div className="p-3 text-center rounded-md border bg-bg-primary border-border-primary">
           <p className="text-sm text-text-muted">Characters:</p>
           <p className="text-xl font-bold text-accent">{charCount}</p>
         </div>
-        <div className="p-3 bg-bg-primary rounded-md border border-border-primary text-center">
+        <div className="p-3 text-center rounded-md border bg-bg-primary border-border-primary">
           <p className="text-sm text-text-muted">Words:</p>
           <p className="text-xl font-bold text-accent">{wordCount}</p>
         </div>
-        <div className="p-3 bg-bg-primary rounded-md border border-border-primary text-center">
+        <div className="p-3 text-center rounded-md border bg-bg-primary border-border-primary">
           <p className="text-sm text-text-muted">Lines:</p>
           <p className="text-xl font-bold text-accent">{lineCount}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <button
-          onClick={toUppercase}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
+          onClick={() => performTextOperation(toUppercase)}
+          disabled={isLoading}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
         >
           <FaSortAlphaUp /> Uppercase
         </button>
         <button
-          onClick={toLowercase}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
+          onClick={() => performTextOperation(toLowercase)}
+          disabled={isLoading}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
         >
           <FaSortAlphaDown /> Lowercase
         </button>
         <button
-          onClick={capitalizeWords}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
+          onClick={() => performTextOperation(capitalizeWords)}
+          disabled={isLoading}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
         >
           <FaTextHeight /> Capitalize
         </button>
         <button
-          onClick={reverseText}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
+          onClick={() => performTextOperation(reverseText)}
+          disabled={isLoading}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
         >
           <FaRedo /> Reverse
         </button>
         <button
-          onClick={clearText}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+          onClick={() => performTextOperation(clearText)}
+          disabled={isLoading}
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-white bg-red-500 rounded-lg transition-all duration-200 cursor-pointer hover:bg-red-600 disabled:opacity-60"
         >
           <FaExchangeAlt /> Clear
         </button>
       </div>
+
+      {isLoading && (
+        <div className="flex justify-center items-center mt-6">
+          <FiLoader className="w-8 h-8 animate-spin text-text-secondary" />
+        </div>
+      )}
     </div>
   );
 };

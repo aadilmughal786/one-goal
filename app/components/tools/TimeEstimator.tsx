@@ -4,7 +4,7 @@
 import { DateTimePicker } from '@/components/common/DateTimePicker';
 import { eachDayOfInterval, format, getDay } from 'date-fns';
 import React, { useState } from 'react';
-import { FiBriefcase, FiCalendar, FiMoon, FiTrendingUp, FiZap } from 'react-icons/fi';
+import { FiBriefcase, FiCalendar, FiLoader, FiMoon, FiZap } from 'react-icons/fi';
 
 const CircularProgress: React.FC<{
   days: number;
@@ -77,43 +77,51 @@ const TimeEstimator: React.FC = () => {
   const [isEndPickerOpen, setIsEndPickerOpen] = useState(false);
 
   const [result, setResult] = useState<EstimationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleCalculate = () => {
-    if (!startDate || !endDate || endDate <= startDate) {
-      setResult(null);
-      return;
-    }
+    setIsLoading(true);
+    setResult(null);
 
-    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-    let weekdays = 0;
-    let weekendDays = 0;
-
-    const dayBreakdown: { date: Date; type: 'weekday' | 'weekend' }[] = allDays.map(day => {
-      const dayOfWeek = getDay(day);
-      const type: 'weekday' | 'weekend' =
-        dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'weekday';
-      if (type === 'weekend') {
-        weekendDays++;
-      } else {
-        weekdays++;
+    setTimeout(() => {
+      if (!startDate || !endDate || endDate <= startDate) {
+        setResult(null);
+        setIsLoading(false);
+        return;
       }
-      return { date: day, type };
-    });
 
-    const totalDays = weekdays + weekendDays;
-    const productiveDays = weekdays * (8 / 24);
-    const sleepDays = totalDays * (8 / 24);
-    const personalDays = weekdays * (8 / 24) + weekendDays;
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+      let weekdays = 0;
+      let weekendDays = 0;
 
-    setResult({
-      totalDays: Math.max(0, totalDays),
-      weekdays,
-      weekendDays,
-      productiveDays: Math.max(0, productiveDays),
-      sleepDays: Math.max(0, sleepDays),
-      personalDays: Math.max(0, personalDays),
-      dayBreakdown,
-    });
+      const dayBreakdown: { date: Date; type: 'weekday' | 'weekend' }[] = allDays.map(day => {
+        const dayOfWeek = getDay(day);
+        const type: 'weekday' | 'weekend' =
+          dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'weekday';
+        if (type === 'weekend') {
+          weekendDays++;
+        } else {
+          weekdays++;
+        }
+        return { date: day, type };
+      });
+
+      const totalDays = weekdays + weekendDays;
+      const productiveDays = weekdays * (8 / 24);
+      const sleepDays = totalDays * (8 / 24);
+      const personalDays = weekdays * (8 / 24) + weekendDays;
+
+      setResult({
+        totalDays: Math.max(0, totalDays),
+        weekdays,
+        weekendDays,
+        productiveDays: Math.max(0, productiveDays),
+        sleepDays: Math.max(0, sleepDays),
+        personalDays: Math.max(0, personalDays),
+        dayBreakdown,
+      });
+      setIsLoading(false);
+    }, 1000); // Simulate 1 second delay
   };
 
   return (
@@ -121,13 +129,56 @@ const TimeEstimator: React.FC = () => {
       <div className="pb-40 space-y-8">
         <div className="text-center">
           <h2 className="mb-2 text-2xl font-bold text-text-primary">Effective Days Calculator</h2>
-          <p className="mx-auto max-w-2xl text-text-secondary">
+          <p className="mx-auto mb-8 max-w-2xl text-text-secondary">
             A 30-day deadline isn&apos;t 30 full workdays. This tool shows your actual productive
             time by subtracting estimated days for sleep and life admin.
           </p>
+
+          <div className="flex flex-col gap-4 justify-center items-center mx-auto max-w-3xl sm:flex-row">
+            <button
+              onClick={() => setIsStartPickerOpen(true)}
+              className="flex flex-1 justify-between items-center p-3 w-full rounded-lg border transition-colors cursor-pointer sm:w-auto bg-bg-secondary border-border-primary hover:bg-bg-tertiary"
+            >
+              <span className="flex gap-2 items-center">
+                <FiCalendar className="text-text-secondary" />
+                <span className="text-sm font-semibold">Start:</span>
+              </span>
+              <span>{startDate ? format(startDate, 'MMM d,yyyy') : 'Select date'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsEndPickerOpen(true)}
+              className="flex flex-1 justify-between items-center p-3 w-full rounded-lg border transition-colors cursor-pointer sm:w-auto bg-bg-secondary border-border-primary hover:bg-bg-tertiary"
+            >
+              <span className="flex gap-2 items-center">
+                <FiCalendar className="text-text-secondary" />
+                <span className="text-sm font-semibold">End:</span>
+              </span>
+              <span>{endDate ? format(endDate, 'MMM d,yyyy') : 'Select date'}</span>
+            </button>
+
+            <button
+              onClick={handleCalculate}
+              disabled={isLoading} // Disable button while loading
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60 sm:w-auto"
+            >
+              {isLoading ? (
+                <>
+                  <FiLoader className="w-5 h-5 animate-spin" />
+                  <span>Calculating...</span>
+                </>
+              ) : (
+                <span>Calculate</span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {result ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <FiLoader className="w-12 h-12 animate-spin text-text-secondary" />
+          </div>
+        ) : result ? (
           <div className="space-y-8 animate-fade-in-down">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <CircularProgress
@@ -198,40 +249,6 @@ const TimeEstimator: React.FC = () => {
             <p>Select your start and end dates below, then press &quot;Calculate&quot;.</p>
           </div>
         )}
-      </div>
-
-      <div className="fixed right-0 bottom-0 left-16 z-20 p-4 border-t backdrop-blur-md bg-bg-primary/50 border-border-primary">
-        <div className="flex flex-col gap-4 justify-center items-center mx-auto max-w-3xl sm:flex-row">
-          <button
-            onClick={() => setIsStartPickerOpen(true)}
-            className="flex flex-1 justify-between items-center p-3 w-full rounded-lg border transition-colors cursor-pointer sm:w-auto bg-bg-secondary border-border-primary hover:bg-bg-tertiary"
-          >
-            <span className="flex gap-2 items-center">
-              <FiCalendar className="text-text-secondary" />
-              <span className="text-sm font-semibold">Start:</span>
-            </span>
-            <span>{startDate ? format(startDate, 'MMM d,yyyy') : 'Select date'}</span>
-          </button>
-
-          <button
-            onClick={() => setIsEndPickerOpen(true)}
-            className="flex flex-1 justify-between items-center p-3 w-full rounded-lg border transition-colors cursor-pointer sm:w-auto bg-bg-secondary border-border-primary hover:bg-bg-tertiary"
-          >
-            <span className="flex gap-2 items-center">
-              <FiCalendar className="text-text-secondary" />
-              <span className="text-sm font-semibold">End:</span>
-            </span>
-            <span>{endDate ? format(endDate, 'MMM d,yyyy') : 'Select date'}</span>
-          </button>
-
-          <button
-            onClick={handleCalculate}
-            className="flex gap-2 justify-center items-center px-6 py-3 w-full font-semibold rounded-lg transition-transform cursor-pointer text-bg-primary bg-text-primary sm:w-auto"
-          >
-            <FiTrendingUp />
-            Calculate
-          </button>
-        </div>
       </div>
 
       <DateTimePicker

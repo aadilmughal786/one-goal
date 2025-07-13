@@ -5,43 +5,41 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
 import {
+  FaBirthdayCake,
   FaCalculator,
+  FaCode,
+  FaCoins,
+  FaDice,
+  FaDiceFive,
+  FaFileAlt,
+  FaGraduationCap,
+  FaKey,
+  FaMoneyBillWave,
+  FaPercent,
+  FaPercentage,
   FaSearch,
   FaWeight,
-  FaPercent,
-  FaMoneyBillWave,
-  FaCode,
-  FaKey,
-  FaPalette,
-  FaFileAlt,
-  FaDice,
-  FaCoins,
-  FaDiceFive,
-  FaPercentage,
-  FaBirthdayCake,
-  FaGraduationCap,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
+import BinaryConverter from '@/components/tools/BinaryConverter';
+import BMICalculator from '@/components/tools/BMICalculator';
 import ChatCalculator from '@/components/tools/ChatCalculator';
+import DiscountCalculator from '@/components/tools/DiscountCalculator';
 import DrawingTool from '@/components/tools/DrawingTool';
+import LoanCalculator from '@/components/tools/LoanCalculator';
 import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
-import BMICalculator from '@/components/tools/BMICalculator';
-import DiscountCalculator from '@/components/tools/DiscountCalculator';
-import LoanCalculator from '@/components/tools/LoanCalculator';
-import BinaryConverter from '@/components/tools/BinaryConverter';
 
-import PasswordGenerator from '@/components/tools/PasswordGenerator';
-import ColorConverter from '@/components/tools/ColorConverter';
-import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
+import AgeCalculator from '@/components/tools/AgeCalculator';
 import CoinFlip from '@/components/tools/CoinFlip';
 import DiceRoller from '@/components/tools/DiceRoller';
-import TipCalculator from '@/components/tools/TipCalculator';
-import AgeCalculator from '@/components/tools/AgeCalculator';
+import PasswordGenerator from '@/components/tools/PasswordGenerator';
+import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
 import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
+import TipCalculator from '@/components/tools/TipCalculator';
 
 import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
@@ -126,13 +124,7 @@ const allTools: ToolItem[] = [
     icon: FaKey,
     component: PasswordGenerator,
   },
-  {
-    id: 'color-converter',
-    name: 'Color Converter',
-    description: 'Convert colors between HEX, RGB, and HSL formats.',
-    icon: FaPalette,
-    component: ColorConverter,
-  },
+
   {
     id: 'text-utility',
     name: 'Text Utility',

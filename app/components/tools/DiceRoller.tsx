@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FaDiceFive } from 'react-icons/fa'; // Using FaDiceFive as a generic dice icon
+import { FiLoader } from 'react-icons/fi';
 
 const DiceRoller: React.FC = () => {
   const [numDice, setNumDice] = useState<number>(1);
@@ -30,7 +31,7 @@ const DiceRoller: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Dice Roller</h2>
 
       <div className="mb-4">
@@ -40,7 +41,7 @@ const DiceRoller: React.FC = () => {
         <input
           type="number"
           id="numDice"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={numDice}
           onChange={e => setNumDice(Math.max(1, parseInt(e.target.value) || 1))}
           min="1"
@@ -54,7 +55,7 @@ const DiceRoller: React.FC = () => {
         <input
           type="number"
           id="sides"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={sides}
           onChange={e => setSides(Math.max(2, parseInt(e.target.value) || 6))}
           min="2"
@@ -64,10 +65,13 @@ const DiceRoller: React.FC = () => {
       <button
         onClick={rollDice}
         disabled={isRolling}
-        className="w-full px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
       >
         {isRolling ? (
-          'Rolling...'
+          <>
+            <FiLoader className="w-5 h-5 animate-spin" />
+            <span>Rolling...</span>
+          </>
         ) : (
           <>
             <FaDiceFive /> Roll Dice
@@ -76,7 +80,7 @@ const DiceRoller: React.FC = () => {
       </button>
 
       {results.length > 0 && !isRolling && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary">
+        <div className="p-4 mt-6 rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">
             Results: <span className="font-bold text-accent">{results.join(', ')}</span>
           </p>

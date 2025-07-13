@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import React, { useCallback, useState } from 'react';
 import { FaCopy, FaSyncAlt } from 'react-icons/fa';
 
 const PasswordGenerator: React.FC = () => {
@@ -10,6 +11,8 @@ const PasswordGenerator: React.FC = () => {
   const [includeLowercase, setIncludeLowercase] = useState<boolean>(true);
   const [includeNumbers, setIncludeNumbers] = useState<boolean>(true);
   const [includeSymbols, setIncludeSymbols] = useState<boolean>(true);
+
+  const showToast = useNotificationStore(state => state.showToast);
 
   const generatePassword = useCallback(() => {
     let characters = '';
@@ -33,11 +36,11 @@ const PasswordGenerator: React.FC = () => {
 
   const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(password);
-    alert('Password copied to clipboard!');
-  }, [password]);
+    showToast('Password copied to clipboard!', 'success');
+  }, [password, showToast]);
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Password Generator</h2>
 
       <div className="mb-4">
@@ -106,16 +109,16 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-4 mb-4">
         <button
           onClick={generatePassword}
-          className="flex-1 px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent flex items-center justify-center gap-2"
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
         >
           <FaSyncAlt /> Generate Password
         </button>
         <button
           onClick={copyToClipboard}
-          className="px-4 py-2 text-white rounded-md bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center gap-2"
+          className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
           disabled={!password || password === 'Select at least one option'}
         >
           <FaCopy /> Copy
@@ -123,7 +126,7 @@ const PasswordGenerator: React.FC = () => {
       </div>
 
       {password && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary break-all">
+        <div className="p-4 mt-6 break-all rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">Generated Password:</p>
           <p className="text-xl font-bold text-accent">{password}</p>
         </div>

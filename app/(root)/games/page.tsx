@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
 import {
-  FaAppleAlt,
   FaCalculator,
   FaGripLines,
   FaHandRock,
@@ -18,7 +17,6 @@ import { FiChevronLeft } from 'react-icons/fi';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import BalloonPop from '@/components/games/BalloonPop';
-import CatchTheFallingObjects from '@/components/games/CatchTheFallingObjects';
 
 import Game2048 from '@/components/games/Game2048';
 import GameSearchAndList from '@/components/games/GameSearchAndList';
@@ -140,14 +138,6 @@ const allGames: GameItem[] = [
     icon: FaCalculator,
     component: SimpleCalculatorGame,
   },
-  {
-    id: 'catch-objects',
-    name: 'Catch the Falling Objects',
-    description: 'Move a character to catch specific objects.',
-    icon: FaAppleAlt,
-    component: CatchTheFallingObjects,
-  },
-
   {
     id: 'balloon-pop',
     name: 'Balloon Pop',

@@ -1,33 +1,43 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FaDice } from 'react-icons/fa';
+import { FiLoader } from 'react-icons/fi';
 
 const RandomNumberGenerator: React.FC = () => {
   const [min, setMin] = useState<string>('0');
   const [max, setMax] = useState<string>('100');
   const [randomNumber, setRandomNumber] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const generateNumber = useCallback(() => {
-    const parsedMin = parseInt(min);
-    const parsedMax = parseInt(max);
+    setIsLoading(true);
+    setRandomNumber(null);
 
-    if (isNaN(parsedMin) || isNaN(parsedMax)) {
-      setRandomNumber(NaN); // Indicate error
-      return;
-    }
+    setTimeout(() => {
+      const parsedMin = parseInt(min);
+      const parsedMax = parseInt(max);
 
-    if (parsedMin > parsedMax) {
-      setRandomNumber(NaN); // Indicate error
-      return;
-    }
+      if (isNaN(parsedMin) || isNaN(parsedMax)) {
+        setRandomNumber(NaN); // Indicate error
+        setIsLoading(false);
+        return;
+      }
 
-    const num = Math.floor(Math.random() * (parsedMax - parsedMin + 1)) + parsedMin;
-    setRandomNumber(num);
+      if (parsedMin > parsedMax) {
+        setRandomNumber(NaN); // Indicate error
+        setIsLoading(false);
+        return;
+      }
+
+      const num = Math.floor(Math.random() * (parsedMax - parsedMin + 1)) + parsedMin;
+      setRandomNumber(num);
+      setIsLoading(false);
+    }, 1000); // 1 second fake delay
   }, [min, max]);
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Random Number Generator</h2>
 
       <div className="mb-4">
@@ -37,7 +47,7 @@ const RandomNumberGenerator: React.FC = () => {
         <input
           type="number"
           id="min"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={min}
           onChange={e => setMin(e.target.value)}
           placeholder="e.g., 0"
@@ -51,7 +61,7 @@ const RandomNumberGenerator: React.FC = () => {
         <input
           type="number"
           id="max"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={max}
           onChange={e => setMax(e.target.value)}
           placeholder="e.g., 100"
@@ -60,19 +70,29 @@ const RandomNumberGenerator: React.FC = () => {
 
       <button
         onClick={generateNumber}
-        className="w-full px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent flex items-center justify-center gap-2"
+        disabled={isLoading}
+        className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
       >
-        <FaDice /> Generate Number
+        {isLoading ? (
+          <>
+            <FiLoader className="w-5 h-5 animate-spin" />
+            <span>Generating...</span>
+          </>
+        ) : (
+          <>
+            <FaDice /> Generate Number
+          </>
+        )}
       </button>
 
       {randomNumber !== null && !isNaN(randomNumber) && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary text-center">
+        <div className="p-4 mt-6 text-center rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">Generated Number:</p>
           <p className="text-3xl font-bold text-accent">{randomNumber}</p>
         </div>
       )}
       {isNaN(randomNumber as number) && randomNumber !== null && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary text-center text-red-500">
+        <div className="p-4 mt-6 text-center text-red-500 rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">Invalid input. Please enter valid numbers.</p>
         </div>
       )}

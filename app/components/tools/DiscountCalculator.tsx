@@ -1,32 +1,42 @@
 'use client';
 
 import React, { useState } from 'react';
+import { FiLoader } from 'react-icons/fi';
 
 const DiscountCalculator: React.FC = () => {
   const [originalPrice, setOriginalPrice] = useState<string>('');
   const [discountPercentage, setDiscountPercentage] = useState<string>('');
   const [finalPrice, setFinalPrice] = useState<string | null>(null);
   const [youSaved, setYouSaved] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const calculateDiscount = () => {
-    const price = parseFloat(originalPrice);
-    const discount = parseFloat(discountPercentage);
+    setIsLoading(true);
+    setFinalPrice(null);
+    setYouSaved(null);
 
-    if (isNaN(price) || isNaN(discount) || price <= 0 || discount < 0 || discount > 100) {
-      setFinalPrice('Invalid input');
-      setYouSaved(null);
-      return;
-    }
+    setTimeout(() => {
+      const price = parseFloat(originalPrice);
+      const discount = parseFloat(discountPercentage);
 
-    const savedAmount = (price * discount) / 100;
-    const final = price - savedAmount;
+      if (isNaN(price) || isNaN(discount) || price <= 0 || discount < 0 || discount > 100) {
+        setFinalPrice('Invalid input');
+        setYouSaved(null);
+        setIsLoading(false);
+        return;
+      }
 
-    setFinalPrice(final.toFixed(2));
-    setYouSaved(savedAmount.toFixed(2));
+      const savedAmount = (price * discount) / 100;
+      const final = price - savedAmount;
+
+      setFinalPrice(final.toFixed(2));
+      setYouSaved(savedAmount.toFixed(2));
+      setIsLoading(false);
+    }, 1000); // 1 second fake delay
   };
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 mx-auto rounded-lg shadow-lg w-xl bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Discount Calculator</h2>
       <div className="mb-4">
         <label htmlFor="originalPrice" className="block mb-2 text-sm font-medium">
@@ -35,7 +45,7 @@ const DiscountCalculator: React.FC = () => {
         <input
           type="number"
           id="originalPrice"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={originalPrice}
           onChange={e => setOriginalPrice(e.target.value)}
           placeholder="e.g., 100.00"
@@ -48,7 +58,7 @@ const DiscountCalculator: React.FC = () => {
         <input
           type="number"
           id="discountPercentage"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={discountPercentage}
           onChange={e => setDiscountPercentage(e.target.value)}
           placeholder="e.g., 15"
@@ -56,12 +66,20 @@ const DiscountCalculator: React.FC = () => {
       </div>
       <button
         onClick={calculateDiscount}
-        className="w-full px-4 py-2 text-white rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
+        disabled={isLoading}
+        className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-lg transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
       >
-        Calculate Discount
+        {isLoading ? (
+          <>
+            <FiLoader className="w-5 h-5 animate-spin" />
+            <span>Calculating...</span>
+          </>
+        ) : (
+          <span>Calculate Discount</span>
+        )}
       </button>
       {finalPrice && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary">
+        <div className="p-4 mt-6 rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">
             Final Price: <span className="font-bold text-accent">${finalPrice}</span>
           </p>
