@@ -85,6 +85,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
       label: 'Report a Bug',
       icon: <GoBug />,
     },
+    {
+      href: 'https://github.com/aadilmughal786/one-goal/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=Feature%3A+New+Tool+Suggestion',
+      label: 'Request a New Tool',
+      icon: <FiCpu />,
+    },
   ];
 
   return (

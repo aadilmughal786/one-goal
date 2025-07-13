@@ -4,7 +4,19 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FaCalculator, FaSearch } from 'react-icons/fa';
+import {
+  FaCalculator,
+  FaSearch,
+  FaWeight,
+  FaPercent,
+  FaMoneyBillWave,
+  FaCode,
+  FaKey,
+  FaPalette,
+  FaFileAlt,
+  FaDice,
+} from 'react-icons/fa';
+
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
@@ -12,6 +24,15 @@ import ChatCalculator from '@/components/tools/ChatCalculator';
 import DrawingTool from '@/components/tools/DrawingTool';
 import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
+import BMICalculator from '@/components/tools/BMICalculator';
+import DiscountCalculator from '@/components/tools/DiscountCalculator';
+import LoanCalculator from '@/components/tools/LoanCalculator';
+import BinaryConverter from '@/components/tools/BinaryConverter';
+
+import PasswordGenerator from '@/components/tools/PasswordGenerator';
+import ColorConverter from '@/components/tools/ColorConverter';
+import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
+import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -57,6 +78,64 @@ const allTools: ToolItem[] = [
     description: 'A basic drawing tool for quick sketches and diagrams.',
     icon: FiEdit,
     component: DrawingTool,
+  },
+  {
+    id: 'bmi',
+    name: 'BMI Calculator',
+    description: 'Calculate your Body Mass Index.',
+    icon: FaWeight,
+    component: BMICalculator,
+  },
+  {
+    id: 'discount',
+    name: 'Discount Calculator',
+    description: 'Calculate the final price after a discount.',
+    icon: FaPercent,
+    component: DiscountCalculator,
+  },
+  {
+    id: 'loan',
+    name: 'Loan Calculator',
+    description: 'Calculate monthly payments and total cost of a loan.',
+    icon: FaMoneyBillWave,
+    component: LoanCalculator,
+  },
+  {
+    id: 'binary-converter',
+    name: 'Binary Converter',
+    description: 'Convert binary numbers to decimal, hexadecimal, and octal.',
+    icon: FaCode,
+    component: BinaryConverter,
+  },
+
+  {
+    id: 'password-generator',
+    name: 'Password Generator',
+    description: 'Generate strong, random passwords.',
+    icon: FaKey,
+    component: PasswordGenerator,
+  },
+  {
+    id: 'color-converter',
+    name: 'Color Converter',
+    description: 'Convert colors between HEX, RGB, and HSL formats.',
+    icon: FaPalette,
+    component: ColorConverter,
+  },
+  {
+    id: 'text-utility',
+    name: 'Text Utility',
+    description:
+      'Perform various operations on text like case conversion, counting, and reversing.',
+    icon: FaFileAlt,
+    component: TextUtility,
+  },
+  {
+    id: 'random-number-generator',
+    name: 'Random Number Generator',
+    description: 'Generate random numbers within a specified range.',
+    icon: FaDice,
+    component: RandomNumberGenerator,
   },
 ];
 
@@ -143,7 +222,13 @@ const ToolsPageContent: React.FC = () => {
   return (
     <main className="flex flex-col min-h-screen text-text-primary bg-bg-primary font-poppins">
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-bg-primary/50 border-border-primary">
-        {selectedToolId === 'browse' ? (
+        {isLoading ? (
+          <div className="flex space-x-2">
+            <div className="px-4 py-3 animate-pulse">
+              <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
+            </div>
+          </div>
+        ) : selectedToolId === 'browse' ? (
           <div className="flex space-x-2">
             <button
               onClick={handleBackToTools}
