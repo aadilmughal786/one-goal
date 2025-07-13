@@ -15,6 +15,11 @@ import {
   FaPalette,
   FaFileAlt,
   FaDice,
+  FaCoins,
+  FaDiceFive,
+  FaPercentage,
+  FaBirthdayCake,
+  FaGraduationCap,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -32,6 +37,12 @@ import BinaryConverter from '@/components/tools/BinaryConverter';
 import PasswordGenerator from '@/components/tools/PasswordGenerator';
 import ColorConverter from '@/components/tools/ColorConverter';
 import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
+import CoinFlip from '@/components/tools/CoinFlip';
+import DiceRoller from '@/components/tools/DiceRoller';
+import TipCalculator from '@/components/tools/TipCalculator';
+import AgeCalculator from '@/components/tools/AgeCalculator';
+import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
+
 import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -136,6 +147,41 @@ const allTools: ToolItem[] = [
     description: 'Generate random numbers within a specified range.',
     icon: FaDice,
     component: RandomNumberGenerator,
+  },
+  {
+    id: 'coin-flip',
+    name: 'Coin Flip',
+    description: 'Flip a coin to get a random Heads or Tails result.',
+    icon: FaCoins,
+    component: CoinFlip,
+  },
+  {
+    id: 'dice-roller',
+    name: 'Dice Roller',
+    description: 'Roll one or more dice with customizable sides.',
+    icon: FaDiceFive,
+    component: DiceRoller,
+  },
+  {
+    id: 'tip-calculator',
+    name: 'Tip Calculator',
+    description: 'Calculate tips and split bills easily.',
+    icon: FaPercentage,
+    component: TipCalculator,
+  },
+  {
+    id: 'age-calculator',
+    name: 'Age Calculator',
+    description: 'Calculate age based on birth date.',
+    icon: FaBirthdayCake,
+    component: AgeCalculator,
+  },
+  {
+    id: 'grade-calculator',
+    name: 'Simple Grade Calculator',
+    description: 'Calculate your average grade based on scores and weights.',
+    icon: FaGraduationCap,
+    component: SimpleGradeCalculator,
   },
 ];
 
