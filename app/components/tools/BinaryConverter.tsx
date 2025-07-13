@@ -1,17 +1,27 @@
+// app/components/tools/BinaryConverter.tsx
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
 
 const BinaryConverter: React.FC = () => {
-  const [binary, setBinary] = useState<number[]>(Array(8).fill(0)); // 8 bits, initialized to 0
+  const [bitLength, setBitLength] = useState<number>(8); // Default to 8 bits
+  const [binary, setBinary] = useState<number[]>(Array(bitLength).fill(0)); // Initialized based on bitLength
 
-  const handleBitFlip = useCallback((index: number) => {
-    setBinary(prevBinary => {
-      const newBinary = [...prevBinary];
-      newBinary[index] = newBinary[index] === 0 ? 1 : 0;
-      return newBinary;
-    });
-  }, []);
+  // Reset binary array when bitLength changes
+  React.useEffect(() => {
+    setBinary(Array(bitLength).fill(0));
+  }, [bitLength]);
+
+  const handleBitFlip = useCallback(
+    (index: number) => {
+      setBinary(prevBinary => {
+        const newBinary = [...prevBinary];
+        newBinary[index] = newBinary[index] === 0 ? 1 : 0;
+        return newBinary;
+      });
+    },
+    [bitLength]
+  );
 
   const decimalValue = useMemo(() => {
     return parseInt(binary.join(''), 2);
@@ -30,19 +40,41 @@ const BinaryConverter: React.FC = () => {
       <h2 className="mb-4 text-2xl font-semibold">Binary Converter</h2>
 
       <div className="mb-6">
-        <p className="mb-2 text-lg font-medium">Binary (8-bit):</p>
-        <div className="flex flex-wrap gap-2 justify-center">
-          {binary.map((bit, index) => (
-            <button
-              key={index}
-              onClick={() => handleBitFlip(index)}
-              className={`w-12 h-12 flex items-center justify-center text-xl font-bold rounded-md transition-colors duration-200
-                ${bit === 1 ? 'bg-accent text-white' : 'bg-bg-primary text-text-primary border border-border-primary'}
-                hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent`}
-              aria-label={`Toggle bit ${index + 1}`}
-            >
-              {bit}
-            </button>
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-lg font-medium">Binary ({bitLength}-bit):</p>
+          <div className="flex space-x-2">
+            {[8, 16, 32].map(len => (
+              <button
+                key={len}
+                onClick={() => setBitLength(len)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 cursor-pointer
+                  ${bitLength === len ? 'bg-accent text-black bg-white' : 'bg-bg-primary text-text-primary border border-border-primary'}
+                  hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent`}
+              >
+                {len}-bit
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-4 p-4 rounded-md border border-border-primary bg-bg-primary">
+          {Array.from({ length: bitLength / 8 }).map((_, byteIndex) => (
+            <div key={byteIndex} className="flex flex-wrap gap-2 justify-center">
+              {binary.slice(byteIndex * 8, (byteIndex + 1) * 8).map((bit, indexInByte) => {
+                const originalIndex = byteIndex * 8 + indexInByte;
+                return (
+                  <button
+                    key={originalIndex}
+                    onClick={() => handleBitFlip(originalIndex)}
+                    className={`w-16 h-16 flex items-center justify-center text-2xl font-bold rounded-md transition-colors duration-200 border cursor-pointer
+                      ${bit === 1 ? 'bg-green-300 dark:bg-green-400/60 text-white' : 'bg-bg-primary text-text-primary border-border-primary'}
+                      hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent`}
+                    aria-label={`Toggle bit ${originalIndex + 1}`}
+                  >
+                    {bit}
+                  </button>
+                );
+              })}
+            </div>
           ))}
         </div>
       </div>
