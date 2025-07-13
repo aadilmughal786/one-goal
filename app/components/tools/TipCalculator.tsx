@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { FaCalculator } from 'react-icons/fa';
+import React, { useMemo, useState } from 'react';
 
 const TipCalculator: React.FC = () => {
   const [billAmount, setBillAmount] = useState<string>('');
@@ -28,7 +27,7 @@ const TipCalculator: React.FC = () => {
   }, [totalAmount, people]);
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Tip Calculator</h2>
 
       <div className="mb-4">
@@ -38,7 +37,7 @@ const TipCalculator: React.FC = () => {
         <input
           type="number"
           id="billAmount"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={billAmount}
           onChange={e => setBillAmount(e.target.value)}
           placeholder="e.g., 50.00"
@@ -52,7 +51,7 @@ const TipCalculator: React.FC = () => {
         <input
           type="number"
           id="tipPercentage"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={tipPercentage}
           onChange={e => setTipPercentage(e.target.value)}
           placeholder="e.g., 15"
@@ -66,7 +65,7 @@ const TipCalculator: React.FC = () => {
         <input
           type="number"
           id="numPeople"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={numPeople}
           onChange={e => setNumPeople(e.target.value)}
           placeholder="e.g., 1"
@@ -74,7 +73,7 @@ const TipCalculator: React.FC = () => {
         />
       </div>
 
-      <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary">
+      <div className="p-4 mt-6 rounded-md border bg-bg-primary border-border-primary">
         <p className="text-lg font-medium">
           Tip Amount:{' '}
           <span className="font-bold text-accent">

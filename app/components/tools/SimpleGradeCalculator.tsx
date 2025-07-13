@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { FaGraduationCap } from 'react-icons/fa';
+import React, { useCallback, useMemo, useState } from 'react';
 
 interface GradeInput {
   name: string;
@@ -57,12 +56,12 @@ const SimpleGradeCalculator: React.FC = () => {
   }, [grades]);
 
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Simple Grade Calculator</h2>
 
-      <div className="space-y-4 mb-6">
+      <div className="mb-6 space-y-4">
         {grades.map((grade, index) => (
-          <div key={index} className="flex items-end gap-2">
+          <div key={index} className="flex gap-2 items-end">
             <div className="flex-1">
               <label htmlFor={`grade-name-${index}`} className="block mb-1 text-sm font-medium">
                 Item Name (Optional):
@@ -70,7 +69,7 @@ const SimpleGradeCalculator: React.FC = () => {
               <input
                 type="text"
                 id={`grade-name-${index}`}
-                className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 value={grade.name}
                 onChange={e => handleGradeChange(index, 'name', e.target.value)}
                 placeholder="e.g., Midterm"
@@ -83,7 +82,7 @@ const SimpleGradeCalculator: React.FC = () => {
               <input
                 type="number"
                 id={`grade-score-${index}`}
-                className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 value={grade.score}
                 onChange={e => handleGradeChange(index, 'score', e.target.value)}
                 placeholder="e.g., 85"
@@ -96,7 +95,7 @@ const SimpleGradeCalculator: React.FC = () => {
               <input
                 type="number"
                 id={`grade-weight-${index}`}
-                className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 value={grade.weight}
                 onChange={e => handleGradeChange(index, 'weight', e.target.value)}
                 placeholder="e.g., 20"
@@ -116,12 +115,12 @@ const SimpleGradeCalculator: React.FC = () => {
 
       <button
         onClick={addGrade}
-        className="w-full px-4 py-2 mb-6 text-white rounded-md bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 mb-6 w-full text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         Add Another Grade
       </button>
 
-      <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary">
+      <div className="p-4 mt-6 rounded-md border bg-bg-primary border-border-primary">
         <p className="text-lg font-medium">
           Average Grade: <span className="font-bold text-accent">{calculateAverage}</span>
         </p>

@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { FaBirthdayCake } from 'react-icons/fa';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const AgeCalculator: React.FC = () => {
   const [birthDate, setBirthDate] = useState<string>('');
@@ -32,8 +31,12 @@ const AgeCalculator: React.FC = () => {
     return { years, months, days };
   }, [birthDate]);
 
+  useEffect(() => {
+    setAge(calculateAge);
+  }, [calculateAge]);
+
   return (
-    <div className="p-6 bg-bg-secondary rounded-lg shadow-lg text-text-primary">
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
       <h2 className="mb-4 text-2xl font-semibold">Age Calculator</h2>
 
       <div className="mb-4">
@@ -43,24 +46,24 @@ const AgeCalculator: React.FC = () => {
         <input
           type="date"
           id="birthDate"
-          className="w-full p-2 border rounded-md bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-2 w-full rounded-md border bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-accent"
           value={birthDate}
           onChange={e => setBirthDate(e.target.value)}
         />
       </div>
 
-      {calculateAge && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary">
+      {age && (
+        <div className="p-4 mt-6 rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">
             Your Age:{' '}
             <span className="font-bold text-accent">
-              {calculateAge.years} years, {calculateAge.months} months, and {calculateAge.days} days
+              {age.years} years, {age.months} months, and {age.days} days
             </span>
           </p>
         </div>
       )}
-      {birthDate && !calculateAge && (
-        <div className="mt-6 p-4 bg-bg-primary rounded-md border border-border-primary text-red-500">
+      {birthDate && !age && (
+        <div className="p-4 mt-6 text-red-500 rounded-md border bg-bg-primary border-border-primary">
           <p className="text-lg font-medium">Invalid date. Please enter a valid birth date.</p>
         </div>
       )}
