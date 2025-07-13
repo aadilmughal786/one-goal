@@ -62,7 +62,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
     onClose();
   };
 
-  const menuItems = [{ href: '/tools?tab=calculator', label: 'Tools', icon: <FiCpu /> }];
+  const menuItems = [{ href: '/tools?tool=browse', label: 'Tools', icon: <FiCpu /> }];
 
   const externalLinks = [
     {

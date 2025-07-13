@@ -2,27 +2,62 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FaCalculator } from 'react-icons/fa';
-import { FiEdit, FiWatch } from 'react-icons/fi';
+import { FaCalculator, FaSearch } from 'react-icons/fa';
+import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
 
+import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import ChatCalculator from '@/components/tools/ChatCalculator';
 import DrawingTool from '@/components/tools/DrawingTool';
 import TimeEstimator from '@/components/tools/TimeEstimator';
-
-import PageContentSkeleton from '@/components/common/PageContentSkeleton';
+import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
 import { useAuth } from '@/hooks/useAuth';
 
-const tabItems: {
+interface ToolItem {
   id: string;
-  label: string;
+  name: string;
+  description: string;
   icon: IconType;
-  component: React.FC;
-}[] = [
-  { id: 'calculator', label: 'Calculator', icon: FaCalculator, component: ChatCalculator },
-  { id: 'estimator', label: 'Time Estimator', icon: FiWatch, component: TimeEstimator },
-  { id: 'drawing', label: 'Drawing Pad', icon: FiEdit, component: DrawingTool },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: React.ComponentType<any>;
+}
+
+const allTools: ToolItem[] = [
+  {
+    id: 'browse',
+    name: 'Browse Tools',
+    description: 'Search and discover available tools.',
+    icon: FaSearch,
+    component: ({ allTools, handleToolSelect, handleRequestTool }) => (
+      <ToolSearchAndList
+        allTools={allTools}
+        handleToolSelect={handleToolSelect}
+        handleRequestTool={handleRequestTool}
+      />
+    ),
+  },
+  {
+    id: 'calculator',
+    name: 'Calculator',
+    description: 'A simple calculator for quick arithmetic operations.',
+    icon: FaCalculator,
+    component: ChatCalculator,
+  },
+  {
+    id: 'estimator',
+    name: 'Time Estimator',
+    description: 'Estimate the time required for tasks and projects.',
+    icon: FiWatch,
+    component: TimeEstimator,
+  },
+  {
+    id: 'drawing',
+    name: 'Drawing Pad',
+    description: 'A basic drawing tool for quick sketches and diagrams.',
+    icon: FiEdit,
+    component: DrawingTool,
+  },
 ];
 
 const ToolsPageContent: React.FC = () => {
@@ -30,81 +65,113 @@ const ToolsPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const { isLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<string>(tabItems[0].id);
-  const [isTabContentLoading, setIsTabContentLoading] = useState(false);
+  const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
+  const [isToolContentLoading, setIsToolContentLoading] = useState(false);
 
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    const targetTab = tabItems.find(item => item.id === tabFromUrl)?.id || tabItems[0].id;
-    setActiveTab(targetTab);
+    const toolFromUrl = searchParams.get('tool');
+    if (toolFromUrl && allTools.some(tool => tool.id === toolFromUrl)) {
+      setSelectedToolId(toolFromUrl);
+    } else {
+      setSelectedToolId('browse'); // Default to 'browse' tool
+    }
   }, [searchParams]);
 
   useEffect(() => {
-    if (!isLoading) {
-      setIsTabContentLoading(true);
+    if (!isLoading && selectedToolId) {
+      setIsToolContentLoading(true);
       const timer = setTimeout(() => {
-        setIsTabContentLoading(false);
+        setIsToolContentLoading(false);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, isLoading]);
+  }, [selectedToolId, isLoading]);
 
-  const handleTabChange = useCallback(
-    (tabId: string) => {
-      setActiveTab(tabId);
+  const handleToolSelect = useCallback(
+    (toolId: string) => {
+      setSelectedToolId(toolId);
       const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.set('tab', tabId);
+      newSearchParams.set('tool', toolId);
       router.replace(`?${newSearchParams.toString()}`, { scroll: false });
     },
     [router, searchParams]
   );
 
-  const ActiveComponent = useMemo(
-    () => tabItems.find(item => item.id === activeTab)?.component || ChatCalculator,
-    [activeTab]
-  );
+  const handleBackToTools = useCallback(() => {
+    setSelectedToolId('browse');
+    router.replace('/tools?tool=browse', { scroll: false });
+  }, [router]);
 
-  const renderActiveTabContent = () => {
-    if (isLoading || isTabContentLoading) {
+  const handleRequestTool = useCallback(() => {
+    const githubIssueUrl =
+      'https://github.com/aadilmughal786/one-goal/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=Feature%3A+New+Tool+Suggestion';
+    window.open(githubIssueUrl, '_blank');
+  }, []);
+
+  const renderContent = () => {
+    if (isLoading || isToolContentLoading) {
       return <PageContentSkeleton />;
     }
-    return <ActiveComponent />;
+
+    const currentTool = allTools.find(t => t.id === selectedToolId);
+
+    if (currentTool) {
+      const ComponentToRender = currentTool.component;
+      if (currentTool.id === 'browse') {
+        return (
+          <ComponentToRender
+            allTools={allTools.filter(tool => tool.id !== 'browse')}
+            handleToolSelect={handleToolSelect}
+            handleRequestTool={handleRequestTool}
+          />
+        );
+      } else {
+        return (
+          <div className="pt-4">
+            <ComponentToRender />
+          </div>
+        );
+      }
+    }
+    return (
+      <div className="p-8 text-center text-text-secondary">
+        <p className="text-lg">Select a tool from the list to get started!</p>
+      </div>
+    );
   };
 
   return (
     <main className="flex flex-col min-h-screen text-text-primary bg-bg-primary font-poppins">
       <nav className="flex sticky top-0 z-30 justify-center px-4 border-b backdrop-blur-md bg-bg-primary/50 border-border-primary">
-        <div className="flex flex-wrap justify-center space-x-1 sm:space-x-2">
-          {isLoading
-            ? [...Array(tabItems.length)].map((_, i) => (
-                <div key={i} className="px-3 py-3 animate-pulse sm:px-4">
-                  <div className="w-24 h-6 rounded-md bg-bg-tertiary"></div>
-                </div>
-              ))
-            : tabItems.map(item => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabChange(item.id)}
-                    className={`flex items-center cursor-pointer gap-2 px-3 sm:px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 focus:outline-none ${
-                      isActive
-                        ? 'text-text-primary border-border-accent'
-                        : 'border-transparent text-text-secondary hover:text-text-primary'
-                    }`}
-                    aria-label={`Switch to ${item.label} tab`}
-                  >
-                    <Icon size={18} />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </button>
-                );
-              })}
-        </div>
+        {selectedToolId === 'browse' ? (
+          <div className="flex space-x-2">
+            <button
+              onClick={handleBackToTools}
+              className="flex gap-2 items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none text-text-primary border-border-accent"
+              aria-label="Tools"
+            >
+              Tools
+            </button>
+          </div>
+        ) : (
+          <div className="flex relative justify-center items-center w-full">
+            <button
+              onClick={handleBackToTools}
+              className="absolute left-0 p-2 rounded-full transition-colors cursor-pointer text-text-secondary hover:text-text-primary"
+              aria-label="Go to Tools"
+            >
+              <FiChevronLeft size={24} />
+            </button>
+            <button
+              className="flex gap-2 items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors duration-200 cursor-pointer focus:outline-none text-text-primary border-border-accent"
+              aria-label={`Current Tool: ${allTools.find(t => t.id === selectedToolId)?.name}`}
+            >
+              {allTools.find(t => t.id === selectedToolId)?.name}
+            </button>
+          </div>
+        )}
       </nav>
-      <div className="container flex-grow p-4 mx-auto max-w-5xl">
-        <section className="py-8 w-full">{renderActiveTabContent()}</section>
-      </div>
+      <div className="container flex-grow p-4 mx-auto max-w-5xl">{renderContent()}</div>
     </main>
   );
 };
