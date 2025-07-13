@@ -11,7 +11,7 @@ import { useDistractionStore } from '@/store/useDistractionStore';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { DistractionItem } from '@/types';
-import { FaAnglesRight } from 'react-icons/fa6';
+import { FaAngleRight, FaAnglesRight, FaCircle } from 'react-icons/fa6';
 
 interface DistractionListProps {
   onEditDistraction: (item: DistractionItem) => void;
@@ -31,6 +31,45 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null);
+  const [expandedPatterns, setExpandedPatterns] = useState<Record<string, boolean>>({});
+
+  const getDistractionStatus = (count: number) => {
+    if (count === 0) {
+      return {
+        text: 'Excellent',
+        textColor: 'text-green-400',
+        bgColor: 'bg-green-500/10',
+        tooltip: "Great job! You've successfully avoided this distraction.",
+      };
+    }
+    if (count <= 10) {
+      return {
+        text: 'Good',
+        textColor: 'text-yellow-400',
+        bgColor: 'bg-yellow-500/10',
+        tooltip: "You're doing well. Keep up the effort to reduce this further.",
+      };
+    }
+    if (count <= 20) {
+      return {
+        text: 'Moderate',
+        textColor: 'text-orange-400',
+        bgColor: 'bg-orange-500/10',
+        tooltip: "This is a frequent distraction. Let's focus on identifying the triggers.",
+      };
+    }
+    return {
+      text: 'High',
+      textColor: 'text-red-400',
+      bgColor: 'bg-red-500/10',
+      tooltip:
+        'This is a significant challenge. Consider breaking it down or seeking new strategies to manage it.',
+    };
+  };
+
+  const togglePatterns = (id: string) => {
+    setExpandedPatterns(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleAddItem = useCallback(async () => {
     if (!inputValue.trim()) {
@@ -113,10 +152,12 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
         ) : (
           list.map(item => {
             const isUpdatingThis = isUpdatingId === item.id;
+            const status = getDistractionStatus(item.count);
+
             return (
               <li
                 key={item.id}
-                className={`flex flex-col p-4 rounded-lg border transition-all duration-200 ${currentTheme.bg} ${currentTheme.border}`}
+                className={`flex flex-col p-4 rounded-lg border transition-all duration-200 bg-bg-secondary border-border-primary`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <span
@@ -126,6 +167,21 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
                     {item.title}
                   </span>
                   <div className="flex flex-shrink-0 gap-1 items-center">
+                    {/* Status Chip with Tooltip */}
+                    <div className="inline-block relative group">
+                      <div
+                        className={`flex items-center gap-2 px-2 py-1 rounded-full ${status.bgColor} cursor-pointer`}
+                      >
+                        <FaCircle className={`w-2 h-2 ${status.textColor}`} />
+                        <span className={`text-xs font-semibold ${status.textColor}`}>
+                          {status.text}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-full left-1/2 z-10 px-3 py-2 mb-2 w-max max-w-xs text-sm font-medium rounded-lg border shadow-sm opacity-0 transition-opacity duration-300 -translate-x-1/2 group-hover:opacity-100 bg-bg-primary border-border-primary text-text-primary">
+                        {status.tooltip}
+                        <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-primary border-border-primary"></div>
+                      </div>
+                    </div>
                     <button
                       onClick={() => onEditDistraction(item)}
                       className="p-2 rounded-full transition-colors cursor-pointer text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary"
@@ -145,30 +201,40 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
                   </div>
                 </div>
 
-                <div className="flex-grow">
-                  {item.description && (
-                    <p className="mb-2 text-sm text-text-secondary">{item.description}</p>
+                {item.description && (
+                  <p className="mt-3 mb-2 text-sm text-text-secondary">{item.description}</p>
+                )}
+                {item.triggerPatterns &&
+                  item.triggerPatterns.length > 0 &&
+                  item.triggerPatterns.some(p => p.trim() !== '') && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => togglePatterns(item.id)}
+                        className="flex items-center py-2 w-full text-xs font-semibold tracking-wider uppercase cursor-pointer text-text-muted"
+                      >
+                        <span>Trigger Patterns</span>
+                        <span
+                          className={`transition-transform duration-300 ml-2 ${expandedPatterns[item.id] ? 'rotate-90' : ''}`}
+                        >
+                          <FaAngleRight />
+                        </span>
+                      </button>
+                      {expandedPatterns[item.id] && (
+                        <div className="pb-2 pl-1">
+                          <ul className="space-y-1">
+                            {item.triggerPatterns.map((pattern, index) => (
+                              <li
+                                key={index}
+                                className="flex items-center gap-2.5 text-sm text-text-secondary animate-fade-in-down"
+                              >
+                                <FaAnglesRight className="text-red-500" /> <span>{pattern}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {item.triggerPatterns &&
-                    item.triggerPatterns.length > 0 &&
-                    item.triggerPatterns.some(p => p.trim() !== '') && (
-                      <div className="px-4 pt-3 -mx-4 mt-3 border-t border-border-secondary">
-                        <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-text-muted">
-                          Trigger Patterns
-                        </h4>
-                        <ul className="space-y-1">
-                          {item.triggerPatterns.map((pattern, index) => (
-                            <li
-                              key={index}
-                              className="flex items-center gap-2.5 text-sm text-text-secondary"
-                            >
-                              <FaAnglesRight className="text-red-500" /> <span>{pattern}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                </div>
 
                 <div className="flex justify-between items-center px-4 pt-3 -mx-4 mt-3 border-t border-border-secondary">
                   <div className="flex gap-1 items-center text-xs text-text-tertiary">
