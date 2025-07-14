@@ -12,16 +12,13 @@ const BinaryConverter: React.FC = () => {
     setBinary(Array(bitLength).fill(0));
   }, [bitLength]);
 
-  const handleBitFlip = useCallback(
-    (index: number) => {
-      setBinary(prevBinary => {
-        const newBinary = [...prevBinary];
-        newBinary[index] = newBinary[index] === 0 ? 1 : 0;
-        return newBinary;
-      });
-    },
-    [bitLength]
-  );
+  const handleBitFlip = useCallback((index: number) => {
+    setBinary(prevBinary => {
+      const newBinary = [...prevBinary];
+      newBinary[index] = newBinary[index] === 0 ? 1 : 0;
+      return newBinary;
+    });
+  }, []);
 
   const decimalValue = useMemo(() => {
     return parseInt(binary.join(''), 2);

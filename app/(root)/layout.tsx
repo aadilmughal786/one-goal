@@ -12,6 +12,7 @@ import ToastMessage from '@/components/common/ToastMessage';
 import NavBar from '@/components/layout/NavBar';
 import FloatingStopwatch from '@/components/stop-watch/FloatingStopwatch';
 import { getKbarActions } from '@/config/kbarActions';
+import { useBeforeUnload } from '@/hooks/useBeforeUnload';
 import { KBarProvider } from 'kbar';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react'; // Import useState
@@ -24,6 +25,8 @@ export default function RootLayout({
   const router = useRouter();
   const [isAboutDevModalOpen, setIsAboutDevModalOpen] = useState(false); // State for AboutDev modal
   const [isAppInfoModalOpen, setIsAppInfoModalOpen] = useState(false); // State for AppInfo modal
+
+  useBeforeUnload();
 
   const toggleTheme = () => {
     const root = document.documentElement;
