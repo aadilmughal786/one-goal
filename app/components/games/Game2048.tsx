@@ -206,36 +206,48 @@ const Game2048: React.FC = () => {
 
   const getTileColor = (value: number) => {
     switch (value) {
+      case 0:
+        return 'bg-bg-tertiary'; // Empty cell background
       case 2:
-        return 'bg-blue-200';
+        return 'bg-bg-primary';
       case 4:
-        return 'bg-blue-300';
+        return 'bg-bg-secondary';
       case 8:
-        return 'bg-blue-400';
+        return 'bg-yellow-300';
       case 16:
-        return 'bg-blue-500';
+        return 'bg-orange-400';
       case 32:
-        return 'bg-blue-600';
+        return 'bg-red-500';
       case 64:
-        return 'bg-blue-700';
-      case 128:
-        return 'bg-blue-800';
-      case 256:
-        return 'bg-blue-900';
-      case 512:
-        return 'bg-purple-500';
-      case 1024:
         return 'bg-purple-600';
+      case 128:
+        return 'bg-blue-700';
+      case 256:
+        return 'bg-green-700';
+      case 512:
+        return 'bg-indigo-700';
+      case 1024:
+        return 'bg-pink-700';
       case 2048:
         return 'bg-yellow-500';
       default:
-        return 'bg-gray-300';
+        return 'bg-gray-300'; // Fallback
+    }
+  };
+
+  const getTileTextColor = (value: number) => {
+    if (value === 2 || value === 4 || value === 8) {
+      return 'text-text-primary';
+    } else if (value === 2048) {
+      return 'text-black';
+    } else {
+      return 'text-white';
     }
   };
 
   return (
     <div className="p-6 text-center rounded-lg shadow-lg bg-bg-secondary text-text-primary">
-      <h2 className="mb-4 text-2xl font-semibold">2048 (Simplified)</h2>
+      <h2 className="mb-4 text-2xl font-semibold">2048</h2>
 
       <div className="mb-4 text-lg font-medium">
         <p>
@@ -244,7 +256,7 @@ const Game2048: React.FC = () => {
       </div>
 
       <div
-        className="grid gap-2 p-2 mx-auto bg-gray-400 rounded-lg"
+        className="grid gap-2 p-2 mx-auto rounded-lg bg-bg-tertiary"
         style={{
           gridTemplateColumns: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
           gridTemplateRows: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
@@ -261,7 +273,7 @@ const Game2048: React.FC = () => {
             return (
               <div
                 key={index}
-                className={`flex items-center justify-center rounded-lg text-3xl font-bold text-white ${getTileColor(tile?.value || 0)}`}
+                className={`flex items-center justify-center rounded-lg text-3xl font-bold ${getTileTextColor(tile?.value || 0)} ${getTileColor(tile?.value || 0)}`}
                 style={{
                   width: TILE_SIZE,
                   height: TILE_SIZE,
@@ -281,7 +293,7 @@ const Game2048: React.FC = () => {
           </p>
           <button
             onClick={resetGame}
-            className="px-4 py-2 mt-4 text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 mt-4 text-black rounded-md bg-accent hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent"
           >
             Play Again
           </button>

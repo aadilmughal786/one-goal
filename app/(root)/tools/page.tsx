@@ -19,6 +19,7 @@ import {
   FaPercentage,
   FaSearch,
   FaWeight,
+  FaQrcode,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -42,6 +43,7 @@ import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
 import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
 import TipCalculator from '@/components/tools/TipCalculator';
 import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
+import QRCodeGenerator from '@/components/tools/QRCodeGenerator';
 
 import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
@@ -132,6 +134,13 @@ const allTools: ToolItem[] = [
     description: 'Generate strong, random passwords.',
     icon: FaKey,
     component: PasswordGenerator,
+  },
+  {
+    id: 'qr-code-generator',
+    name: 'QR Code Generator',
+    description: 'Generate QR codes from text or URLs.',
+    icon: FaQrcode,
+    component: QRCodeGenerator,
   },
 
   {
