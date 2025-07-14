@@ -20,6 +20,7 @@ import {
   FaSearch,
   FaWeight,
   FaQrcode,
+  FaEye,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -44,6 +45,7 @@ import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
 import TipCalculator from '@/components/tools/TipCalculator';
 import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 import QRCodeGenerator from '@/components/tools/QRCodeGenerator';
+import VisionTest from '@/components/tools/VisionTest';
 
 import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
@@ -141,6 +143,13 @@ const allTools: ToolItem[] = [
     description: 'Generate QR codes from text or URLs.',
     icon: FaQrcode,
     component: QRCodeGenerator,
+  },
+  {
+    id: 'vision-test',
+    name: 'Vision Test',
+    description: 'Perform a basic Snellen eye chart test.',
+    icon: FaEye,
+    component: VisionTest,
   },
 
   {
