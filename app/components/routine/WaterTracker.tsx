@@ -7,7 +7,9 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useRoutineStore } from '@/store/useRoutineStore';
 import { RoutineType, WaterRoutineSettings } from '@/types';
+import Link from 'next/link';
 import React from 'react';
+import { FaCalculator } from 'react-icons/fa';
 import { MdAdd, MdOutlineWaterDrop, MdRemove } from 'react-icons/md';
 
 const WaterTracker: React.FC = () => {
@@ -56,10 +58,19 @@ const WaterTracker: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="card">
-        <h2 className="flex gap-3 items-center mb-6 text-2xl font-bold text-text-primary">
-          <MdOutlineWaterDrop size={28} />
-          Daily Water Intake
-        </h2>
+        <div className="flex flex-wrap justify-between items-center mb-6">
+          <h2 className="flex gap-3 items-center text-2xl font-bold text-text-primary">
+            <MdOutlineWaterDrop size={28} />
+            Daily Water Intake
+          </h2>
+          <Link
+            href="/tools?tool=water-intake"
+            className="flex gap-2 items-center py-2 px-4 text-sm font-medium rounded-lg transition-colors text-accent-secondary bg-accent-primary/10 hover:bg-accent-primary/20"
+          >
+            <FaCalculator />
+            <span>Estimate Your Needs</span>
+          </Link>
+        </div>
 
         <div className="mb-6 text-center">
           <div className="text-4xl font-bold text-blue-400">

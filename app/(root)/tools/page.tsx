@@ -22,6 +22,7 @@ import {
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
+import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
 import BinaryConverter from '@/components/tools/BinaryConverter';
@@ -40,6 +41,7 @@ import PasswordGenerator from '@/components/tools/PasswordGenerator';
 import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
 import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
 import TipCalculator from '@/components/tools/TipCalculator';
+import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
 import TextUtility from '@/components/tools/TextUtility';
 import { useAuth } from '@/hooks/useAuth';
@@ -94,6 +96,13 @@ const allTools: ToolItem[] = [
     description: 'Calculate your Body Mass Index.',
     icon: FaWeight,
     component: BMICalculator,
+  },
+  {
+    id: 'water-intake',
+    name: 'Water Intake Calculator',
+    description: 'Estimate your daily water intake based on weight and activity level.',
+    icon: IoWaterOutline,
+    component: WaterIntakeCalculator,
   },
   {
     id: 'discount',
