@@ -55,7 +55,6 @@ export enum ReminderType {
   POSTURE = 'posture',
 }
 
-// NEW: Enum for different resource types
 export enum ResourceType {
   IMAGE = 'image',
   VIDEO = 'video',
@@ -63,6 +62,30 @@ export enum ResourceType {
   AUDIO = 'audio',
   DOC = 'doc',
   OTHER = 'other',
+}
+
+// --- NEW FINANCE ENUMS ---
+export enum AssetType {
+  CASH = 'cash',
+  BANK_ACCOUNT = 'bank_account',
+  INVESTMENT = 'investment',
+  REAL_ESTATE = 'real_estate',
+  VEHICLE = 'vehicle',
+  OTHER = 'other',
+}
+
+export enum LiabilityType {
+  LOAN = 'loan',
+  CREDIT_CARD = 'credit_card',
+  MORTGAGE = 'mortgage',
+  OTHER = 'other',
+}
+
+export enum BudgetPeriod {
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly',
+  CUSTOM = 'custom',
 }
 
 // =================================================================//
@@ -117,7 +140,6 @@ export interface TimeBlock extends BaseEntity, Completable {
   color: string;
 }
 
-// NEW: Interface for a single resource link
 export interface Resource extends BaseEntity {
   url: string;
   title: string;
@@ -240,6 +262,67 @@ export interface Quote {
 }
 
 // =================================================================//
+//                      FINANCE RELATED ENTITIES
+// =================================================================//
+
+export interface Transaction extends BaseEntity {
+  date: Timestamp;
+  amount: number;
+  description: string;
+  budgetId: string;
+  type: 'income' | 'expense';
+}
+
+export interface Budget extends BaseEntity {
+  category: string;
+  amount: number;
+  period: BudgetPeriod;
+  startDate: Timestamp | null; // REVISION: Changed from '?' to '| null' for consistency
+  endDate: Timestamp | null; // REVISION: Changed from '?' to '| null' for consistency
+}
+
+export interface Subscription extends BaseEntity {
+  name: string;
+  amount: number;
+  billingCycle: 'monthly' | 'yearly' | 'quarterly';
+  nextBillingDate: Timestamp;
+  endDate: Timestamp | null;
+  cancellationUrl: string | null;
+  notes: string | null;
+  budgetId: string;
+}
+
+export interface Asset extends BaseEntity {
+  name: string;
+  amount: number;
+  type: AssetType;
+  notes: string | null;
+}
+
+export interface Liability extends BaseEntity {
+  name: string;
+  amount: number;
+  type: LiabilityType;
+  notes: string | null;
+}
+
+export interface NetWorthData extends BaseEntity {
+  date: Timestamp;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+}
+
+export interface FinanceData {
+  transactions: Transaction[];
+  budgets: Budget[];
+  subscriptions: Subscription[];
+  assets: Asset[];
+  liabilities: Liability[];
+  netWorthHistory: NetWorthData[];
+}
+
+// =================================================================//
 //                        TOP-LEVEL STATE
 // =================================================================//
 
@@ -258,7 +341,8 @@ export interface Goal extends BaseEntity {
   starredQuotes: number[];
   timeBlocks: TimeBlock[];
   randomPickerItems: string[];
-  resources: Resource[]; // NEW: Add resources array to Goal
+  resources: Resource[];
+  financeData: FinanceData | null; // REVISION: Changed from '?' to '| null' for consistency
 }
 
 export interface AppState {

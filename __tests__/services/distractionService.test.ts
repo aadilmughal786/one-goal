@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // __tests__/services/distractionService.test.ts
 
 import * as distractionService from '@/services/distractionService';
@@ -70,23 +71,10 @@ describe('Distraction Service', () => {
       timeBlocks: [],
       randomPickerItems: [],
       resources: [],
-      routineSettings: {
-        sleep: null,
-        water: null,
-        bath: [],
-        exercise: [],
-        meal: [],
-        teeth: [],
-        lastRoutineResetDate: null,
-      },
-      wellnessSettings: {
-        water: { enabled: false, frequency: 60 },
-        eyeCare: { enabled: false, frequency: 45 },
-        stretch: { enabled: false, frequency: 90 },
-        break: { enabled: false, frequency: 60 },
-        posture: { enabled: false, frequency: 30 },
-      },
+      routineSettings: {} as any,
+      wellnessSettings: {} as any,
       starredQuotes: [],
+      financeData: null,
     };
 
     mockAppState = {

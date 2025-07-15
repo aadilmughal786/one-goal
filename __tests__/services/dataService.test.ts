@@ -60,6 +60,25 @@ describe('Data Service', () => {
       } as any,
       wellnessSettings: {} as any,
       starredQuotes: [],
+      financeData: {
+        transactions: [
+          {
+            id: 'txn-1',
+            date: testTimestamp,
+            amount: 100,
+            description: 'Test',
+            budgetId: 'budget-1',
+            type: 'expense',
+            createdAt: testTimestamp,
+            updatedAt: testTimestamp,
+          },
+        ],
+        budgets: [],
+        subscriptions: [],
+        assets: [],
+        liabilities: [],
+        netWorthHistory: [],
+      },
     };
   });
 
@@ -77,6 +96,7 @@ describe('Data Service', () => {
       expect(serializedGoal.toDoList[0].completedAt).toBe(testDate.toISOString());
       expect(typeof serializedGoal.routineSettings.lastRoutineResetDate).toBe('string');
       expect(serializedGoal.routineSettings.lastRoutineResetDate).toBe(testDate.toISOString());
+      expect(typeof serializedGoal.financeData.transactions[0].date).toBe('string');
     });
 
     it('should not alter non-Timestamp properties', () => {
@@ -88,6 +108,7 @@ describe('Data Service', () => {
       expect(serializedGoal.name).toBe('Test Goal for Serialization');
       expect(serializedGoal.status).toBe(GoalStatus.ACTIVE);
       expect(serializedGoal.toDoList[0].text).toBe('A test to-do');
+      expect(serializedGoal.financeData.transactions[0].amount).toBe(100);
     });
   });
 
@@ -116,6 +137,20 @@ describe('Data Service', () => {
               updatedAt: testDate.toISOString(),
             },
           ],
+          financeData: {
+            transactions: [
+              {
+                id: 'txn-1',
+                date: testDate.toISOString(),
+                amount: 100,
+                description: 'Test',
+                budgetId: 'budget-1',
+                type: 'expense',
+                createdAt: testDate.toISOString(),
+                updatedAt: testDate.toISOString(),
+              },
+            ],
+          },
         },
       ];
     });
@@ -127,6 +162,7 @@ describe('Data Service', () => {
       // Verify that all string dates have been converted back to Timestamp objects.
       expect(deserializedGoal.startDate).toBeInstanceOf(Timestamp);
       expect(deserializedGoal.toDoList[0].completedAt).toBeInstanceOf(Timestamp);
+      expect(deserializedGoal.financeData?.transactions[0].date).toBeInstanceOf(Timestamp);
       // Compare the time value to ensure the conversion was accurate.
       expect((deserializedGoal.startDate as Timestamp).toDate().getTime()).toBe(testDate.getTime());
     });
@@ -140,12 +176,13 @@ describe('Data Service', () => {
       expect(deserializedGoal.id).toBe('mock-uuid-for-testing');
     });
 
-    it('should not change the IDs of nested items like to-dos', () => {
+    it('should not change the IDs of nested items like to-dos or transactions', () => {
       const deserializedGoals = deserializeGoalsForImport(serializedData);
       const deserializedGoal = deserializedGoals[0];
 
       // Verify that the ID of the nested to-do item was preserved.
       expect(deserializedGoal.toDoList[0].id).toBe('todo-1');
+      expect(deserializedGoal.financeData?.transactions[0].id).toBe('txn-1');
     });
   });
 });

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
+import { FaMoneyBillWave } from 'react-icons/fa';
 import { FiCheckSquare, FiHome, FiTarget } from 'react-icons/fi';
 import { GoStopwatch } from 'react-icons/go';
 import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md';
@@ -17,6 +18,7 @@ const navLinks = [
   { href: '/stop-watch?tab=stopwatch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine?tab=sleep', label: 'Routine', icon: <MdOutlineRepeat /> },
   { href: '/goal?tab=hub', label: 'Goals', icon: <FiTarget /> },
+  { href: '/finance?tab=budgets', label: 'Finance', icon: <FaMoneyBillWave /> },
 ];
 
 export default function NavBar() {
@@ -73,7 +75,7 @@ export default function NavBar() {
       <div className="flex flex-col gap-2 w-full">
         {authLoading ? (
           <div className="flex flex-col gap-4 items-center">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(navLinks.length)].map((_, i) => (
               <div key={i} className="w-12 h-12 rounded-lg animate-pulse bg-bg-tertiary"></div>
             ))}
           </div>

@@ -40,9 +40,10 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
       reader.onload = async e => {
         try {
           const importedRawData = JSON.parse(e.target?.result as string);
+          // The schema expects an array, ensuring the imported file has the correct structure.
           const validation = serializableGoalsArraySchema.safeParse(importedRawData);
           if (!validation.success) {
-            showToast('Import failed. Invalid file format.', 'error');
+            showToast('Import failed. Invalid file format (must be an array of goals).', 'error');
             return;
           }
           const deserializedGoals = deserializeGoalsForImport(validation.data);
@@ -69,6 +70,8 @@ const DataManagementTab: React.FC<DataManagementTabProps> = ({ onGoalsImported }
     }
     setIsLoading(true);
     try {
+      // KEY: Object.values() converts the goals map into an array of goals.
+      // This ensures the data passed to the serialization function is always an array.
       const serializableData = serializeGoalsForExport(Object.values(appState.goals));
       const dataStr = JSON.stringify(serializableData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });

@@ -1,8 +1,11 @@
 // app/utils/schemas.ts
 import {
+  AssetType,
+  BudgetPeriod, // NEW: Imported BudgetPeriod enum
   GoalStatus,
+  LiabilityType,
   ReminderType,
-  ResourceType, // NEW
+  ResourceType,
   RoutineLogStatus,
   RoutineType,
   SatisfactionLevel,
@@ -59,7 +62,6 @@ export const timeBlockSchema = baseEntitySchema.merge(completableSchema).extend(
   color: z.string().min(1, 'Color cannot be empty'),
 });
 
-// NEW: Schema for a single resource
 export const resourceSchema = baseEntitySchema.extend({
   url: z.string().url('Must be a valid URL'),
   title: z.string().min(1, 'Title cannot be empty'),
@@ -141,6 +143,89 @@ export const wellnessSettingsSchema = z.object({
 });
 
 // =================================================================//
+//                      FINANCE RELATED SCHEMAS
+// =================================================================//
+
+export const transactionSchema = baseEntitySchema.extend({
+  date: timestampSchema,
+  amount: z.number().positive('Amount must be positive'),
+  description: z.string().min(1, 'Description cannot be empty').max(200, 'Description is too long'),
+  // REVISION: Changed from 'category' to 'budgetId' for robust data linking.
+  budgetId: z.string().min(1, 'Budget ID cannot be empty'),
+  type: z.union([z.literal('income'), z.literal('expense')]),
+});
+
+export const budgetSchema = baseEntitySchema
+  .extend({
+    category: z.string().min(1, 'Category cannot be empty').max(100, 'Category is too long'),
+    amount: z.number().positive('Amount must be positive'),
+    // REVISION: 'spent' is derived data and has been removed to prevent inconsistency.
+    period: z.nativeEnum(BudgetPeriod),
+    startDate: timestampSchema.nullable(),
+    endDate: timestampSchema.nullable(),
+  })
+  // REVISION: Added refine to ensure end date is after start date for custom periods.
+  .refine(
+    data => {
+      if (data.period === BudgetPeriod.CUSTOM) {
+        return (
+          data.startDate && data.endDate && data.endDate.toMillis() >= data.startDate.toMillis()
+        );
+      }
+      return true;
+    },
+    {
+      message: 'End date must be after or the same as start date for custom periods.',
+      path: ['endDate'],
+    }
+  );
+
+export const subscriptionSchema = baseEntitySchema.extend({
+  name: z
+    .string()
+    .min(1, 'Subscription name cannot be empty')
+    .max(100, 'Subscription name is too long'),
+  amount: z.number().positive('Amount must be positive'),
+  billingCycle: z.union([z.literal('monthly'), z.literal('yearly'), z.literal('quarterly')]),
+  nextBillingDate: timestampSchema,
+  endDate: timestampSchema.nullable(),
+  cancellationUrl: z.string().url('Invalid URL').nullable(),
+  notes: z.string().nullable(),
+  // REVISION: Added budgetId to link subscriptions to a budget.
+  budgetId: z.string().min(1, 'Budget ID cannot be empty'),
+});
+
+export const assetSchema = baseEntitySchema.extend({
+  name: z.string().min(1, 'Asset name cannot be empty').max(100, 'Asset name is too long'),
+  amount: z.number().min(0, 'Asset amount cannot be negative'),
+  type: z.nativeEnum(AssetType),
+  notes: z.string().nullable(),
+});
+
+export const liabilitySchema = baseEntitySchema.extend({
+  name: z.string().min(1, 'Liability name cannot be empty').max(100, 'Liability name is too long'),
+  amount: z.number().min(0, 'Liability amount cannot be negative'),
+  type: z.nativeEnum(LiabilityType),
+  notes: z.string().nullable(),
+});
+
+export const netWorthDataSchema = baseEntitySchema.extend({
+  date: timestampSchema,
+  totalAssets: z.number(),
+  totalLiabilities: z.number(),
+  netWorth: z.number(),
+});
+
+export const financeDataSchema = z.object({
+  transactions: z.array(transactionSchema).default([]),
+  budgets: z.array(budgetSchema).default([]),
+  subscriptions: z.array(subscriptionSchema).default([]),
+  assets: z.array(assetSchema).default([]),
+  liabilities: z.array(liabilitySchema).default([]),
+  netWorthHistory: z.array(netWorthDataSchema).default([]),
+});
+
+// =================================================================//
 //                        TOP-LEVEL STATE
 // =================================================================//
 
@@ -160,7 +245,9 @@ export const goalSchema = baseEntitySchema
     starredQuotes: z.array(z.number().int()),
     timeBlocks: z.array(timeBlockSchema).default([]),
     randomPickerItems: z.array(z.string()).default([]),
-    resources: z.array(resourceSchema).default([]), // NEW: Add resources schema to Goal
+    resources: z.array(resourceSchema).default([]),
+    // REVISION: Added financeData as an optional property within each goal.
+    financeData: financeDataSchema.nullable(),
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {
     message: 'End date must be after or the same as start date',
@@ -170,6 +257,7 @@ export const goalSchema = baseEntitySchema
 export const appStateSchema = z.object({
   activeGoalId: z.string().nullable(),
   goals: z.record(z.string(), goalSchema),
+  // REVISION: Removed top-level finance schema to nest it within goals.
 });
 
 // =================================================================//
@@ -179,7 +267,6 @@ export const appStateSchema = z.object({
 export const serializableGoalSchema = z.any();
 export const serializableGoalsArraySchema = z.array(serializableGoalSchema);
 
-// NEW: Schema for the AddResourceModal form
 export const resourceFormSchema = z.object({
   url: z.string().url({ message: 'Please enter a valid URL.' }),
   title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title is too long.'),
@@ -189,7 +276,7 @@ export const resourceFormSchema = z.object({
 export const todoEditFormSchema = z.object({
   text: z.string().min(1).max(200),
   description: z.string().max(500).nullable(),
-  deadline: z.date().nullable().optional(),
+  deadline: z.date().nullable(),
 });
 
 export const scheduleEditFormSchema = z.object({
@@ -207,8 +294,8 @@ export const goalFormSchema = z.object({
 
 export const dailyProgressFormSchema = z.object({
   satisfaction: z.nativeEnum(SatisfactionLevel),
-  notes: z.string().max(500).optional().nullable(),
-  weight: z.coerce.number().positive().optional().nullable(),
+  notes: z.string().max(500).nullable(),
+  weight: z.coerce.number().positive().nullable(),
 });
 
 export const distractionEditFormSchema = z.object({
@@ -228,3 +315,63 @@ export const timeBlockFormSchema = z
     message: 'End time must be after start time.',
     path: ['endTime'],
   });
+
+// --- NEW FINANCE FORM SCHEMAS ---
+
+export const transactionFormSchema = z.object({
+  date: z.date(),
+  amount: z.coerce.number().positive('Amount must be positive'),
+  description: z.string().min(1, 'Description cannot be empty').max(200, 'Description is too long'),
+  budgetId: z.string().min(1, 'A budget must be selected'),
+  type: z.union([z.literal('income'), z.literal('expense')]),
+});
+
+export const budgetFormSchema = z
+  .object({
+    category: z.string().min(1, 'Category cannot be empty').max(100, 'Category is too long'),
+    amount: z.coerce.number().positive('Amount must be positive'),
+    period: z.nativeEnum(BudgetPeriod),
+    startDate: z.date().nullable(),
+    endDate: z.date().nullable(),
+  })
+  .refine(
+    data => {
+      if (data.period === BudgetPeriod.CUSTOM) {
+        return data.startDate && data.endDate && data.endDate >= data.startDate;
+      }
+      return true;
+    },
+    {
+      message:
+        'For custom periods, start and end dates are required, and end date must be after start date.',
+      path: ['endDate'],
+    }
+  );
+
+export const subscriptionFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Subscription name cannot be empty')
+    .max(100, 'Subscription name is too long'),
+  amount: z.coerce.number().positive('Amount must be positive'),
+  billingCycle: z.union([z.literal('monthly'), z.literal('yearly'), z.literal('quarterly')]),
+  nextBillingDate: z.date(),
+  endDate: z.date().nullable(),
+  cancellationUrl: z.string().url('Invalid URL').or(z.literal('')).nullable(),
+  notes: z.string().nullable(),
+  budgetId: z.string().min(1, 'A budget must be selected'),
+});
+
+export const assetFormSchema = z.object({
+  name: z.string().min(1, 'Asset name cannot be empty').max(100, 'Asset name is too long'),
+  amount: z.coerce.number().min(0, 'Asset amount cannot be negative'),
+  type: z.nativeEnum(AssetType),
+  notes: z.string().nullable(),
+});
+
+export const liabilityFormSchema = z.object({
+  name: z.string().min(1, 'Liability name cannot be empty').max(100, 'Liability name is too long'),
+  amount: z.coerce.number().min(0, 'Liability amount cannot be negative'),
+  type: z.nativeEnum(LiabilityType),
+  notes: z.string().nullable(),
+});

@@ -50,7 +50,6 @@ const _handleDailyRoutineResets = (
             return s;
           });
 
-        // NEW: Function to reset time blocks
         const resetTimeBlocks = (blocks: TimeBlock[] | undefined) =>
           (blocks || []).map(b => {
             if (b.completed) {
@@ -74,7 +73,6 @@ const _handleDailyRoutineResets = (
           goalWasModified = true;
         }
 
-        // NEW: Apply the reset to time blocks
         goal.timeBlocks = resetTimeBlocks(goal.timeBlocks);
 
         if (goalWasModified) {
@@ -166,6 +164,7 @@ export const createGoal = async (
     | 'timeBlocks'
     | 'randomPickerItems'
     | 'resources'
+    | 'financeData' // Also exclude financeData from input type
   >
 ): Promise<Goal> => {
   const userDocRef = doc(db, 'users', userId);
@@ -193,7 +192,6 @@ export const createGoal = async (
       teeth: [],
       lastRoutineResetDate: null,
     },
-    // Add default wellness settings for a new goal
     wellnessSettings: {
       [ReminderType.WATER]: { enabled: false, frequency: 60 },
       [ReminderType.EYE_CARE]: { enabled: false, frequency: 45 },
@@ -202,6 +200,15 @@ export const createGoal = async (
       [ReminderType.POSTURE]: { enabled: false, frequency: 30 },
     },
     starredQuotes: [],
+    // REVISION: Initialize financeData for every new goal.
+    financeData: {
+      transactions: [],
+      budgets: [],
+      subscriptions: [],
+      assets: [],
+      liabilities: [],
+      netWorthHistory: [],
+    },
   };
 
   const validation = goalSchema.safeParse(goalToCreate);
@@ -231,8 +238,6 @@ export const createGoal = async (
   }
 };
 
-// FIX: Changed type from 'unknown' to 'any' to satisfy TypeScript's strictness
-// for Firestore's dynamic update objects.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GoalUpdatePayload = { [key: string]: any };
 

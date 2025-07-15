@@ -65,10 +65,13 @@ const _deserializeTimestamps = (data: unknown): unknown => {
 
 /**
  * Serializes an array of Goal objects into a JSON-friendly format.
+ * This function ensures the output is always an array of goals.
  * @param goals The array of Goal objects to serialize.
  * @returns An array of plain JavaScript objects suitable for `JSON.stringify`.
  */
 export const serializeGoalsForExport = (goals: Goal[]): object[] => {
+  // This line is key: It takes an array of Goal objects as input
+  // and processes it, ensuring the output is always an array.
   return _serializeTimestamps(goals) as object[];
 };
 

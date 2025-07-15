@@ -2,10 +2,10 @@
 
 import { db } from '@/services/config'; // Import the mocked db object
 import * as goalService from '@/services/goalService';
-import { AppState, Goal, GoalStatus } from '@/types';
+import { AppState, Goal, GoalStatus, ReminderType } from '@/types';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { appStateSchema } from '@/utils/schemas';
-import { Timestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 // Mock the config module to provide a mock 'db' instance.
 jest.mock('@/services/config', () => ({
@@ -14,15 +14,13 @@ jest.mock('@/services/config', () => ({
 
 // Mock the entire 'firebase/firestore' module
 jest.mock('firebase/firestore', () => ({
+  // REVISION: Import the actual module to access its exports inside the factory
+  ...jest.requireActual('firebase/firestore'),
   doc: jest.fn(),
   getDoc: jest.fn(),
   setDoc: jest.fn(),
   updateDoc: jest.fn(),
-  deleteField: jest.fn(() => 'DELETE_FIELD'), // Mock the return value of deleteField
-  Timestamp: {
-    now: jest.fn(() => ({ toDate: () => new Date() })),
-    fromDate: jest.fn(date => ({ toDate: () => date })),
-  },
+  deleteField: jest.fn(() => 'DELETE_FIELD'),
 }));
 
 // Mock the schemas module to control validation results
@@ -31,7 +29,8 @@ jest.mock('@/utils/schemas', () => ({
     safeParse: jest.fn(),
   },
   goalSchema: {
-    safeParse: jest.fn(data => ({ success: true, data })), // Assume goal creation data is always valid
+    // Assume goal creation data is always valid for these tests
+    safeParse: jest.fn(data => ({ success: true, data })),
   },
 }));
 
@@ -70,9 +69,10 @@ describe('Goal Service', () => {
       timeBlocks: [],
       randomPickerItems: [],
       resources: [],
+      // REVISION: Provided a complete, valid routineSettings object to prevent test errors.
       routineSettings: {
-        sleep: null,
-        water: null,
+        sleep: { wakeTime: '06:00', sleepTime: '22:00', naps: [] },
+        water: { goal: 8, current: 0 },
         bath: [],
         exercise: [],
         meal: [],
@@ -80,21 +80,20 @@ describe('Goal Service', () => {
         lastRoutineResetDate: null,
       },
       wellnessSettings: {
-        water: { enabled: false, frequency: 60 },
-        eyeCare: { enabled: false, frequency: 45 },
-        stretch: { enabled: false, frequency: 90 },
-        break: { enabled: false, frequency: 60 },
-        posture: { enabled: false, frequency: 30 },
+        [ReminderType.WATER]: { enabled: false, frequency: 60 },
+        [ReminderType.EYE_CARE]: { enabled: false, frequency: 45 },
+        [ReminderType.STRETCH]: { enabled: false, frequency: 90 },
+        [ReminderType.BREAK]: { enabled: false, frequency: 60 },
+        [ReminderType.POSTURE]: { enabled: false, frequency: 30 },
       },
       starredQuotes: [],
+      financeData: null,
     };
 
     // A standard mock AppState object.
     mockAppState = {
       activeGoalId: mockGoalId,
-      goals: {
-        [mockGoalId]: mockGoal,
-      },
+      goals: { [mockGoalId]: mockGoal },
     };
   });
 
@@ -175,6 +174,7 @@ describe('Goal Service', () => {
       // Verify that the goal was created with a new ID and timestamps.
       expect(createdGoal.name).toBe('New Goal');
       expect(createdGoal.id).toBeDefined();
+      expect(createdGoal.financeData).toBeDefined(); // Check that financeData is initialized
       // Verify that updateDoc was called to add the new goal to the goals map.
       expect(updateDoc).toHaveBeenCalledWith(
         doc(db, 'users', mockUserId),
@@ -215,7 +215,7 @@ describe('Goal Service', () => {
       expect(updateDoc).toHaveBeenCalledWith(
         doc(db, 'users', mockUserId),
         expect.objectContaining({
-          [`goals.${mockGoalId}`]: 'DELETE_FIELD',
+          [`goals.${mockGoalId}`]: deleteField(),
           activeGoalId: null,
         })
       );
