@@ -21,6 +21,7 @@ import {
   FaWeight,
   FaQrcode,
   FaEye,
+  FaGlobe,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -48,6 +49,7 @@ import QRCodeGenerator from '@/components/tools/QRCodeGenerator';
 import VisionTest from '@/components/tools/VisionTest';
 
 import TextUtility from '@/components/tools/TextUtility';
+import IpWhoisTool from '@/components/tools/IpWhoisTool';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -194,6 +196,13 @@ const allTools: ToolItem[] = [
     description: 'Calculate age based on birth date.',
     icon: FaBirthdayCake,
     component: AgeCalculator,
+  },
+  {
+    id: 'ip-whois',
+    name: 'IP Geolocation Lookup',
+    description: 'Look up information about an IP address.',
+    icon: FaGlobe,
+    component: IpWhoisTool,
   },
   {
     id: 'grade-calculator',
