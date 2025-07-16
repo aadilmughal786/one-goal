@@ -54,13 +54,13 @@ const BudgetCard = ({
           <div className="flex gap-2">
             <button
               onClick={onEdit}
-              className="p-2 transition-colors text-text-secondary hover:text-text-primary"
+              className="p-2 transition-colors text-text-secondary hover:text-text-primary cursor-pointer"
             >
               <FiEdit />
             </button>
             <button
               onClick={handleDelete}
-              className="p-2 transition-colors text-text-secondary hover:text-red-500"
+              className="p-2 transition-colors text-text-secondary hover:text-red-500 cursor-pointer"
             >
               <FiTrash2 />
             </button>
@@ -132,15 +132,12 @@ const BudgetTab = () => {
           <h2 className="text-3xl font-bold text-text-primary">My Budgets</h2>
           <button
             onClick={() => handleOpenModal(null)}
-            className="flex gap-2 items-center px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+            className="flex gap-2 items-center px-4 py-2 font-semibold text-text-primary bg-bg-primary border border-border-primary rounded-lg transition-colors hover:bg-bg-secondary cursor-pointer"
           >
             <FiPlus />
             Add Budget
           </button>
         </div>
-
-        {/* REVISION: Added the chart component here */}
-        <BudgetDistributionChart budgets={budgets} transactions={transactions} />
 
         {budgets.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -162,6 +159,8 @@ const BudgetTab = () => {
             </p>
           </div>
         )}
+        {/* REVISION: Added the chart component here */}
+        <BudgetDistributionChart budgets={budgets} transactions={transactions} />
       </div>
       <BudgetModal
         isOpen={isModalOpen}

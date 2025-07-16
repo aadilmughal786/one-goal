@@ -68,11 +68,17 @@ const ItemCard = ({
         <p className="text-sm capitalize text-text-secondary">{item.type.replace('_', ' ')}</p>
       </div>
       <p className="text-lg font-semibold">${item.amount.toFixed(2)}</p>
-      <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button onClick={onEdit} className="p-2 text-text-secondary hover:text-text-primary">
+      <div className="flex gap-1">
+        <button
+          onClick={onEdit}
+          className="p-2 cursor-pointer text-text-secondary hover:text-text-primary"
+        >
           <FiEdit />
         </button>
-        <button onClick={onDelete} className="p-2 text-text-secondary hover:text-red-500">
+        <button
+          onClick={onDelete}
+          className="p-2 cursor-pointer text-text-secondary hover:text-red-500"
+        >
           <FiTrash2 />
         </button>
       </div>
@@ -146,7 +152,7 @@ const NetWorthTab = () => {
               </h3>
               <button
                 onClick={() => handleOpenAssetModal(null)}
-                className="flex gap-2 items-center px-3 py-1 text-sm font-semibold text-green-500 rounded-lg bg-green-500/20 hover:bg-green-500/30"
+                className="inline-flex gap-2 justify-center items-center px-4 py-2 text-base font-semibold text-green-700 bg-green-100 rounded-full transition-all duration-200 cursor-pointer hover:bg-green-200"
               >
                 <FiPlus /> Add Asset
               </button>
@@ -176,7 +182,7 @@ const NetWorthTab = () => {
               </h3>
               <button
                 onClick={() => handleOpenLiabilityModal(null)}
-                className="flex gap-2 items-center px-3 py-1 text-sm font-semibold text-red-500 rounded-lg bg-red-500/20 hover:bg-red-500/30"
+                className="inline-flex gap-2 justify-center items-center px-4 py-2 text-base font-semibold text-red-700 bg-red-100 rounded-full transition-all duration-200 cursor-pointer hover:bg-red-200"
               >
                 <FiPlus /> Add Liability
               </button>

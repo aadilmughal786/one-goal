@@ -48,10 +48,16 @@ const TransactionRow = ({
       </td>
       <td className="p-4 text-right">
         <div className="flex gap-2 justify-end">
-          <button onClick={onEdit} className="p-2 text-text-secondary hover:text-text-primary">
+          <button
+            onClick={onEdit}
+            className="p-2 cursor-pointer text-text-secondary hover:text-text-primary"
+          >
             <FiEdit />
           </button>
-          <button onClick={handleDelete} className="p-2 text-text-secondary hover:text-red-500">
+          <button
+            onClick={handleDelete}
+            className="p-2 cursor-pointer text-text-secondary hover:text-red-500"
+          >
             <FiTrash2 />
           </button>
         </div>
@@ -92,7 +98,7 @@ const TransactionTab = () => {
           {budgets.length > 0 ? (
             <button
               onClick={() => handleOpenModal(null)}
-              className="flex gap-2 items-center px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200"
             >
               <FiPlus />
               Add Transaction
@@ -100,7 +106,7 @@ const TransactionTab = () => {
           ) : (
             <Link
               href="/finance?tab=budgets"
-              className="flex gap-2 items-center px-4 py-2 font-semibold text-white bg-orange-500 rounded-lg transition-colors hover:bg-orange-600"
+              className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200"
             >
               <FaPiggyBank />
               Create a Budget First

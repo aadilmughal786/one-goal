@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Timestamp } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { FiCheck, FiLoader, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiLoader, FiX } from 'react-icons/fi';
 import { z } from 'zod';
 
 type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
@@ -62,6 +62,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   const [isNextBillingPickerOpen, setIsNextBillingPickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
+  const [isBillingCycleDropdownOpen, setIsBillingCycleDropdownOpen] = useState(false);
+  const [isBudgetDropdownOpen, setIsBudgetDropdownOpen] = useState(false);
   const nextBillingDateValue = watch('nextBillingDate');
   const endDateValue = watch('endDate');
 
@@ -127,63 +129,136 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   return (
     <>
       <div
-        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+        className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm cursor-pointer bg-black/50"
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="subscription-modal-title"
       >
         <div
-          className="p-6 w-full max-w-md rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary"
+          className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
           onClick={e => e.stopPropagation()}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-text-primary">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border-primary">
+              <h2 id="subscription-modal-title" className="text-xl font-semibold text-text-primary">
                 {isEditMode ? 'Edit' : 'Add'} Subscription
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-full text-text-tertiary hover:bg-bg-tertiary"
+                className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary focus:outline-none cursor-pointer"
+                aria-label="Close modal"
               >
-                <FiX />
+                <FiX className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <input
                 {...register('name')}
                 placeholder="Subscription Name (e.g., Netflix)"
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
               <input
                 type="number"
                 step="0.01"
                 {...register('amount')}
                 placeholder="Amount"
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
-              <select
-                {...register('billingCycle')}
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="quarterly">Quarterly</option>
-              </select>
-              <select
-                {...register('budgetId')}
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
-              >
-                <option value="">Select a Budget...</option>
-                {budgets.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.category}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsBillingCycleDropdownOpen(!isBillingCycleDropdownOpen)}
+                  className="flex justify-between items-center px-4 py-3 w-full text-lg text-left rounded-md border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
+                  aria-haspopup="listbox"
+                  aria-expanded={isBillingCycleDropdownOpen}
+                >
+                  {watch('billingCycle').charAt(0).toUpperCase() +
+                    watch('billingCycle').slice(1).toLowerCase()}
+                  <FiChevronDown
+                    className={`transition-transform duration-200 ${isBillingCycleDropdownOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isBillingCycleDropdownOpen && (
+                  <div
+                    className="absolute bottom-full p-2 mb-2 w-full rounded-md border shadow-lg bg-bg-primary border-border-primary"
+                    role="listbox"
+                  >
+                    {['monthly', 'yearly', 'quarterly'].map(cycle => (
+                      <button
+                        key={cycle}
+                        type="button"
+                        onClick={() => {
+                          setValue('billingCycle', cycle as Subscription['billingCycle'], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setIsBillingCycleDropdownOpen(false);
+                        }}
+                        className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary"
+                        role="option"
+                        aria-selected={watch('billingCycle') === cycle}
+                      >
+                        {cycle}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsBudgetDropdownOpen(!isBudgetDropdownOpen)}
+                  className="flex justify-between items-center px-4 py-3 w-full text-lg text-left rounded-md border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
+                  aria-haspopup="listbox"
+                  aria-expanded={isBudgetDropdownOpen}
+                >
+                  {budgets.find(b => b.id === watch('budgetId'))?.category || 'Select a Budget...'}
+                  <FiChevronDown
+                    className={`transition-transform duration-200 ${isBudgetDropdownOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isBudgetDropdownOpen && (
+                  <div
+                    className="absolute bottom-full p-2 mb-2 w-full rounded-md border shadow-lg bg-bg-primary border-border-primary"
+                    role="listbox"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValue('budgetId', '', { shouldDirty: true, shouldValidate: true });
+                        setIsBudgetDropdownOpen(false);
+                      }}
+                      className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary"
+                      role="option"
+                      aria-selected={watch('budgetId') === ''}
+                    >
+                      Select a Budget...
+                    </button>
+                    {budgets.map(b => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => {
+                          setValue('budgetId', b.id, { shouldDirty: true, shouldValidate: true });
+                          setIsBudgetDropdownOpen(false);
+                        }}
+                        className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary"
+                        role="option"
+                        aria-selected={watch('budgetId') === b.id}
+                      >
+                        {b.category}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsNextBillingPickerOpen(true)}
-                className="p-3 w-full text-left rounded-lg border bg-bg-primary border-border-primary"
+                className="p-3 w-full text-left rounded-lg border cursor-pointer bg-bg-primary border-border-primary"
               >
                 {/* REVISION: Added a check to prevent calling toLocaleDateString on undefined */}
                 Next Billing:{' '}
@@ -192,7 +267,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEndDatePickerOpen(true)}
-                className="p-3 w-full text-left rounded-lg border bg-bg-primary border-border-primary"
+                className="p-3 w-full text-left rounded-lg border cursor-pointer bg-bg-primary border-border-primary"
               >
                 {/* REVISION: Added a check for the optional end date */}
                 End Date: {endDateValue ? endDateValue.toLocaleDateString() : 'No End Date'}
@@ -200,23 +275,32 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <input
                 {...register('cancellationUrl')}
                 placeholder="Cancellation URL (optional)"
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
               <textarea
                 {...register('notes')}
                 placeholder="Notes (optional)"
-                className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
               />
             </div>
 
-            <div className="mt-8">
+            <div className="px-6 py-4 border-t border-border-primary">
               <button
                 type="submit"
-                disabled={isSubmitting || !isDirty || !isValid}
-                className="flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold rounded-full text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
+                disabled={isSubmitting || !isValid || !isDirty}
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
               >
-                {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheck />}
-                {isEditMode ? 'Save Changes' : 'Add Subscription'}
+                {isSubmitting ? (
+                  <>
+                    <FiLoader className="w-5 h-5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCheck />
+                    <span>{isEditMode ? 'Save Changes' : 'Add Subscription'}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

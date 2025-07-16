@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Timestamp } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { FiCheck, FiLoader, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiLoader, FiX } from 'react-icons/fi';
 import { z } from 'zod';
 
 type TransactionFormData = z.infer<typeof transactionFormSchema>;
@@ -57,6 +57,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   });
 
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isBudgetDropdownOpen, setIsBudgetDropdownOpen] = useState(false);
   const transactionType = watch('type');
 
   useEffect(() => {
@@ -112,42 +113,46 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   return (
     <>
       <div
-        className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/60"
+        className="flex fixed inset-0 z-40 justify-center items-center p-4 backdrop-blur-sm cursor-pointer bg-black/50"
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-modal-title"
       >
         <div
-          className="p-6 w-full max-w-md rounded-3xl border shadow-2xl bg-bg-secondary border-border-primary"
+          className="w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-md cursor-auto bg-bg-secondary border-border-primary"
           onClick={e => e.stopPropagation()}
         >
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-text-primary">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border-primary">
+              <h2 id="transaction-modal-title" className="text-xl font-semibold text-text-primary">
                 {isEditMode ? 'Edit' : 'Add'} Transaction
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-full text-text-tertiary hover:bg-bg-tertiary"
+                className="p-1.5 rounded-full text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary focus:outline-none cursor-pointer"
+                aria-label="Close modal"
               >
-                <FiX />
+                <FiX className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block mb-2 text-sm font-medium text-text-secondary">Type</label>
                 <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-bg-primary">
                   <button
                     type="button"
                     onClick={() => setValue('type', 'expense', { shouldDirty: true })}
-                    className={`py-2 rounded-md font-semibold ${transactionType === 'expense' ? 'bg-red-500 text-white' : 'bg-bg-tertiary text-text-secondary'}`}
+                    className={`py-2 rounded-md font-semibold ${transactionType === 'expense' ? 'bg-red-500 text-white' : 'bg-bg-tertiary text-text-secondary'} cursor-pointer`}
                   >
                     Expense
                   </button>
                   <button
                     type="button"
                     onClick={() => setValue('type', 'income', { shouldDirty: true })}
-                    className={`py-2 rounded-md font-semibold ${transactionType === 'income' ? 'bg-green-500 text-white' : 'bg-bg-tertiary text-text-secondary'}`}
+                    className={`py-2 rounded-md font-semibold ${transactionType === 'income' ? 'bg-green-500 text-white' : 'bg-bg-tertiary text-text-secondary'} cursor-pointer`}
                   >
                     Income
                   </button>
@@ -160,7 +165,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 <input
                   {...register('description')}
                   placeholder="e.g., Coffee, Paycheck"
-                  className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                  className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -173,23 +178,53 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                     step="0.01"
                     {...register('amount')}
                     placeholder="25.50"
-                    className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
+                    className="p-3 w-full rounded-md border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block mb-2 text-sm font-medium text-text-secondary">
                     Budget Category
                   </label>
-                  <select
-                    {...register('budgetId')}
-                    className="p-3 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-border-accent focus:outline-none"
-                  >
-                    {budgets.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.category}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsBudgetDropdownOpen(!isBudgetDropdownOpen)}
+                      className="flex justify-between items-center px-4 py-3 w-full text-lg text-left rounded-md border cursor-pointer text-text-primary bg-bg-primary border-border-primary focus:outline-none focus:ring-2 focus:ring-border-accent"
+                      aria-haspopup="listbox"
+                      aria-expanded={isBudgetDropdownOpen}
+                    >
+                      {budgets.find(b => b.id === watch('budgetId'))?.category ||
+                        'Select a Budget...'}
+                      <FiChevronDown
+                        className={`transition-transform duration-200 ${isBudgetDropdownOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    {isBudgetDropdownOpen && (
+                      <div
+                        className="absolute bottom-full mb-2 p-2 w-full rounded-md border shadow-lg bg-bg-primary border-border-primary"
+                        role="listbox"
+                      >
+                        {budgets.map(b => (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => {
+                              setValue('budgetId', b.id, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setIsBudgetDropdownOpen(false);
+                            }}
+                            className="flex gap-3 items-center px-3 py-2 w-full text-left rounded-md transition-colors cursor-pointer text-text-primary hover:bg-border-primary"
+                            role="option"
+                            aria-selected={watch('budgetId') === b.id}
+                          >
+                            {b.category}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div>
@@ -197,21 +232,30 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDatePickerOpen(true)}
-                  className="p-3 w-full text-left rounded-lg border bg-bg-primary border-border-primary"
+                  className="p-3 w-full text-left rounded-lg border cursor-pointer bg-bg-primary border-border-primary"
                 >
                   {watch('date').toLocaleDateString()}
                 </button>
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="px-6 py-4 border-t border-border-primary">
               <button
                 type="submit"
-                disabled={isSubmitting || !isDirty || !isValid}
-                className="flex gap-2 justify-center items-center py-3 w-full text-lg font-semibold rounded-full text-bg-primary bg-text-primary hover:opacity-90 disabled:opacity-50"
+                disabled={isSubmitting || !isValid || !isDirty}
+                className="inline-flex gap-2 justify-center items-center px-6 py-3 w-full text-lg font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200 disabled:opacity-60"
               >
-                {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheck />}
-                {isEditMode ? 'Save Changes' : 'Add Transaction'}
+                {isSubmitting ? (
+                  <>
+                    <FiLoader className="w-5 h-5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCheck />
+                    <span>{isEditMode ? 'Save Changes' : 'Add Transaction'}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
