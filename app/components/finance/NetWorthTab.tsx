@@ -26,7 +26,6 @@ import {
 } from 'react-icons/fi';
 import AssetModal from './AssetModal';
 import LiabilityModal from './LiabilityModal';
-import NetWorthHistoryChart from './charts/NetWorthHistoryChart';
 
 const assetIcons: { [key in AssetType]: React.ElementType } = {
   [AssetType.CASH]: FaCashRegister,
@@ -102,7 +101,6 @@ const NetWorthTab = () => {
 
   const assets = useMemo(() => financeData?.assets || [], [financeData]);
   const liabilities = useMemo(() => financeData?.liabilities || [], [financeData]);
-  const netWorthHistory = useMemo(() => financeData?.netWorthHistory || [], [financeData]);
 
   const totalAssets = useMemo(() => assets.reduce((sum, asset) => sum + asset.amount, 0), [assets]);
   const totalLiabilities = useMemo(
@@ -140,8 +138,6 @@ const NetWorthTab = () => {
             ${netWorth.toFixed(2)}
           </p>
         </div>
-
-        <NetWorthHistoryChart history={netWorthHistory} />
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           {/* Assets Column */}

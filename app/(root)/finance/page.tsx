@@ -12,7 +12,8 @@ import { useGoalStore } from '@/store/useGoalStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { IconType } from 'react-icons';
-import { FaMoneyBillWave, FaPiggyBank } from 'react-icons/fa';
+import { BsBagCheck } from 'react-icons/bs';
+import { FaMoneyBillWave } from 'react-icons/fa';
 import { FiCreditCard, FiRepeat } from 'react-icons/fi';
 
 interface TabItem {
@@ -24,7 +25,7 @@ interface TabItem {
 }
 
 const tabItems: TabItem[] = [
-  { id: 'budgets', label: 'Budgets', icon: FaPiggyBank, component: BudgetTab },
+  { id: 'budgets', label: 'Budgets', icon: BsBagCheck, component: BudgetTab },
   { id: 'transactions', label: 'Transactions', icon: FiCreditCard, component: TransactionTab },
   { id: 'subscriptions', label: 'Subscriptions', icon: FiRepeat, component: SubscriptionTab },
   { id: 'networth', label: 'Net Worth', icon: FaMoneyBillWave, component: NetWorthTab },

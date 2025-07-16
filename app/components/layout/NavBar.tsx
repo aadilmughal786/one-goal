@@ -6,19 +6,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
-import { FaMoneyBillWave } from 'react-icons/fa';
 import { FiCheckSquare, FiHome, FiTarget } from 'react-icons/fi';
 import { GoStopwatch } from 'react-icons/go';
 import { MdOutlineRepeat, MdRocketLaunch } from 'react-icons/md';
+import { SiBitcoin } from 'react-icons/si';
 import ProfileDropdown from './ProfileDropdown';
 
 const navLinks = [
   { href: '/dashboard?tab=main', label: 'Dashboard', icon: <FiHome /> },
+  { href: '/finance?tab=budgets', label: 'Finance', icon: <SiBitcoin /> },
   { href: '/todo?tab=todo', label: 'Tasks & Lists', icon: <FiCheckSquare /> },
   { href: '/stop-watch?tab=stopwatch', label: 'Stopwatch', icon: <GoStopwatch /> },
   { href: '/routine?tab=sleep', label: 'Routine', icon: <MdOutlineRepeat /> },
   { href: '/goal?tab=hub', label: 'Goals', icon: <FiTarget /> },
-  { href: '/finance?tab=budgets', label: 'Finance', icon: <FaMoneyBillWave /> },
 ];
 
 export default function NavBar() {
