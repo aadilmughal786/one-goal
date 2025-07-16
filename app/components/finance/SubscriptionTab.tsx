@@ -11,11 +11,12 @@ import { useMemo, useState } from 'react';
 import { FaPiggyBank } from 'react-icons/fa';
 import { FiEdit, FiExternalLink, FiPlus, FiRepeat, FiTrash2 } from 'react-icons/fi';
 import SubscriptionModal from './SubscriptionModal';
+import CurrencyTooltip from '@/components/common/CurrencyTooltip';
 
 const SubscriptionCard = ({
   subscription,
   budgetCategory,
-  currency = '$',
+  currency = '₹',
 }: {
   subscription: Subscription;
   budgetCategory: string;
@@ -56,10 +57,12 @@ const SubscriptionCard = ({
           </div>
           <p className="text-sm text-text-tertiary">{budgetCategory}</p>
           <div className="my-4">
-            <p className="text-3xl font-bold text-text-primary">
-              {currency}
-              {subscription.amount.toFixed(2)}
-            </p>
+            <span className="text-3xl font-bold text-text-primary">
+              <CurrencyTooltip amount={subscription.amount} fromCurrency={currency}>
+                {currency}
+                {subscription.amount.toFixed(2)}
+              </CurrencyTooltip>
+            </span>
             <p className="text-sm capitalize text-text-secondary">
               per {subscription.billingCycle.replace('ly', '')}
             </p>

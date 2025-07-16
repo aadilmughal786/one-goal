@@ -3,6 +3,7 @@
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import CountdownCard from '@/components/dashboard/CountdownCard';
+import PinnedWeatherDisplay from '@/components/dashboard/PinnedWeatherDisplay'; // Import the new component
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import { useGoalStore } from '@/store/useGoalStore';
 import React, { useMemo } from 'react';
@@ -28,6 +29,8 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
       <section>
         <CountdownCard goal={activeGoal} />
       </section>
+
+      <PinnedWeatherDisplay />
 
       <section>
         <ProgressCalendar

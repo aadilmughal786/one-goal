@@ -26,6 +26,7 @@ import {
 } from 'react-icons/fi';
 import AssetModal from './AssetModal';
 import LiabilityModal from './LiabilityModal';
+import CurrencyTooltip from '@/components/common/CurrencyTooltip';
 
 const assetIcons: { [key in AssetType]: React.ElementType } = {
   [AssetType.CASH]: FaCashRegister,
@@ -66,7 +67,9 @@ const ItemCard = ({
         <p className="font-semibold">{item.name}</p>
         <p className="text-sm capitalize text-text-secondary">{item.type.replace('_', ' ')}</p>
       </div>
-      <p className="text-lg font-semibold">${item.amount.toFixed(2)}</p>
+      <CurrencyTooltip amount={item.amount} fromCurrency="INR">
+        <p className="text-lg font-semibold">₹{item.amount.toFixed(2)}</p>
+      </CurrencyTooltip>
       <div className="flex gap-1">
         <button
           onClick={onEdit}
@@ -132,11 +135,13 @@ const NetWorthTab = () => {
       <div className="space-y-8">
         <div className="p-8 text-center rounded-2xl border bg-bg-secondary border-border-primary">
           <h2 className="text-xl font-semibold text-text-secondary">Your Net Worth</h2>
-          <p
+          <span
             className={`text-6xl font-bold my-2 ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}
           >
-            ${netWorth.toFixed(2)}
-          </p>
+            <CurrencyTooltip amount={netWorth} fromCurrency="INR">
+              ₹{netWorth.toFixed(2)}
+            </CurrencyTooltip>
+          </span>
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -156,7 +161,9 @@ const NetWorthTab = () => {
             <div className="p-4 rounded-xl border bg-bg-secondary border-border-primary">
               <div className="flex justify-between items-center text-lg font-bold">
                 <span>Total Assets</span>
-                <span>${totalAssets.toFixed(2)}</span>
+                <CurrencyTooltip amount={totalAssets} fromCurrency="INR">
+                  <span>₹{totalAssets.toFixed(2)}</span>
+                </CurrencyTooltip>
               </div>
             </div>
             {assets.map(asset => (
@@ -186,7 +193,9 @@ const NetWorthTab = () => {
             <div className="p-4 rounded-xl border bg-bg-secondary border-border-primary">
               <div className="flex justify-between items-center text-lg font-bold">
                 <span>Total Liabilities</span>
-                <span>${totalLiabilities.toFixed(2)}</span>
+                <CurrencyTooltip amount={totalLiabilities} fromCurrency="INR">
+                  <span>₹{totalLiabilities.toFixed(2)}</span>
+                </CurrencyTooltip>
               </div>
             </div>
             {liabilities.map(liability => (

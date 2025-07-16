@@ -10,12 +10,13 @@ import { FaPiggyBank } from 'react-icons/fa';
 import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi';
 import BudgetModal from './BudgetModal';
 import BudgetDistributionChart from './charts/BudgetDistributionChart'; // Import the chart
+import CurrencyTooltip from '@/components/common/CurrencyTooltip';
 
 const BudgetCard = ({
   budget,
   spent,
   onEdit,
-  currency = '$',
+  currency = '₹',
 }: {
   budget: Budget;
   spent: number;
@@ -70,12 +71,17 @@ const BudgetCard = ({
         <div className="my-4">
           <div className="flex justify-between items-baseline mb-1">
             <span className="text-lg font-semibold text-text-primary">
-              {currency}
-              {spent.toFixed(2)}
+              <CurrencyTooltip amount={spent} fromCurrency={currency}>
+                {currency}
+                {spent.toFixed(2)}
+              </CurrencyTooltip>
             </span>
             <span className="text-sm font-medium text-text-secondary">
-              of {currency}
-              {budget.amount.toFixed(2)}
+              of{' '}
+              <CurrencyTooltip amount={budget.amount} fromCurrency={currency}>
+                {currency}
+                {budget.amount.toFixed(2)}
+              </CurrencyTooltip>
             </span>
           </div>
           <div className="w-full h-4 rounded-full bg-bg-tertiary">
@@ -87,10 +93,14 @@ const BudgetCard = ({
         </div>
       </div>
       {isOverBudget && (
-        <p className="mt-auto text-sm font-semibold text-center text-red-500">
-          You are {currency}
-          {(spent - budget.amount).toFixed(2)} over budget!
-        </p>
+        <span className="mt-auto text-sm font-semibold text-center text-red-500">
+          You are{' '}
+          <CurrencyTooltip amount={spent - budget.amount} fromCurrency={currency}>
+            {currency}
+            {(spent - budget.amount).toFixed(2)}
+          </CurrencyTooltip>{' '}
+          over budget!
+        </span>
       )}
     </div>
   );
@@ -132,7 +142,7 @@ const BudgetTab = () => {
           <h2 className="text-3xl font-bold text-text-primary">My Budgets</h2>
           <button
             onClick={() => handleOpenModal(null)}
-            className="flex gap-2 items-center px-4 py-2 font-semibold text-text-primary bg-bg-primary border border-border-primary rounded-lg transition-colors hover:bg-bg-secondary cursor-pointer"
+            className="inline-flex gap-2 justify-center items-center px-6 py-3 font-semibold text-black bg-white rounded-full transition-all duration-200 cursor-pointer hover:bg-gray-200"
           >
             <FiPlus />
             Add Budget

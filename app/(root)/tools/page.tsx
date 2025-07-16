@@ -22,6 +22,7 @@ import {
   FaQrcode,
   FaEye,
   FaGlobe,
+  FaCloudSun,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -50,6 +51,8 @@ import VisionTest from '@/components/tools/VisionTest';
 
 import TextUtility from '@/components/tools/TextUtility';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
+import CurrencyConverter from '@/components/tools/CurrencyConverter';
+import WeatherTool from '@/components/tools/WeatherTool';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -210,6 +213,20 @@ const allTools: ToolItem[] = [
     description: 'Calculate your average grade based on scores and weights.',
     icon: FaGraduationCap,
     component: SimpleGradeCalculator,
+  },
+  {
+    id: 'currency-converter',
+    name: 'Currency Converter',
+    description: 'Convert currencies using real-time exchange rates.',
+    icon: FaMoneyBillWave,
+    component: CurrencyConverter,
+  },
+  {
+    id: 'weather-tool',
+    name: 'Weather Tool',
+    description: 'Get current weather information for multiple locations.',
+    icon: FaCloudSun,
+    component: WeatherTool,
   },
 ];
 

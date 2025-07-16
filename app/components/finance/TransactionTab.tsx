@@ -1,6 +1,7 @@
 // app/components/finance/TransactionTab.tsx
 'use client';
 
+import CurrencyTooltip from '@/components/common/CurrencyTooltip';
 import { useGoalStore } from '@/store/useGoalStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
@@ -16,7 +17,7 @@ const TransactionRow = ({
   transaction,
   budgetCategory,
   onEdit,
-  currency = '$',
+  currency = '₹',
 }: {
   transaction: Transaction;
   budgetCategory: string;
@@ -43,8 +44,10 @@ const TransactionRow = ({
       <td className="p-4">{budgetCategory}</td>
       <td className={`p-4 font-semibold ${amountColor}`}>
         {transaction.type === 'income' ? '+' : '-'}
-        {currency}
-        {transaction.amount.toFixed(2)}
+        <CurrencyTooltip amount={transaction.amount} fromCurrency="INR">
+          {currency}
+          {transaction.amount.toFixed(2)}
+        </CurrencyTooltip>
       </td>
       <td className="p-4 text-right">
         <div className="flex gap-2 justify-end">
@@ -114,7 +117,7 @@ const TransactionTab = () => {
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border bg-bg-secondary border-border-primary">
+        <div className="rounded-2xl border bg-bg-secondary border-border-primary">
           <table className="w-full text-left">
             <thead className="border-b border-border-primary">
               <tr>
