@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { FaGithub, FaLinkedin, FaDice } from 'react-icons/fa';
+import { FaGithub, FaLinkedin } from 'react-icons/fa';
 import { FiCommand, FiCpu, FiLogOut, FiMoon, FiSun } from 'react-icons/fi';
 import { GoBug } from 'react-icons/go';
 import { LuBadgeInfo } from 'react-icons/lu';
@@ -62,10 +62,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onClose }) => {
     onClose();
   };
 
-  const menuItems = [
-    { href: '/tools?tool=browse', label: 'Tools', icon: <FiCpu /> },
-    { href: '/games?game=browse', label: 'Games', icon: <FaDice /> },
-  ];
+  const menuItems = [{ href: '/tools?tool=browse', label: 'Tools', icon: <FiCpu /> }];
 
   const externalLinks = [
     {
