@@ -6,8 +6,7 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
 import { FaMoon, FaSun, FaTemperatureHigh, FaTemperatureLow, FaTint, FaWind } from 'react-icons/fa';
-import { FiEdit, FiLoader, FiMapPin, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
-import WeatherEditModal from './WeatherEditModal';
+import { FiLoader, FiMapPin, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 
 interface WeatherData {
   name: string;
@@ -27,7 +26,6 @@ interface SavedLocation {
 interface WeatherCardProps {
   location: SavedLocation;
   onDelete: (name: string) => void;
-  onEdit: (location: SavedLocation) => void;
   onPin: (location: SavedLocation) => void;
   isPinned: boolean;
   showActions?: boolean; // New prop
@@ -36,7 +34,6 @@ interface WeatherCardProps {
 export const WeatherCard: React.FC<WeatherCardProps> = ({
   location,
   onDelete,
-  onEdit,
   onPin,
   isPinned,
   showActions = true,
@@ -57,12 +54,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = ({
           {showActions && (
             <div className="flex space-x-2">
               {/* Removed individual refresh button */}
-              <button
-                onClick={() => onEdit(location)}
-                className="p-2 rounded-full cursor-pointer hover:bg-bg-tertiary"
-              >
-                <FiEdit />
-              </button>
+
               <button
                 onClick={() => onPin(location)}
                 className={`p-2 rounded-full hover:bg-bg-tertiary cursor-pointer ${isPinned ? 'text-blue-500' : ''}`}
@@ -122,10 +114,10 @@ export const WeatherCard: React.FC<WeatherCardProps> = ({
 const WeatherTool: React.FC = () => {
   const [locations, setLocations] = useState<SavedLocation[]>([]);
   const [newLocationName, setNewLocationName] = useState<string>('');
-  const [editingLocation, setEditingLocation] = useState<SavedLocation | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const [pinnedLocations, setPinnedLocations] = useState<string[]>([]); // Stores names of pinned locations
   const [isRefreshingAll, setIsRefreshingAll] = useState(false); // New state for refresh all loading
+  const [isAddingLocation, setIsAddingLocation] = useState(false); // New state for add location loading
 
   const { showToast } = useNotificationStore();
 
@@ -143,14 +135,14 @@ const WeatherTool: React.FC = () => {
       return;
     }
 
+    setIsAddingLocation(true);
     const weatherData = await weatherService.getWeather(newLocationName);
     if (weatherData) {
       weatherService.saveLocation(newLocationName, weatherData);
       setLocations(weatherService.getSavedLocations());
       setNewLocationName('');
-      setEditingLocation(null);
-      setIsEditModalOpen(false);
     }
+    setIsAddingLocation(false);
   };
 
   // Removed handleRefreshSingleLocation
@@ -174,41 +166,6 @@ const WeatherTool: React.FC = () => {
       'pinnedWeatherLocations',
       JSON.stringify(pinnedLocations.filter(locName => locName !== name))
     );
-  };
-
-  const handleEdit = (location: SavedLocation) => {
-    setEditingLocation(location);
-    setNewLocationName(location.name); // Pre-fill input with current name
-    setIsEditModalOpen(true);
-  };
-
-  const handleSaveEditedLocation = (oldName: string, newName: string) => {
-    const locations = weatherService.getSavedLocations();
-    const locationToUpdate = locations.find(loc => loc.name === oldName);
-
-    if (locationToUpdate) {
-      // Update the name in the saved locations
-      const updatedLocations = locations.map(loc =>
-        loc.name === oldName ? { ...loc, name: newName } : loc
-      );
-      localStorage.setItem('weatherLocations', JSON.stringify(updatedLocations));
-      setLocations(updatedLocations);
-
-      // Update pinned locations if the edited location was pinned
-      if (pinnedLocations.includes(oldName)) {
-        setPinnedLocations(prev => prev.map(locName => (locName === oldName ? newName : locName)));
-        localStorage.setItem(
-          'pinnedWeatherLocations',
-          JSON.stringify(pinnedLocations.map(locName => (locName === oldName ? newName : locName)))
-        );
-      }
-      showToast(`Location ${oldName} updated to ${newName}.`, 'success');
-    } else {
-      showToast(`Location ${oldName} not found.`, 'error');
-    }
-    setIsEditModalOpen(false);
-    setNewLocationName('');
-    setEditingLocation(null);
   };
 
   const handlePin = (location: SavedLocation) => {
@@ -237,10 +194,11 @@ const WeatherTool: React.FC = () => {
         />
         <button
           onClick={handleAddOrUpdateLocation}
+          disabled={isAddingLocation}
           className="inline-flex gap-2 justify-center items-center px-4 py-2 font-semibold text-black bg-white rounded-md transition-all duration-200 cursor-pointer hover:bg-gray-200"
         >
-          <FiPlus />
-          {editingLocation ? 'Update Location' : 'Add Location'}
+          {isAddingLocation ? <FiLoader className="animate-spin" /> : <FiPlus />}
+          Add Location
         </button>
         <button
           onClick={handleRefreshAllLocations}
@@ -265,7 +223,6 @@ const WeatherTool: React.FC = () => {
               location={loc}
               // onRefresh={handleRefreshSingleLocation} // Removed individual refresh handler
               onDelete={handleDelete}
-              onEdit={handleEdit}
               onPin={handlePin}
               isPinned={pinnedLocations.includes(loc.name)}
             />
@@ -276,13 +233,6 @@ const WeatherTool: React.FC = () => {
           </p>
         )}
       </div>
-
-      <WeatherEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        locationToEdit={editingLocation}
-        onSave={handleSaveEditedLocation}
-      />
     </div>
   );
 };

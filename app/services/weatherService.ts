@@ -113,7 +113,7 @@ export const weatherService = {
     if (typeof window === 'undefined') return;
     const locations = weatherService.getSavedLocations();
     const filteredLocations = locations.filter(
-      loc => loc.name.toLowerCase() !== locationName.toLowerCase()
+      loc => loc && loc.name && loc.name.toLowerCase() !== locationName.toLowerCase()
     );
     localStorage.setItem('weatherLocations', JSON.stringify(filteredLocations));
     useNotificationStore.getState().showToast(`Location ${locationName} removed.`, 'info');
