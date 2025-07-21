@@ -90,7 +90,6 @@ const PinnedWeatherDisplay: React.FC = () => {
               key={loc.name}
               location={loc}
               onDelete={() => {}} // Dummy handler
-              onEdit={() => {}} // Dummy handler
               onPin={() => {}} // Dummy handler
               isPinned={true} // Always true for pinned locations
               showActions={false} // Hide actions for dashboard view

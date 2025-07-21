@@ -25,8 +25,9 @@ import {
   FaSearch,
   FaWeight,
 } from 'react-icons/fa';
+import { GiWeightLiftingUp } from 'react-icons/gi';
 
-import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
+import { FiChevronLeft, FiEdit, FiGlobe, FiWatch } from 'react-icons/fi';
 import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
@@ -53,8 +54,10 @@ import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
+import NutritionTracker from '@/components/tools/NutritionTracker';
 import TextUtility from '@/components/tools/TextUtility';
 import WeatherTool from '@/components/tools/WeatherTool';
+import WorldClock from '@/components/tools/WorldClock';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -236,6 +239,20 @@ const allTools: ToolItem[] = [
     description: 'Calculate what percentage of a day a certain amount of time represents.',
     icon: FaClock,
     component: DailyTimePercentageCalculator,
+  },
+  {
+    id: 'nutrition-tracker',
+    name: 'Nutrition Tracker',
+    description: 'Track your daily nutrition intake and reach your health goals.',
+    icon: GiWeightLiftingUp,
+    component: NutritionTracker,
+  },
+  {
+    id: 'world-clock',
+    name: 'World Clock',
+    description: 'Track time across multiple time zones and find the best meeting times.',
+    icon: FiGlobe,
+    component: WorldClock,
   },
 ];
 
