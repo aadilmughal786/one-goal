@@ -7,22 +7,23 @@ import { IconType } from 'react-icons';
 import {
   FaBirthdayCake,
   FaCalculator,
+  FaClock,
+  FaCloudSun,
   FaCode,
   FaCoins,
   FaDice,
   FaDiceFive,
+  FaEye,
   FaFileAlt,
+  FaGlobe,
   FaGraduationCap,
   FaKey,
   FaMoneyBillWave,
   FaPercent,
   FaPercentage,
+  FaQrcode,
   FaSearch,
   FaWeight,
-  FaQrcode,
-  FaEye,
-  FaGlobe,
-  FaCloudSun,
 } from 'react-icons/fa';
 
 import { FiChevronLeft, FiEdit, FiWatch } from 'react-icons/fi';
@@ -40,18 +41,19 @@ import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
 
 import AgeCalculator from '@/components/tools/AgeCalculator';
 import CoinFlip from '@/components/tools/CoinFlip';
+import DailyTimePercentageCalculator from '@/components/tools/DailyTimePercentageCalculator';
 import DiceRoller from '@/components/tools/DiceRoller';
 import PasswordGenerator from '@/components/tools/PasswordGenerator';
+import QRCodeGenerator from '@/components/tools/QRCodeGenerator';
 import RandomNumberGenerator from '@/components/tools/RandomNumberGenerator';
 import SimpleGradeCalculator from '@/components/tools/SimpleGradeCalculator';
 import TipCalculator from '@/components/tools/TipCalculator';
-import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
-import QRCodeGenerator from '@/components/tools/QRCodeGenerator';
 import VisionTest from '@/components/tools/VisionTest';
+import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
-import TextUtility from '@/components/tools/TextUtility';
-import IpWhoisTool from '@/components/tools/IpWhoisTool';
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
+import IpWhoisTool from '@/components/tools/IpWhoisTool';
+import TextUtility from '@/components/tools/TextUtility';
 import WeatherTool from '@/components/tools/WeatherTool';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -227,6 +229,13 @@ const allTools: ToolItem[] = [
     description: 'Get current weather information for multiple locations.',
     icon: FaCloudSun,
     component: WeatherTool,
+  },
+  {
+    id: 'daily-time-percentage',
+    name: 'Daily Time Percentage',
+    description: 'Calculate what percentage of a day a certain amount of time represents.',
+    icon: FaClock,
+    component: DailyTimePercentageCalculator,
   },
 ];
 
