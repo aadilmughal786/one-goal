@@ -58,6 +58,7 @@ import NutritionTracker from '@/components/tools/NutritionTracker';
 import TextUtility from '@/components/tools/TextUtility';
 import WeatherTool from '@/components/tools/WeatherTool';
 import WorldClock from '@/components/tools/WorldClock';
+import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -253,6 +254,13 @@ const allTools: ToolItem[] = [
     description: 'Track time across multiple time zones and find the best meeting times.',
     icon: FiGlobe,
     component: WorldClock,
+  },
+  {
+    id: 'password-entropy',
+    name: 'Password Entropy Calculator',
+    description: 'Measure your password strength and security.',
+    icon: FaKey,
+    component: PasswordEntropyCalculator,
   },
 ];
 

@@ -26,7 +26,9 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
   const { addDistraction, updateDistraction, deleteDistraction } = useDistractionStore();
   const { showToast, showConfirmation } = useNotificationStore();
 
-  const list = appState?.goals[appState.activeGoalId || '']?.notToDoList || [];
+  const list = [...(appState?.goals[appState.activeGoalId || '']?.notToDoList || [])].sort(
+    (a, b) => b.count - a.count
+  );
 
   const [inputValue, setInputValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -177,7 +179,7 @@ const DistractionListComponent: React.FC<DistractionListProps> = ({
                           {status.text}
                         </span>
                       </div>
-                      <div className="absolute bottom-full left-1/2 z-10 px-3 py-2 mb-2 w-max max-w-xs text-sm font-medium rounded-lg border shadow-sm opacity-0 transition-opacity duration-300 -translate-x-1/2 group-hover:opacity-100 bg-bg-primary border-border-primary text-text-primary">
+                      <div className="absolute bottom-full left-1/2 z-10 px-3 py-2 mb-2 w-max max-w-xs text-sm font-medium rounded-lg border shadow-sm invisible opacity-0 transition-opacity duration-300 -translate-x-1/2 group-hover:visible group-hover:opacity-100 bg-bg-primary border-border-primary text-text-primary">
                         {status.tooltip}
                         <div className="absolute bottom-0 left-1/2 w-3 h-3 border-r border-b rotate-45 -translate-x-1/2 translate-y-1/2 bg-bg-primary border-border-primary"></div>
                       </div>
