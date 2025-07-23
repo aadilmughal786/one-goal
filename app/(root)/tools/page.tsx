@@ -57,6 +57,7 @@ import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
 import EisenhowerMatrix from '@/components/tools/EisenhowerMatrix';
 import InvestmentReturnCalculator from '@/components/tools/InvestmentReturnCalculator';
+import DepreciationCalculator from '@/components/tools/DepreciationCalculator';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
 import NutritionTracker from '@/components/tools/NutritionTracker';
 import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
@@ -279,6 +280,13 @@ const allTools: ToolItem[] = [
     description: 'Project the future value of your investments.',
     icon: FaChartLine,
     component: InvestmentReturnCalculator,
+  },
+  {
+    id: 'depreciation-calculator',
+    name: 'Depreciation Calculator',
+    description: 'Calculate asset depreciation using various methods.',
+    icon: FaChartLine,
+    component: DepreciationCalculator,
   },
 ];
 
