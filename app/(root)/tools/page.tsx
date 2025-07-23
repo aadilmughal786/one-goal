@@ -54,10 +54,11 @@ import TipCalculator from '@/components/tools/TipCalculator';
 import VisionTest from '@/components/tools/VisionTest';
 import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
+import CombinationCalculator from '@/components/tools/CombinationCalculator';
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
+import DepreciationCalculator from '@/components/tools/DepreciationCalculator';
 import EisenhowerMatrix from '@/components/tools/EisenhowerMatrix';
 import InvestmentReturnCalculator from '@/components/tools/InvestmentReturnCalculator';
-import DepreciationCalculator from '@/components/tools/DepreciationCalculator';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
 import NutritionTracker from '@/components/tools/NutritionTracker';
 import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
@@ -287,6 +288,13 @@ const allTools: ToolItem[] = [
     description: 'Calculate asset depreciation using various methods.',
     icon: FaChartLine,
     component: DepreciationCalculator,
+  },
+  {
+    id: 'combination-calculator',
+    name: 'Combinations & Permutations',
+    description: 'Calculate combinations and permutations with options for order and repetition.',
+    icon: FaCalculator,
+    component: CombinationCalculator,
   },
 ];
 
