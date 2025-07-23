@@ -7,6 +7,7 @@ import { IconType } from 'react-icons';
 import {
   FaBirthdayCake,
   FaCalculator,
+  FaChartLine,
   FaClock,
   FaCloudSun,
   FaCode,
@@ -23,6 +24,7 @@ import {
   FaPercentage,
   FaQrcode,
   FaSearch,
+  FaTasks,
   FaWeight,
 } from 'react-icons/fa';
 import { GiWeightLiftingUp } from 'react-icons/gi';
@@ -53,12 +55,14 @@ import VisionTest from '@/components/tools/VisionTest';
 import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
+import EisenhowerMatrix from '@/components/tools/EisenhowerMatrix';
+import InvestmentReturnCalculator from '@/components/tools/InvestmentReturnCalculator';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
 import NutritionTracker from '@/components/tools/NutritionTracker';
+import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
 import TextUtility from '@/components/tools/TextUtility';
 import WeatherTool from '@/components/tools/WeatherTool';
 import WorldClock from '@/components/tools/WorldClock';
-import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ToolItem {
@@ -261,6 +265,20 @@ const allTools: ToolItem[] = [
     description: 'Measure your password strength and security.',
     icon: FaKey,
     component: PasswordEntropyCalculator,
+  },
+  {
+    id: 'eisenhower-matrix',
+    name: 'Eisenhower Matrix',
+    description: 'Prioritize your tasks based on urgency and importance.',
+    icon: FaTasks,
+    component: EisenhowerMatrix,
+  },
+  {
+    id: 'investment-return-calculator',
+    name: 'Investment Return Calculator',
+    description: 'Project the future value of your investments.',
+    icon: FaChartLine,
+    component: InvestmentReturnCalculator,
   },
 ];
 
