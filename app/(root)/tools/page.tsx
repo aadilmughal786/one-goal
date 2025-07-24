@@ -56,6 +56,10 @@ import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
 import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
 
+import JWTDecoder from '@/components/tools/JWTDecoder';
+import SavingMinutesCalculator from '@/components/tools/SavingMinutesCalculator';
+import GUIDGenerator from '@/components/tools/GUIDGenerator';
+
 import AgeCalculator from '@/components/tools/AgeCalculator';
 import CoinFlip from '@/components/tools/CoinFlip';
 import DailyTimePercentageCalculator from '@/components/tools/DailyTimePercentageCalculator';
@@ -406,6 +410,27 @@ const allTools: ToolItem[] = [
     description: 'Calculate the Return on Investment for a given profit and cost.',
     icon: FaPercent,
     component: ROICalculator,
+  },
+  {
+    id: 'jwt-decoder',
+    name: 'JWT Decoder',
+    description: 'Decode JWT tokens to inspect header and payload.',
+    icon: FaCode,
+    component: JWTDecoder,
+  },
+  {
+    id: 'saving-minutes-calculator',
+    name: 'Saving Minutes Calculator',
+    description: 'Calculate potential savings by saving minutes per day.',
+    icon: FaClock,
+    component: SavingMinutesCalculator,
+  },
+  {
+    id: 'guid-generator',
+    name: 'GUID Generator',
+    description: 'Generate a new Globally Unique Identifier (GUID).',
+    icon: FaKey,
+    component: GUIDGenerator,
   },
 ];
 
