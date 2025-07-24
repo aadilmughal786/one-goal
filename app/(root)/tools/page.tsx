@@ -24,6 +24,7 @@ import {
   FaPercentage,
   FaQrcode,
   FaSearch,
+  FaSortNumericUp,
   FaTasks,
   FaWeight,
 } from 'react-icons/fa';
@@ -33,17 +34,18 @@ import { FiChevronLeft, FiCreditCard, FiEdit, FiGlobe, FiWatch } from 'react-ico
 import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
-import HashCalculator from '@/components/tools/HashCalculator';
 import Base64Converter from '@/components/tools/Base64Converter';
-import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
 import BinaryConverter from '@/components/tools/BinaryConverter';
 import BMICalculator from '@/components/tools/BMICalculator';
 import ChatCalculator from '@/components/tools/ChatCalculator';
 import DiscountCalculator from '@/components/tools/DiscountCalculator';
 import DrawingTool from '@/components/tools/DrawingTool';
+import HashCalculator from '@/components/tools/HashCalculator';
 import LoanCalculator from '@/components/tools/LoanCalculator';
+import NumberSorter from '@/components/tools/NumberSorter';
 import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
+import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
 
 import AgeCalculator from '@/components/tools/AgeCalculator';
 import CoinFlip from '@/components/tools/CoinFlip';
@@ -343,6 +345,13 @@ const allTools: ToolItem[] = [
     description: 'Break down a URL into its constituent parts.',
     icon: FaGlobe,
     component: UrlAnatomyTool,
+  },
+  {
+    id: 'data-sorter',
+    name: 'Data Sorter',
+    description: 'Sort a list of numbers or alphanumeric data in ascending or descending order.',
+    icon: FaSortNumericUp,
+    component: NumberSorter,
   },
 ];
 
