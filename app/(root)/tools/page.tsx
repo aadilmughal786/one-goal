@@ -551,6 +551,9 @@ const ToolsPageContent: React.FC = () => {
           </div>
         )}
       </nav>
+      <p className="mt-6 text-lg text-center text-text-secondary">
+        Explore {allTools.length - 1} powerful tools to boost your productivity.
+      </p>
       <div className="container flex-grow p-4 mx-auto max-w-5xl">{renderContent()}</div>
     </main>
   );
