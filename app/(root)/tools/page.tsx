@@ -24,6 +24,7 @@ import {
   FaPercentage,
   FaQrcode,
   FaRulerCombined,
+  FaRulerHorizontal,
   FaSearch,
   FaSortNumericUp,
   FaTasks,
@@ -43,6 +44,7 @@ import ChatCalculator from '@/components/tools/ChatCalculator';
 import DiscountCalculator from '@/components/tools/DiscountCalculator';
 import DrawingTool from '@/components/tools/DrawingTool';
 import HashCalculator from '@/components/tools/HashCalculator';
+import LengthConverter from '@/components/tools/LengthConverter';
 import LoanCalculator from '@/components/tools/LoanCalculator';
 import NumberSorter from '@/components/tools/NumberSorter';
 import TextExtractor from '@/components/tools/TextExtractor';
@@ -372,6 +374,13 @@ const allTools: ToolItem[] = [
       'Convert between various area units like square meters, acres, and traditional Indian units.',
     icon: FaRulerCombined,
     component: AreaConverter,
+  },
+  {
+    id: 'length-converter',
+    name: 'Length Converter',
+    description: 'Convert between various length units like meters, feet, and astronomical units.',
+    icon: FaRulerHorizontal,
+    component: LengthConverter,
   },
 ];
 
