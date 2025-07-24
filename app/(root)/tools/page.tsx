@@ -33,6 +33,9 @@ import { FiChevronLeft, FiCreditCard, FiEdit, FiGlobe, FiWatch } from 'react-ico
 import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
+import HashCalculator from '@/components/tools/HashCalculator';
+import Base64Converter from '@/components/tools/Base64Converter';
+import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
 import BinaryConverter from '@/components/tools/BinaryConverter';
 import BMICalculator from '@/components/tools/BMICalculator';
 import ChatCalculator from '@/components/tools/ChatCalculator';
@@ -319,6 +322,27 @@ const allTools: ToolItem[] = [
     description: 'Calculate network details from IP address and subnet mask/CIDR.',
     icon: FaGlobe,
     component: NetworkCalculator,
+  },
+  {
+    id: 'hash-calculator',
+    name: 'Hash Calculator',
+    description: 'Calculate MD5, SHA-1, SHA-256, SHA-512, and RIPEMD-160 hashes.',
+    icon: FaCalculator,
+    component: HashCalculator,
+  },
+  {
+    id: 'base64-converter',
+    name: 'Base64 Encoder/Decoder',
+    description: 'Encode and decode text using Base64.',
+    icon: FaCode,
+    component: Base64Converter,
+  },
+  {
+    id: 'url-anatomy-tool',
+    name: 'URL Anatomy Tool',
+    description: 'Break down a URL into its constituent parts.',
+    icon: FaGlobe,
+    component: UrlAnatomyTool,
   },
 ];
 
