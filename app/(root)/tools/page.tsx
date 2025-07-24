@@ -23,6 +23,7 @@ import {
   FaPercent,
   FaPercentage,
   FaQrcode,
+  FaRulerCombined,
   FaSearch,
   FaSortNumericUp,
   FaTasks,
@@ -34,6 +35,7 @@ import { FiChevronLeft, FiCreditCard, FiEdit, FiGlobe, FiWatch } from 'react-ico
 import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
+import AreaConverter from '@/components/tools/AreaConverter';
 import Base64Converter from '@/components/tools/Base64Converter';
 import BinaryConverter from '@/components/tools/BinaryConverter';
 import BMICalculator from '@/components/tools/BMICalculator';
@@ -361,6 +363,15 @@ const allTools: ToolItem[] = [
       'Extract IP addresses, hashtags, URLs, emails, phone numbers, numbers, and names from text.',
     icon: FaFileAlt,
     component: TextExtractor,
+  },
+
+  {
+    id: 'area-converter',
+    name: 'Area Converter',
+    description:
+      'Convert between various area units like square meters, acres, and traditional Indian units.',
+    icon: FaRulerCombined,
+    component: AreaConverter,
   },
 ];
 
