@@ -29,6 +29,7 @@ import {
   FaSortNumericUp,
   FaTasks,
   FaWeight,
+  FaHome,
 } from 'react-icons/fa';
 import { GiWeightLiftingUp } from 'react-icons/gi';
 
@@ -59,6 +60,7 @@ import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
 import JWTDecoder from '@/components/tools/JWTDecoder';
 import SavingMinutesCalculator from '@/components/tools/SavingMinutesCalculator';
 import GUIDGenerator from '@/components/tools/GUIDGenerator';
+import HouseBuildCostCalculator from '@/components/tools/HouseBuildCostCalculator';
 
 import AgeCalculator from '@/components/tools/AgeCalculator';
 import CoinFlip from '@/components/tools/CoinFlip';
@@ -431,6 +433,13 @@ const allTools: ToolItem[] = [
     description: 'Generate a new Globally Unique Identifier (GUID).',
     icon: FaKey,
     component: GUIDGenerator,
+  },
+  {
+    id: 'house-build-cost-calculator',
+    name: 'House Build Cost Calculator',
+    description: 'Estimate your home construction costs with detailed breakdowns.',
+    icon: FaHome,
+    component: HouseBuildCostCalculator,
   },
 ];
 
