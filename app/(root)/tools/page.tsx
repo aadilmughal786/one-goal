@@ -43,6 +43,7 @@ import DrawingTool from '@/components/tools/DrawingTool';
 import HashCalculator from '@/components/tools/HashCalculator';
 import LoanCalculator from '@/components/tools/LoanCalculator';
 import NumberSorter from '@/components/tools/NumberSorter';
+import TextExtractor from '@/components/tools/TextExtractor';
 import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
 import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
@@ -352,6 +353,14 @@ const allTools: ToolItem[] = [
     description: 'Sort a list of numbers or alphanumeric data in ascending or descending order.',
     icon: FaSortNumericUp,
     component: NumberSorter,
+  },
+  {
+    id: 'text-extractor',
+    name: 'Text Extractor',
+    description:
+      'Extract IP addresses, hashtags, URLs, emails, phone numbers, numbers, and names from text.',
+    icon: FaFileAlt,
+    component: TextExtractor,
   },
 ];
 

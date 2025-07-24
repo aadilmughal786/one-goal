@@ -216,12 +216,6 @@ const TextUtility: React.FC = () => {
           Clear
         </button>
       </div>
-
-      {currentOperation && (
-        <div className="flex justify-center items-center mt-6">
-          <p className="text-text-secondary">Performing {currentOperation} operation...</p>
-        </div>
-      )}
     </div>
   );
 };
