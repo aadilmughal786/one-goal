@@ -48,6 +48,10 @@ import LengthConverter from '@/components/tools/LengthConverter';
 import LoanCalculator from '@/components/tools/LoanCalculator';
 import NumberSorter from '@/components/tools/NumberSorter';
 import TextExtractor from '@/components/tools/TextExtractor';
+
+import CAGRCalculator from '@/components/tools/CAGRCalculator';
+import EBITDACalculator from '@/components/tools/EBITDACalculator';
+import ROICalculator from '@/components/tools/ROICalculator';
 import TimeEstimator from '@/components/tools/TimeEstimator';
 import ToolSearchAndList from '@/components/tools/ToolSearchAndList';
 import UrlAnatomyTool from '@/components/tools/UrlAnatomyTool';
@@ -381,6 +385,27 @@ const allTools: ToolItem[] = [
     description: 'Convert between various length units like meters, feet, and astronomical units.',
     icon: FaRulerHorizontal,
     component: LengthConverter,
+  },
+  {
+    id: 'cagr-calculator',
+    name: 'CAGR Calculator',
+    description: 'Calculate the Compound Annual Growth Rate of an investment.',
+    icon: FaChartLine,
+    component: CAGRCalculator,
+  },
+  {
+    id: 'ebitda-calculator',
+    name: 'EBITDA Calculator',
+    description: 'Calculate Earnings Before Interest, Taxes, Depreciation, and Amortization.',
+    icon: FaCalculator,
+    component: EBITDACalculator,
+  },
+  {
+    id: 'roi-calculator',
+    name: 'ROI Calculator',
+    description: 'Calculate the Return on Investment for a given profit and cost.',
+    icon: FaPercent,
+    component: ROICalculator,
   },
 ];
 

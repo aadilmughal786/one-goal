@@ -1,6 +1,7 @@
 'use client';
 
-import { MathJax, MathJaxContext } from 'better-react-mathjax';
+import { BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 import React, { useMemo, useState } from 'react';
 import { FaCalculator } from 'react-icons/fa';
 
@@ -54,11 +55,6 @@ const CombinationCalculator: React.FC = () => {
   const [isOrdered, setIsOrdered] = useState<boolean>(false);
   const [isRepeatable, setIsRepeatable] = useState<boolean>(false);
 
-  const config = {
-    loader: { load: ['input/tex', 'output/svg'] },
-    svg: { fontCache: 'global' },
-  };
-
   const result = useMemo<{
     type: string;
     formula: string;
@@ -109,7 +105,7 @@ const CombinationCalculator: React.FC = () => {
     if (isOrdered && isRepeatable) {
       return {
         type: 'Permutation with Repetition',
-        formula: 'n^k',
+        formula: String.raw`n^k`,
         value: BigInt(totalItems) ** BigInt(itemsToChoose),
       };
     }
@@ -117,7 +113,7 @@ const CombinationCalculator: React.FC = () => {
     if (isOrdered && !isRepeatable) {
       return {
         type: 'Permutation',
-        formula: 'P(n,k) = \\frac{n!}{(n-k)!}',
+        formula: String.raw`P(n,k) = \frac{n!}{(n-k)!}`,
         value: permute(totalItems, itemsToChoose),
       };
     }
@@ -133,7 +129,7 @@ const CombinationCalculator: React.FC = () => {
       const denominator = factorial(itemsToChoose);
       return {
         type: 'Combination with Repetition',
-        formula: 'C(n+k-1, k) = \\frac{(n+k-1)!}{k!(n-1)!}',
+        formula: String.raw`C(n+k-1, k) = \frac{(n+k-1)!}{k!(n-1)!}`,
         value: denominator > 0n ? numerator / denominator : 0n,
       };
     }
@@ -143,7 +139,7 @@ const CombinationCalculator: React.FC = () => {
       const denominator = factorial(itemsToChoose);
       return {
         type: 'Combination',
-        formula: 'C(n,k) = \\frac{n!}{k!(n-k)!}',
+        formula: String.raw`C(n,k) = \frac{n!}{k!(n-k)!}`,
         value: denominator > 0n ? numerator / denominator : 0n,
       };
     }
@@ -152,87 +148,85 @@ const CombinationCalculator: React.FC = () => {
   }, [n, k, isOrdered, isRepeatable]);
 
   return (
-    <MathJaxContext config={config} renderMode="post">
-      <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
-        <h2 className="mb-6 text-2xl font-semibold">
-          <FaCalculator className="inline mr-2 w-5 h-5" />
-          Combinations & Permutations
-        </h2>
+    <div className="p-6 rounded-lg shadow-lg bg-bg-secondary text-text-primary">
+      <h2 className="mb-6 text-2xl font-semibold">
+        <FaCalculator className="inline mr-2 w-5 h-5" />
+        Combinations & Permutations
+      </h2>
 
-        <div className="grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-2">
-          <div>
-            <label
-              htmlFor="total-items"
-              className="block mb-2 text-sm font-medium text-text-secondary"
-            >
-              Total Items (n)
-            </label>
-            <input
-              id="total-items"
-              type="number"
-              value={n}
-              min="0"
-              onChange={e => setN(e.target.value)}
-              className="px-4 py-2 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-accent focus:border-transparent"
-              placeholder="e.g., 52"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="items-to-choose"
-              className="block mb-2 text-sm font-medium text-text-secondary"
-            >
-              Items to Choose (k)
-            </label>
-            <input
-              id="items-to-choose"
-              type="number"
-              value={k}
-              min="0"
-              onChange={e => setK(e.target.value)}
-              className="px-4 py-2 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-accent focus:border-transparent"
-              placeholder="e.g., 5"
-            />
-          </div>
-
-          <ToggleSwitch
-            label="Order Matters (Permutation)"
-            enabled={isOrdered}
-            onChange={setIsOrdered}
+      <div className="grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-2">
+        <div>
+          <label
+            htmlFor="total-items"
+            className="block mb-2 text-sm font-medium text-text-secondary"
+          >
+            Total Items (n)
+          </label>
+          <input
+            id="total-items"
+            type="number"
+            value={n}
+            min="0"
+            onChange={e => setN(e.target.value)}
+            className="px-4 py-2 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-accent focus:border-transparent"
+            placeholder="e.g., 52"
           />
-          <ToggleSwitch
-            label="Repetition Allowed"
-            enabled={isRepeatable}
-            onChange={setIsRepeatable}
+        </div>
+        <div>
+          <label
+            htmlFor="items-to-choose"
+            className="block mb-2 text-sm font-medium text-text-secondary"
+          >
+            Items to Choose (k)
+          </label>
+          <input
+            id="items-to-choose"
+            type="number"
+            value={k}
+            min="0"
+            onChange={e => setK(e.target.value)}
+            className="px-4 py-2 w-full rounded-lg border bg-bg-primary border-border-primary focus:ring-2 focus:ring-accent focus:border-transparent"
+            placeholder="e.g., 5"
           />
         </div>
 
-        {result.type && (
-          <div className="p-6 mt-8 rounded-lg border bg-bg-primary border-border-primary">
-            {result.error ? (
-              <p className="text-lg font-medium text-red-500">{result.error}</p>
-            ) : (
-              <div>
-                <p className="text-sm font-medium text-text-secondary">Result Type</p>
-                <h3 className="mb-2 text-xl font-semibold text-accent">{result.type}</h3>
-
-                <p className="mt-4 text-sm font-medium text-text-secondary">Formula</p>
-                <div className="p-3 my-1 text-lg text-center rounded-md bg-bg-secondary">
-                  <MathJax inline={false}>{`$$${result.formula}$$`}</MathJax>
-                </div>
-
-                <p className="mt-4 text-sm font-medium text-text-secondary">
-                  Number of Possibilities
-                </p>
-                <p className="text-3xl font-bold break-words text-accent">
-                  {result.value?.toString() ?? '...'}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        <ToggleSwitch
+          label="Order Matters (Permutation)"
+          enabled={isOrdered}
+          onChange={setIsOrdered}
+        />
+        <ToggleSwitch
+          label="Repetition Allowed"
+          enabled={isRepeatable}
+          onChange={setIsRepeatable}
+        />
       </div>
-    </MathJaxContext>
+
+      {result.type && (
+        <div className="p-6 mt-8 rounded-lg border bg-bg-primary border-border-primary">
+          {result.error ? (
+            <p className="text-lg font-medium text-red-500">{result.error}</p>
+          ) : (
+            <div>
+              <p className="text-sm font-medium text-text-secondary">Result Type</p>
+              <h3 className="mb-2 text-xl font-semibold text-accent">{result.type}</h3>
+
+              <p className="mt-4 text-sm font-medium text-text-secondary">Formula</p>
+              <div className="p-3 my-1 text-lg text-center rounded-md bg-bg-secondary">
+                <BlockMath math={result.formula} />
+              </div>
+
+              <p className="mt-4 text-sm font-medium text-text-secondary">
+                Number of Possibilities
+              </p>
+              <p className="text-3xl font-bold break-words text-accent">
+                {result.value?.toString() ?? '...'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
