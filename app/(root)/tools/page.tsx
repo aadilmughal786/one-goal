@@ -29,7 +29,7 @@ import {
 } from 'react-icons/fa';
 import { GiWeightLiftingUp } from 'react-icons/gi';
 
-import { FiChevronLeft, FiEdit, FiGlobe, FiWatch } from 'react-icons/fi';
+import { FiChevronLeft, FiCreditCard, FiEdit, FiGlobe, FiWatch } from 'react-icons/fi';
 import { IoWaterOutline } from 'react-icons/io5';
 
 import PageContentSkeleton from '@/components/common/PageContentSkeleton';
@@ -55,11 +55,14 @@ import VisionTest from '@/components/tools/VisionTest';
 import WaterIntakeCalculator from '@/components/tools/WaterIntakeCalculator';
 
 import CombinationCalculator from '@/components/tools/CombinationCalculator';
+import CreditCardValidator from '@/components/tools/CreditCardValidator';
 import CurrencyConverter from '@/components/tools/CurrencyConverter';
 import DepreciationCalculator from '@/components/tools/DepreciationCalculator';
 import EisenhowerMatrix from '@/components/tools/EisenhowerMatrix';
 import InvestmentReturnCalculator from '@/components/tools/InvestmentReturnCalculator';
 import IpWhoisTool from '@/components/tools/IpWhoisTool';
+import NetworkCalculator from '@/components/tools/NetworkCalculator';
+import NumerologyCalculator from '@/components/tools/NumerologyCalculator';
 import NutritionTracker from '@/components/tools/NutritionTracker';
 import PasswordEntropyCalculator from '@/components/tools/PasswordEntropyCalculator';
 import TextUtility from '@/components/tools/TextUtility';
@@ -295,6 +298,27 @@ const allTools: ToolItem[] = [
     description: 'Calculate combinations and permutations with options for order and repetition.',
     icon: FaCalculator,
     component: CombinationCalculator,
+  },
+  {
+    id: 'numerology-calculator',
+    name: 'Numerology Calculator',
+    description: 'Calculate your destiny, soul urge, and personality numbers.',
+    icon: FaCalculator,
+    component: NumerologyCalculator,
+  },
+  {
+    id: 'credit-card-validator',
+    name: 'Credit Card Validator',
+    description: 'Validate credit card numbers and identify card types.',
+    icon: FiCreditCard,
+    component: CreditCardValidator,
+  },
+  {
+    id: 'network-calculator',
+    name: 'Network Calculator',
+    description: 'Calculate network details from IP address and subnet mask/CIDR.',
+    icon: FaGlobe,
+    component: NetworkCalculator,
   },
 ];
 
