@@ -88,6 +88,7 @@ describe('Goal Service', () => {
       },
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     // A standard mock AppState object.

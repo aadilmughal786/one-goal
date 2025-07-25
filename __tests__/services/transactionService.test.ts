@@ -80,6 +80,7 @@ describe('Transaction Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: mockFinanceData,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

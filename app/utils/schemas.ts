@@ -229,6 +229,11 @@ export const financeDataSchema = z.object({
 //                        TOP-LEVEL STATE
 // =================================================================//
 
+export const catchingTheFrogTaskSchema = z.object({
+  id: z.string().min(1, 'ID cannot be empty'),
+  text: z.string().min(1, 'Task text cannot be empty'),
+});
+
 export const goalSchema = baseEntitySchema
   .extend({
     name: z.string().min(1),
@@ -248,6 +253,7 @@ export const goalSchema = baseEntitySchema
     resources: z.array(resourceSchema).default([]),
     // REVISION: Added financeData as an optional property within each goal.
     financeData: financeDataSchema.nullable(),
+    catchingTheFrogTasks: z.array(catchingTheFrogTaskSchema).max(3).default([]),
   })
   .refine(data => data.endDate.toMillis() >= data.startDate.toMillis(), {
     message: 'End date must be after or the same as start date',

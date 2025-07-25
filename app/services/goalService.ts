@@ -1,5 +1,13 @@
 // app/services/goalService.ts
-import { AppState, Goal, GoalStatus, ReminderType, ScheduledRoutineBase, TimeBlock } from '@/types';
+import {
+  AppState,
+  CatchingTheFrogTask,
+  Goal,
+  GoalStatus,
+  ReminderType,
+  ScheduledRoutineBase,
+  TimeBlock,
+} from '@/types';
 import { ServiceError, ServiceErrorCode } from '@/utils/errors';
 import { appStateSchema, goalSchema } from '@/utils/schemas';
 import { isSameDay } from 'date-fns';
@@ -29,7 +37,6 @@ const _initializeDefaultAppState = (): AppState => ({
 const _handleDailyRoutineResets = (
   appState: AppState
 ): { updatedState: AppState; needsUpdate: boolean } => {
-  const now = new Date();
   let needsUpdate = false;
   const updatedGoals = { ...appState.goals };
 
@@ -38,7 +45,7 @@ const _handleDailyRoutineResets = (
     if (goal.status === GoalStatus.ACTIVE) {
       const lastReset = goal.routineSettings.lastRoutineResetDate?.toDate();
 
-      if (!lastReset || !isSameDay(lastReset, now)) {
+      if (!lastReset || !isSameDay(lastReset, new Date())) {
         let goalWasModified = false;
 
         const resetSchedules = (schedules: ScheduledRoutineBase[]) =>
@@ -76,8 +83,8 @@ const _handleDailyRoutineResets = (
         goal.timeBlocks = resetTimeBlocks(goal.timeBlocks);
 
         if (goalWasModified) {
-          settings.lastRoutineResetDate = Timestamp.fromDate(now);
-          goal.updatedAt = Timestamp.fromDate(now);
+          settings.lastRoutineResetDate = Timestamp.fromDate(new Date());
+          goal.updatedAt = Timestamp.fromDate(new Date());
           needsUpdate = true;
         }
       }
@@ -165,6 +172,7 @@ export const createGoal = async (
     | 'randomPickerItems'
     | 'resources'
     | 'financeData' // Also exclude financeData from input type
+    | 'catchingTheFrogTasks' // Exclude new field
   >
 ): Promise<Goal> => {
   const userDocRef = doc(db, 'users', userId);
@@ -183,6 +191,7 @@ export const createGoal = async (
     timeBlocks: [],
     randomPickerItems: [],
     resources: [],
+    catchingTheFrogTasks: [], // Initialize new field
     routineSettings: {
       sleep: { wakeTime: '06:00', sleepTime: '22:00', naps: [] },
       water: { goal: 8, current: 0 },
@@ -335,6 +344,137 @@ export const setUserData = async (userId: string, newAppState: AppState): Promis
   } catch (error) {
     throw new ServiceError(
       'Failed to set user data during import.',
+      ServiceErrorCode.OPERATION_FAILED,
+      error
+    );
+  }
+};
+
+/**
+ * Adds a new CatchingTheFrogTask to a goal's list.
+ * @param userId The ID of the current user.
+ * @param goalId The ID of the goal to which the task will be added.
+ * @param text The text content of the new task.
+ * @returns A promise that resolves to the newly created CatchingTheFrogTask.
+ * @throws {ServiceError} If the operation fails.
+ */
+export const addCatchingTheFrogTask = async (
+  userId: string,
+  goalId: string,
+  text: string
+): Promise<CatchingTheFrogTask> => {
+  const userDocRef = doc(db, 'users', userId);
+  try {
+    const docSnap = await getDoc(userDocRef);
+    if (!docSnap.exists())
+      throw new ServiceError('User data not found.', ServiceErrorCode.NOT_FOUND);
+
+    const appState = docSnap.data() as AppState;
+    const currentGoal = appState.goals[goalId];
+    if (!currentGoal)
+      throw new ServiceError(`Goal with ID ${goalId} not found.`, ServiceErrorCode.NOT_FOUND);
+
+    const newItem: CatchingTheFrogTask = {
+      id: generateUUID(),
+      text: text.trim(),
+    };
+
+    const updatedTasks = [...(currentGoal.catchingTheFrogTasks || []), newItem];
+
+    await updateDoc(userDocRef, {
+      [`goals.${goalId}.catchingTheFrogTasks`]: updatedTasks,
+    });
+
+    return newItem;
+  } catch (error) {
+    if (error instanceof ServiceError) throw error;
+    throw new ServiceError(
+      'Failed to add catching the frog task.',
+      ServiceErrorCode.OPERATION_FAILED,
+      error
+    );
+  }
+};
+
+/**
+ * Updates an existing CatchingTheFrogTask within a goal's list.
+ * @param userId The ID of the current user.
+ * @param goalId The ID of the goal containing the task.
+ * @param taskId The ID of the specific task to update.
+ * @param updates A partial object of CatchingTheFrogTask containing the fields to be updated.
+ * @throws {ServiceError} If the operation fails.
+ */
+export const updateCatchingTheFrogTask = async (
+  userId: string,
+  goalId: string,
+  taskId: string,
+  updates: Partial<CatchingTheFrogTask>
+): Promise<void> => {
+  const userDocRef = doc(db, 'users', userId);
+  try {
+    const docSnap = await getDoc(userDocRef);
+    if (!docSnap.exists())
+      throw new ServiceError('User data not found.', ServiceErrorCode.NOT_FOUND);
+
+    const appState = docSnap.data() as AppState;
+    const currentGoal = appState.goals[goalId];
+    if (!currentGoal)
+      throw new ServiceError(`Goal with ID ${goalId} not found.`, ServiceErrorCode.NOT_FOUND);
+
+    const updatedTasks = (currentGoal.catchingTheFrogTasks || []).map(item => {
+      if (item.id === taskId) {
+        return { ...item, ...updates };
+      }
+      return item;
+    });
+
+    await updateDoc(userDocRef, {
+      [`goals.${goalId}.catchingTheFrogTasks`]: updatedTasks,
+    });
+  } catch (error) {
+    if (error instanceof ServiceError) throw error;
+    throw new ServiceError(
+      `Failed to update catching the frog task ${taskId}.`,
+      ServiceErrorCode.OPERATION_FAILED,
+      error
+    );
+  }
+};
+
+/**
+ * Deletes a CatchingTheFrogTask from a goal's list.
+ * @param userId The ID of the current user.
+ * @param goalId The ID of the goal containing the task.
+ * @param taskId The ID of the task to delete.
+ * @throws {ServiceError} If the operation fails.
+ */
+export const deleteCatchingTheFrogTask = async (
+  userId: string,
+  goalId: string,
+  taskId: string
+): Promise<void> => {
+  const userDocRef = doc(db, 'users', userId);
+  try {
+    const docSnap = await getDoc(userDocRef);
+    if (!docSnap.exists())
+      throw new ServiceError('User data not found.', ServiceErrorCode.NOT_FOUND);
+
+    const appState = docSnap.data() as AppState;
+    const currentGoal = appState.goals[goalId];
+    if (!currentGoal)
+      throw new ServiceError(`Goal with ID ${goalId} not found.`, ServiceErrorCode.NOT_FOUND);
+
+    const updatedTasks = (currentGoal.catchingTheFrogTasks || []).filter(
+      item => item.id !== taskId
+    );
+
+    await updateDoc(userDocRef, {
+      [`goals.${goalId}.catchingTheFrogTasks`]: updatedTasks,
+    });
+  } catch (error) {
+    if (error instanceof ServiceError) throw error;
+    throw new ServiceError(
+      `Failed to delete catching the frog task ${taskId}.`,
       ServiceErrorCode.OPERATION_FAILED,
       error
     );

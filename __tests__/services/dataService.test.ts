@@ -79,6 +79,7 @@ describe('Data Service', () => {
         liabilities: [],
         netWorthHistory: [],
       },
+      catchingTheFrogTasks: [],
     };
   });
 

@@ -101,6 +101,7 @@ describe('Stopwatch Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

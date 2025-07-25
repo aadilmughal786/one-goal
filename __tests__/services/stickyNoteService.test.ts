@@ -73,6 +73,7 @@ describe('Sticky Note Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

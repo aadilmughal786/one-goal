@@ -75,6 +75,7 @@ describe('Distraction Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

@@ -76,6 +76,7 @@ describe('Time Block Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

@@ -77,6 +77,7 @@ describe('To-Do Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: null,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

@@ -98,6 +98,7 @@ describe('Net Worth Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: mockFinanceData,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

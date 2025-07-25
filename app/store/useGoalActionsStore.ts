@@ -1,6 +1,6 @@
 // app/store/useGoalActionsStore.ts
 import * as goalService from '@/services/goalService';
-import { AppState, Goal, GoalStatus } from '@/types';
+import { AppState, Goal, GoalStatus, CatchingTheFrogTask } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
@@ -14,6 +14,12 @@ interface GoalActionsStore {
   setActiveGoal: (goalId: string | null) => Promise<void>;
   importGoals: (goalsToImport: Goal[]) => Promise<void>;
   updateRandomPickerItems: (items: string[]) => Promise<void>;
+  addCatchingTheFrogTask: (text: string) => Promise<void>;
+  updateCatchingTheFrogTask: (
+    taskId: string,
+    updates: Partial<CatchingTheFrogTask>
+  ) => Promise<void>;
+  deleteCatchingTheFrogTask: (taskId: string) => Promise<void>;
 }
 
 export const useGoalActionsStore = create<GoalActionsStore>(() => ({
@@ -171,6 +177,102 @@ export const useGoalActionsStore = create<GoalActionsStore>(() => ({
       useNotificationStore
         .getState()
         .showToast('Failed to update picker list. Reverting.', 'error');
+      useGoalStore.setState({ appState: originalState });
+    }
+  },
+
+  addCatchingTheFrogTask: async (text: string) => {
+    const { currentUser } = useAuthStore.getState();
+    const { appState } = useGoalStore.getState();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    try {
+      const newTask = await goalService.addCatchingTheFrogTask(currentUser.uid, activeGoalId, text);
+      useGoalStore.setState(state => {
+        const goal = state.appState!.goals[activeGoalId];
+        return {
+          appState: {
+            ...state.appState!,
+            goals: {
+              ...state.appState!.goals,
+              [activeGoalId]: {
+                ...goal,
+                catchingTheFrogTasks: [...(goal.catchingTheFrogTasks || []), newTask],
+              },
+            },
+          },
+        };
+      });
+      useNotificationStore.getState().showToast('Task added to Catching the Frog!', 'success');
+    } catch (error) {
+      console.error('Store: Failed to add catching the frog task', error);
+      useNotificationStore.getState().showToast('Could not add task.', 'error');
+    }
+  },
+
+  updateCatchingTheFrogTask: async (taskId: string, updates: Partial<CatchingTheFrogTask>) => {
+    const { currentUser } = useAuthStore.getState();
+    const { appState } = useGoalStore.getState();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    useGoalStore.setState(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedTasks = (goal.catchingTheFrogTasks || []).map(task =>
+        task.id === taskId ? { ...task, ...updates } : task
+      );
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: { ...goal, catchingTheFrogTasks: updatedTasks },
+          },
+        },
+      };
+    });
+
+    try {
+      await goalService.updateCatchingTheFrogTask(currentUser.uid, activeGoalId, taskId, updates);
+      useNotificationStore.getState().showToast('Task updated!', 'success');
+    } catch (error) {
+      console.error('Store: Failed to update catching the frog task', error);
+      useNotificationStore.getState().showToast('Failed to update task. Reverting.', 'error');
+      useGoalStore.setState({ appState: originalState });
+    }
+  },
+
+  deleteCatchingTheFrogTask: async (taskId: string) => {
+    const { currentUser } = useAuthStore.getState();
+    const { appState } = useGoalStore.getState();
+    const activeGoalId = appState?.activeGoalId;
+    if (!currentUser || !activeGoalId) return;
+
+    const originalState = { ...appState };
+
+    useGoalStore.setState(state => {
+      const goal = state.appState!.goals[activeGoalId];
+      const updatedTasks = (goal.catchingTheFrogTasks || []).filter(task => task.id !== taskId);
+      return {
+        appState: {
+          ...state.appState!,
+          goals: {
+            ...state.appState!.goals,
+            [activeGoalId]: { ...goal, catchingTheFrogTasks: updatedTasks },
+          },
+        },
+      };
+    });
+
+    try {
+      await goalService.deleteCatchingTheFrogTask(currentUser.uid, activeGoalId, taskId);
+      useNotificationStore.getState().showToast('Task deleted!', 'info');
+    } catch (error) {
+      console.error('Store: Failed to delete catching the frog task', error);
+      useNotificationStore.getState().showToast('Failed to delete task. Reverting.', 'error');
       useGoalStore.setState({ appState: originalState });
     }
   },

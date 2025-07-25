@@ -79,6 +79,7 @@ describe('Budget Service', () => {
       wellnessSettings: {} as any,
       starredQuotes: [],
       financeData: mockFinanceData,
+      catchingTheFrogTasks: [],
     };
 
     mockAppState = {

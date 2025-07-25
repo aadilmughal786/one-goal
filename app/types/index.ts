@@ -326,6 +326,11 @@ export interface FinanceData {
 //                        TOP-LEVEL STATE
 // =================================================================//
 
+export interface CatchingTheFrogTask {
+  id: string;
+  text: string;
+}
+
 export interface Goal extends BaseEntity {
   name: string;
   description: string;
@@ -343,6 +348,7 @@ export interface Goal extends BaseEntity {
   randomPickerItems: string[];
   resources: Resource[];
   financeData: FinanceData | null; // REVISION: Changed from '?' to '| null' for consistency
+  catchingTheFrogTasks: CatchingTheFrogTask[];
 }
 
 export interface AppState {

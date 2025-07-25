@@ -3,6 +3,7 @@
 
 import NoActiveGoalMessage from '@/components/common/NoActiveGoalMessage';
 import CountdownCard from '@/components/dashboard/CountdownCard';
+import CatchingTheFrogSection from '@/components/dashboard/CatchingTheFrogSection';
 import PinnedWeatherDisplay from '@/components/dashboard/PinnedWeatherDisplay'; // Import the new component
 import ProgressCalendar from '@/components/dashboard/ProgressCalendar';
 import { useGoalStore } from '@/store/useGoalStore';
@@ -29,6 +30,8 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ handleDayClick }) => {
       <section>
         <CountdownCard goal={activeGoal} />
       </section>
+
+      <CatchingTheFrogSection />
 
       <PinnedWeatherDisplay />
 
