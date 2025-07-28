@@ -13,7 +13,7 @@ const CatchingTheFrogSection: React.FC = () => {
   const { appState } = useGoalStore();
   const { addCatchingTheFrogTask, updateCatchingTheFrogTask, deleteCatchingTheFrogTask } =
     useGoalActionsStore();
-  const { showToast } = useNotificationStore();
+  const { showToast, showConfirmation } = useNotificationStore();
 
   const activeGoal = appState?.goals[appState.activeGoalId || ''];
   const frogTasks = activeGoal?.catchingTheFrogTasks || [];
@@ -62,13 +62,20 @@ const CatchingTheFrogSection: React.FC = () => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    setIsUpdating(taskId);
-    try {
-      await deleteCatchingTheFrogTask(taskId);
-    } finally {
-      setIsUpdating(null);
-    }
+  const handleDeleteTask = (taskId: string) => {
+    showConfirmation({
+      title: 'Delete Task',
+      message: 'Are you sure you want to delete this frog task? This action cannot be undone.',
+      action: async () => {
+        setIsUpdating(taskId);
+        try {
+          await deleteCatchingTheFrogTask(taskId);
+          showToast('Frog task deleted successfully.', 'success');
+        } finally {
+          setIsUpdating(null);
+        }
+      },
+    });
   };
 
   if (!activeGoal) {
